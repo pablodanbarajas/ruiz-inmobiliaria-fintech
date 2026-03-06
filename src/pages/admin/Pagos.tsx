@@ -1,0 +1,270 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '@/lib/supabaseClient'
+import { AdminLayout } from '@/components/layout/AdminLayout'
+import { DataTable } from '@/components/DataTable'
+import { Input } from '@/components/ui/Input'
+import { Button } from '@/components/ui/Button'
+import { Eye, ChevronLeft, ChevronRight } from 'lucide-react'
+import type { Pago, CorridaFinanciera, Venta, Cliente } from '@/types/database'
+import { getPagoStatusLabel, getPagoStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
+
+interface PagoWithDetails extends Pago {
+  corridafinanciera?: CorridaFinanciera & {
+    venta?: Venta & {
+      cliente?: Cliente
+    }
+  }
+}
+
+export const Pagos = () => {
+  const navigate = useNavigate()
+  const [pagos, setPagos] = useState<PagoWithDetails[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filters, setFilters] = useState({
+    clienteId: '',
+    fechaDesde: '',
+    fechaHasta: '',
+  })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const itemsPerPage = 10
+  const [prevFilters, setPrevFilters] = useState(filters)
+  const [clientes, setClientes] = useState<Cliente[]>([])
+
+  useEffect(() => {
+    const fetchClientes = async () => {
+      const { data } = await supabase
+        .from('cliente')
+        .select('*')
+        .order('nombre', { ascending: true })
+      if (data) setClientes(data)
+    }
+    fetchClientes()
+  }, [])
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    if (JSON.stringify(filters) !== JSON.stringify(prevFilters)) {
+      setCurrentPage(1)
+      setPrevFilters(filters)
+    }
+  }, [filters, prevFilters])
+
+  useEffect(() => {
+    const fetchPagos = async () => {
+      try {
+        setLoading(true)
+
+        // First, fetch all pagos with minimal data to apply filters
+        const { data: allPagos, error: errorAllPagos } = await supabase
+          .from('pagos')
+          .select('pagoid, fechapago, montopagado, estatus, corridafinancieraid', { count: 'estimated' })
+          .order('fechapago', { ascending: false })
+
+        if (errorAllPagos) throw errorAllPagos
+
+        let filteredData = (allPagos || []) as any[]
+
+        // Apply filters on the client
+        if (filters.clienteId) {
+          // Step 1: Get all ventas for this client
+          const { data: ventasData } = await supabase
+            .from('venta')
+            .select('ventaid')
+            .eq('clienteid', filters.clienteId)
+
+          if (ventasData && ventasData.length > 0) {
+            const ventaIds = ventasData.map((v: any) => v.ventaid)
+
+            // Step 2: Get all corridafinanciera for those ventas
+            const { data: corridasData } = await supabase
+              .from('corridafinanciera')
+              .select('corridafinancieraid')
+              .in('ventaid', ventaIds)
+
+            if (corridasData && corridasData.length > 0) {
+              const corridaIds = corridasData.map((c: any) => c.corridafinancieraid)
+
+              // Step 3: Get pagos for those corridafinanciera
+              const { data: pagosFull } = await supabase
+                .from('pagos')
+                .select('pagoid, fechapago, montopagado, estatus, corridafinanciera(venta(ventaid, clienteid, cliente(nombre)))')
+                .in('corridafinancieraid', corridaIds)
+                .order('fechapago', { ascending: false })
+
+              filteredData = (pagosFull || [])
+            }
+          } else {
+            filteredData = []
+          }
+        } else {
+          // If no client filter, fetch with relations for display
+          const { data: pagosFull } = await supabase
+            .from('pagos')
+            .select('pagoid, fechapago, montopagado, estatus, corridafinanciera(venta(ventaid, clienteid, cliente(nombre)))')
+            .order('fechapago', { ascending: false })
+            .limit(5000)
+
+          filteredData = (pagosFull || [])
+        }
+
+        if (filters.fechaDesde) {
+          filteredData = filteredData.filter((p) => p.fechapago && p.fechapago >= filters.fechaDesde)
+        }
+        if (filters.fechaHasta) {
+          filteredData = filteredData.filter((p) => p.fechapago && p.fechapago <= filters.fechaHasta)
+        }
+
+        setTotalItems(filteredData.length)
+        const startIndex = (currentPage - 1) * itemsPerPage
+        const endIndex = startIndex + itemsPerPage
+        setPagos(filteredData.slice(startIndex, endIndex) as unknown as PagoWithDetails[])
+      } catch (error) {
+        console.error('Error fetching pagos:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPagos()
+  }, [filters, currentPage])
+
+  return (
+    <AdminLayout>
+      <div className="w-full">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Pagos</h1>
+          <p className="text-[#9e9f92] mt-2">Registro de pagos realizados</p>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-lg shadow-md border-t-4 border-[#504840] p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-black mb-1">
+                Cliente
+              </label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                value={filters.clienteId}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilters({ ...filters, clienteId: e.target.value })}
+              >
+                <option value="">Todos</option>
+                {clientes.map((c) => (
+                  <option key={c.clienteid} value={c.clienteid}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-black mb-1">
+                Fecha Desde
+              </label>
+              <Input
+                type="date"
+                value={filters.fechaDesde}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilters({ ...filters, fechaDesde: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-black mb-1">
+                Fecha Hasta
+              </label>
+              <Input
+                type="date"
+                value={filters.fechaHasta}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilters({ ...filters, fechaHasta: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <DataTable<PagoWithDetails>
+          columns={[
+            {
+              key: 'pagoid',
+              label: 'Pago ID',
+              width: 'w-20',
+            },
+            {
+              key: 'cliente',
+              label: 'Cliente',
+              render: (row: PagoWithDetails) => row.corridafinanciera?.venta?.cliente?.nombre || '-',
+            },
+            {
+              key: 'venta',
+              label: 'Venta ID',
+              render: (row: PagoWithDetails) => row.corridafinanciera?.venta?.ventaid || '-',
+              width: 'w-24',
+            },
+            {
+              key: 'fechapago',
+              label: 'Fecha de Pago',
+              render: (row: PagoWithDetails) => formatDate(row.fechapago),
+            },
+            {
+              key: 'montopagado',
+              label: 'Monto',
+              render: (row: PagoWithDetails) => formatCurrency(row.montopagado),
+            },
+            {
+              key: 'estatus',
+              label: 'Estado',
+              render: (row: PagoWithDetails) => (
+                <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getPagoStatusColor(row.estatus)}`}>
+                  {getPagoStatusLabel(row.estatus)}
+                </span>
+              ),
+            },
+            {
+              key: 'actions',
+              label: 'Acciones',
+              render: (row: PagoWithDetails) => (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate(`/admin/pagos/${row.pagoid}`)}
+                  className="inline-flex items-center gap-1"
+                >
+                  <Eye size={16} />
+                  Ver
+                </Button>
+              ),
+            },
+          ]}
+          data={pagos}
+          loading={loading}
+        />
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between mt-6">
+          <Button
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            variant="outline"
+            className="inline-flex items-center gap-2"
+          >
+            <ChevronLeft size={18} />
+            Anterior
+          </Button>
+          <span className="text-sm text-gray-600">
+            Página {totalItems === 0 ? 0 : currentPage} de {Math.ceil(totalItems / itemsPerPage)}
+            {totalItems > 0 && ` (${(currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, totalItems)} de ${totalItems})`}
+          </span>
+          <Button
+            onClick={() => setCurrentPage(Math.min(Math.ceil(totalItems / itemsPerPage), currentPage + 1))}
+            disabled={currentPage >= Math.ceil(totalItems / itemsPerPage)}
+            variant="outline"
+            className="inline-flex items-center gap-2"
+          >
+            Siguiente
+            <ChevronRight size={18} />
+          </Button>
+        </div>
+      </div>
+    </AdminLayout>
+  )
+}
