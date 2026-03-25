@@ -92,12 +92,20 @@ export type Venta = {
   loteid: number | null
   clienteid: number | null
   fecha: string | null
+  fechacontrato: string | null
+  usuarioid: string | null
   preciolote: number | null
   enganche: number | null
+  porcenganche: number | null
+  fechaenganche: string | null
   plazo: number | null
   fechaprimeramensualidad: string | null
+  mensualidad: number | null
   estatus: string | null
-  usuarioid: string | null
+  comentarios: string | null
+  plazoenganche: number | null
+  idempotencykey: string | null
+  dias_tolerancia: number | null
 }
 
 export type CorridaFinanciera = {
@@ -116,4 +124,66 @@ export type Pago = {
   montopagado: number | null
   formapago: number | null
   estatus: string | null
+  referencia: string | null
+  comentario: string | null
+  recargo: number | null
+}
+
+export type Convenio = {
+  convenioid: number
+  ventaid: number | null
+  clienteid: number | null
+  fecha: string | null
+  motivo: string | null
+  descripcion: string | null
+  meses_atraso: number | null
+  estatus: string | null  // V: Vigente | C: Cumplido | X: Cancelado
+  recargo_original: number | null
+  recargo_acordado: number | null
+  comentarios: string | null
+  created_at: string | null
+}
+
+export type AvisoCancelacion = {
+  avisoid: number
+  ventaid: number
+  tipo: string  // 'AVISO1' | 'AVISO2' | 'DOCUMENTO'
+  fecha_envio: string
+  notas: string | null
+  created_at: string | null
+}
+
+export type Devolucion = {
+  devolucionid: number
+  ventaid: number
+  clienteid: number | null
+  monto_total: number
+  motivo: string | null
+  estatus: string | null  // P: Pendiente | E: En proceso | C: Completada
+  created_at: string | null
+}
+
+export type DevolucionParcialidad = {
+  parcialidadid: number
+  devolucionid: number
+  monto: number
+  fecha_programada: string | null
+  fecha_pagada: string | null
+  estatus: string | null  // P: Pendiente | R: Realizada
+  notas: string | null
+  created_at: string | null
+}
+
+export type CargoExtra = {
+  cargoid: number
+  loteid: number
+  desarrolloid: number | null
+  concepto: string
+  monto: number
+  fecha: string               // fecha de inicio del cargo (se cobra mensualmente a partir de aquí)
+  estatus: string | null      // P: Pendiente | C: Cobrado | X: Cancelado
+  fecha_pago: string | null
+  referencia: string | null
+  notas: string | null
+  created_at: string | null
 }

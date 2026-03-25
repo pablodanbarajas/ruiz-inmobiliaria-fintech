@@ -1,10 +1,18 @@
+import { useEffect } from 'react'
 import { Sidebar } from './Sidebar'
+import { supabase } from '@/lib/supabaseClient'
 
 interface AdminLayoutProps {
   children: React.ReactNode
 }
 
 export const AdminLayout = ({ children }: AdminLayoutProps) => {
+  // Refresh the session silently on every admin page mount so the JWT
+  // always has a fresh role claim — avoids RLS WITH CHECK failures.
+  useEffect(() => {
+    supabase.auth.refreshSession().catch(() => {})
+  }, [])
+
   return (
     <div className="flex">
       <Sidebar />

@@ -3,9 +3,12 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
-import { ChevronLeft } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
+import { PagoForm } from '@/components/forms/PagoForm'
+import type { PagoFormData } from '@/components/forms/PagoForm'
+import { ChevronLeft, Edit2, XCircle, AlertTriangle } from 'lucide-react'
 import type { Pago, CorridaFinanciera, Venta, Cliente, Lote } from '@/types/database'
-import { formatDate, formatCurrency, getPagoStatusLabel, getPagoStatusColor } from '@/utils/helpers'
+import { formatDate, formatCurrency, getPagoStatusLabel, getPagoStatusColor, getPagoFormaLabel } from '@/utils/helpers'
 
 interface PagoWithDetails extends Pago {
   corridafinanciera?: CorridaFinanciera & {
@@ -22,28 +25,31 @@ export const PagoDetail = () => {
   const location = useLocation()
   const [pago, setPago] = useState<PagoWithDetails | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const fetchPagoDetail = async () => {
+    if (!id) return
+    try {
+      setLoading(true)
+
+      const { data, error } = await supabase
+        .from('pagos')
+        .select('*, corridafinanciera:corridafinanciera(*, venta:venta(*, cliente:cliente(*), lote:lote(*)))')
+        .eq('pagoid', id)
+        .single()
+
+      if (error) throw error
+      setPago(data as PagoWithDetails)
+    } catch (error) {
+      console.error('Error fetching pago detail:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchPagoDetail = async () => {
-      if (!id) return
-      try {
-        setLoading(true)
-
-        const { data, error } = await supabase
-          .from('pagos')
-          .select('*, corridafinanciera:corridafinanciera(*, venta:venta(*, cliente:cliente(*), lote:lote(*)))')
-          .eq('pagoid', id)
-          .single()
-
-        if (error) throw error
-        setPago(data as PagoWithDetails)
-      } catch (error) {
-        console.error('Error fetching pago detail:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchPagoDetail()
   }, [id])
 
@@ -76,57 +82,144 @@ export const PagoDetail = () => {
   const cliente = venta?.cliente
   const lote = venta?.lote
 
+  // ── Edit handler ────────────────────────────────────
+  const handleUpdatePago = async (data: PagoFormData) => {
+    try {
+      setIsSubmitting(true)
+      const { error } = await supabase
+        .from('pagos')
+        .update({
+          fechapago: data.fechapago,
+          montopagado: data.montopagado,
+          formapago: data.formapago,
+          estatus: data.estatus,
+          referencia: data.referencia,
+          comentario: data.comentario,
+          recargo: data.recargo,
+        })
+        .eq('pagoid', id)
+
+      if (error) throw error
+
+      setShowEditModal(false)
+      await fetchPagoDetail()
+    } catch (err: any) {
+      console.error('Error updating pago:', err)
+      alert(`Error al actualizar el pago: ${err.message}`)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // ── Cancel handler ───────────────────────────────────
+  const handleCancelPago = async () => {
+    try {
+      setIsSubmitting(true)
+      const { error } = await supabase
+        .from('pagos')
+        .update({ estatus: 'C' })
+        .eq('pagoid', id)
+
+      if (error) throw error
+
+      setShowCancelModal(false)
+      await fetchPagoDetail()
+    } catch (err: any) {
+      console.error('Error cancelling pago:', err)
+      alert(`Error al cancelar el pago: ${err.message}`)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
+    <>
     <AdminLayout>
       <div className="w-full">
-        <Button
-          variant="ghost"
-          onClick={() => {
-            const from = (location.state as any)?.from
-            navigate(from || '/admin/pagos')
-          }}
-          className="mb-6 inline-flex items-center gap-2"
-        >
-          <ChevronLeft size={20} />
-          Volver
-        </Button>
+        <div className="mb-6 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              const from = (location.state as any)?.from
+              navigate(from || '/admin/pagos')
+            }}
+            className="inline-flex items-center gap-2"
+          >
+            <ChevronLeft size={20} />
+            Volver
+          </Button>
+
+          {/* Action buttons (only when not cancelled) */}
+          {pago.estatus !== 'C' && (
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowEditModal(true)}
+                className="inline-flex items-center gap-2"
+              >
+                <Edit2 size={16} />
+                Editar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => setShowCancelModal(true)}
+                className="inline-flex items-center gap-2"
+              >
+                <XCircle size={16} />
+                Cancelar Pago
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Pago Details */}
         <div className="bg-white rounded-lg shadow-md p-8 mb-8 border-t-4 border-[#504840]">
           <h1 className="text-4xl font-bold text-black mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>Pago #{pago.pagoid}</h1>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          {/* Row 1: Monto + Recargo + Fecha + Forma + Estado */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
             <div>
-              <div className="mb-6">
-                <p className="text-sm text-gray-500">Monto Pagado</p>
-                <p className="text-3xl font-bold text-green-600">{formatCurrency(pago.montopagado)}</p>
-              </div>
-              <div className="mb-6">
-                <p className="text-sm text-gray-500">Fecha de Pago</p>
-                <p className="text-xl font-semibold text-gray-900">{formatDate(pago.fechapago)}</p>
-              </div>
-              <div className="mb-6">
-                <p className="text-sm text-gray-500">Forma de Pago</p>
-                <p className="text-lg font-semibold text-gray-900">
-                  {pago.formapago === 1 ? 'Efectivo' : 'Transferencia'}
-                </p>
-              </div>
+              <p className="text-sm text-gray-500">Monto Pagado</p>
+              <p className="text-2xl font-bold text-green-600">{formatCurrency(pago.montopagado)}</p>
+              {pago.recargo != null && pago.recargo > 0 && (
+                <p className="text-sm text-orange-600 mt-1">+ {formatCurrency(pago.recargo)} recargo</p>
+              )}
             </div>
             <div>
-              <div className="mb-6">
-                <p className="text-sm text-gray-500">Estado</p>
-                <p className={`text-lg font-semibold inline-block px-3 py-1 rounded-full text-sm ${getPagoStatusColor(pago.estatus)}`}>
-                  {getPagoStatusLabel(pago.estatus)}
-                </p>
-              </div>
-              <div className="mb-6">
-                <p className="text-sm text-gray-500">Corrida Financiera ID</p>
-                <p className="text-lg font-semibold text-gray-900">
-                  {pago.corridafinancieraid}
-                </p>
-              </div>
+              <p className="text-sm text-gray-500">Fecha de Pago</p>
+              <p className="text-lg font-semibold text-gray-900">{formatDate(pago.fechapago)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Forma de Pago</p>
+              <p className="text-base font-semibold text-gray-900">{getPagoFormaLabel(pago.formapago)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Estado</p>
+              <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getPagoStatusColor(pago.estatus)}`}>
+                {getPagoStatusLabel(pago.estatus)}
+              </span>
             </div>
           </div>
+
+          {/* Row 2: Referencia + Corrida ID */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 pt-6 border-t border-gray-100">
+            <div>
+              <p className="text-sm text-gray-500">Referencia / Folio</p>
+              <p className="text-base font-semibold text-gray-900">{pago.referencia || '—'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Corrida Financiera ID</p>
+              <p className="text-base font-semibold text-gray-900">{pago.corridafinancieraid}</p>
+            </div>
+          </div>
+
+          {/* Comentario */}
+          {pago.comentario && (
+            <div className="pt-4 border-t border-gray-100">
+              <p className="text-sm text-gray-500 mb-1">Comentario</p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{pago.comentario}</p>
+            </div>
+          )}
 
           {/* Associated Venta Info */}
           {pago.corridafinanciera && (
@@ -217,5 +310,53 @@ export const PagoDetail = () => {
         </div>
       </div>
     </AdminLayout>
+
+    {/* ── Modal: Editar Pago ────────────────────────────── */}
+    <Modal
+      isOpen={showEditModal}
+      title={`Editar Pago #${pago?.pagoid}`}
+      onClose={() => !isSubmitting && setShowEditModal(false)}
+      size="xl"
+    >
+      <PagoForm pago={pago ?? undefined} onSubmit={handleUpdatePago} isLoading={isSubmitting} />
+    </Modal>
+
+    {/* ── Modal: Confirmar Cancelación ──────────────────── */}
+    <Modal
+      isOpen={showCancelModal}
+      title="Cancelar Pago"
+      onClose={() => !isSubmitting && setShowCancelModal(false)}
+    >
+      <div className="space-y-6">
+        <div className="flex gap-3 bg-amber-50 border border-amber-300 rounded-lg p-4">
+          <AlertTriangle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-amber-800">Confirmar cancelación</p>
+            <p className="text-sm text-amber-700 mt-1">
+              Se cambiará el estado del pago a <strong>Cancelado</strong>. Esta acción puede revertirse
+              editando el pago.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <Button
+            variant="outline"
+            onClick={() => setShowCancelModal(false)}
+            disabled={isSubmitting}
+          >
+            No, volver
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleCancelPago}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Cancelando...' : 'Sí, cancelar pago'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+    </>
   )
 }

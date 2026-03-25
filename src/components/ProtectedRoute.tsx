@@ -1,12 +1,15 @@
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/context/AuthContext'
+import type { UserRole } from '@/context/AuthContext'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
+  /** If provided, only these roles can access the route; others are redirected to dashboard */
+  allowedRoles?: UserRole[]
 }
 
-export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isAuthenticated, loading } = useAuth()
+export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
+  const { isAuthenticated, loading, role } = useAuth()
 
   if (loading) {
     return (
@@ -23,6 +26,10 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
+  }
+
+  if (allowedRoles && role && !allowedRoles.includes(role)) {
+    return <Navigate to="/admin/dashboard" replace />
   }
 
   return <>{children}</>

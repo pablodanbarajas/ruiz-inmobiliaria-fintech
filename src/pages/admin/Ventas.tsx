@@ -5,9 +5,12 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { Eye, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
+import { VentaForm } from '@/components/forms/VentaForm'
+import type { VentaFormData } from '@/components/forms/VentaForm'
+import { Eye, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { Venta, Cliente, Lote, Desarrollo } from '@/types/database'
-import { formatCurrency, formatDate } from '@/utils/helpers'
+import { formatCurrency, formatDate, getVentaStatusLabel, getVentaStatusColor } from '@/utils/helpers'
 
 interface VentaWithDetails extends Venta {
   cliente?: Cliente
@@ -28,6 +31,8 @@ export const Ventas = () => {
   const itemsPerPage = 10
   const [prevFilters, setPrevFilters] = useState(filters)
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     const fetchClientes = async () => {
@@ -86,14 +91,155 @@ export const Ventas = () => {
     }
 
     fetchVentas()
-  }, [filters])
+  }, [filters, currentPage])
+
+  // ── Business logic helpers ────────────────────────────────────────────────
+
+  const generateCorridaFinanciera = (
+    ventaid: number,
+    data: Pick<
+      VentaFormData,
+      'preciolote' | 'enganche' | 'plazo' | 'fechaenganche' | 'fechaprimeramensualidad' | 'mensualidad'
+    >
+  ) => {
+    const saldoInicial = data.preciolote - data.enganche
+    const mensualidadMonto = data.mensualidad
+    const records: {
+      ventaid: number
+      nopago: number
+      fecha: string
+      mensualidad: number
+      saldo: number
+    }[] = []
+
+    // Record 0: Enganche
+    records.push({
+      ventaid,
+      nopago: 0,
+      fecha: data.fechaenganche,
+      mensualidad: data.enganche,
+      saldo: saldoInicial,
+    })
+
+    // Records 1..plazo: Mensualidades
+    // T12:00:00 avoids timezone-day-shift issues
+    const fechaPrimera = new Date(data.fechaprimeramensualidad + 'T12:00:00')
+    for (let i = 1; i <= data.plazo; i++) {
+      const fechaPago = new Date(fechaPrimera)
+      fechaPago.setMonth(fechaPago.getMonth() + (i - 1))
+      const saldoRestante =
+        i === data.plazo
+          ? 0
+          : parseFloat((saldoInicial - mensualidadMonto * i).toFixed(2))
+      records.push({
+        ventaid,
+        nopago: i,
+        fecha: fechaPago.toISOString().split('T')[0],
+        mensualidad: mensualidadMonto,
+        saldo: Math.max(0, saldoRestante),
+      })
+    }
+    return records
+  }
+
+  const handleCreateVenta = async (data: VentaFormData) => {
+    try {
+      setIsSubmitting(true)
+
+      // 1. Guard against race condition — confirm lote is still 'D'
+      const { data: loteCheck, error: loteCheckError } = await supabase
+        .from('lote')
+        .select('loteid, estatus')
+        .eq('loteid', data.loteid)
+        .single()
+
+      if (loteCheckError || !loteCheck || loteCheck.estatus !== 'D') {
+        alert('El lote seleccionado ya no está disponible. Por favor selecciona otro.')
+        return
+      }
+
+      // 2. Obtain current user id for usuarioid
+      const { data: authData } = await supabase.auth.getUser()
+      const usuarioid = authData.user?.id ?? null
+
+      // 3. Insert venta
+      const { data: ventaData, error: ventaError } = await supabase
+        .from('venta')
+        .insert([
+          {
+            loteid: data.loteid,
+            clienteid: data.clienteid,
+            fecha: data.fecha,
+            fechacontrato: data.fechacontrato,
+            usuarioid,
+            preciolote: data.preciolote,
+            enganche: data.enganche,
+            porcenganche: data.porcenganche,
+            fechaenganche: data.fechaenganche,
+            plazo: data.plazo,
+            fechaprimeramensualidad: data.fechaprimeramensualidad,
+            mensualidad: data.mensualidad,
+            estatus: 'A',
+            comentarios: data.comentarios ?? null,
+            plazoenganche: data.plazoenganche ?? 1,
+          },
+        ])
+        .select()
+        .single()
+
+      if (ventaError) throw new Error(`Error al insertar venta: ${ventaError.message}`)
+      const ventaid: number = ventaData.ventaid
+
+      // 4. Mark lote as Vendido
+      const { error: loteUpdateError } = await supabase
+        .from('lote')
+        .update({ estatus: 'V' })
+        .eq('loteid', data.loteid)
+
+      if (loteUpdateError) {
+        // Rollback venta
+        await supabase.from('venta').delete().eq('ventaid', ventaid)
+        throw new Error(`Error al actualizar lote: ${loteUpdateError.message}`)
+      }
+
+      // 5. Generate and insert corrida financiera
+      const corridaRecords = generateCorridaFinanciera(ventaid, data)
+      const { error: corridaError } = await supabase
+        .from('corridafinanciera')
+        .insert(corridaRecords)
+
+      if (corridaError) {
+        // Rollback venta + lote
+        await supabase.from('venta').delete().eq('ventaid', ventaid)
+        await supabase.from('lote').update({ estatus: 'D' }).eq('loteid', data.loteid)
+        throw new Error(`Error al generar corrida financiera: ${corridaError.message}`)
+      }
+
+      setShowCreateModal(false)
+      navigate(`/admin/ventas/${ventaid}`, { state: { from: '/admin/ventas' } })
+    } catch (err: any) {
+      console.error('Error creating venta:', err)
+      alert(`Error al registrar la venta: ${err.message}`)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <AdminLayout>
       <div className="w-full">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Ventas</h1>
-          <p className="text-[#9e9f92] mt-2">Histórico de transacciones</p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Ventas</h1>
+            <p className="text-[#9e9f92] mt-2">Histórico de transacciones</p>
+          </div>
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-2"
+          >
+            <Plus size={18} />
+            Nueva Venta
+          </Button>
         </div>
 
         {/* Filters */}
@@ -178,13 +324,26 @@ export const Ventas = () => {
               render: (row: VentaWithDetails) => formatCurrency(row.enganche),
             },
             {
+              key: 'estatus',
+              label: 'Estatus',
+              render: (row: VentaWithDetails) => (
+                <span
+                  className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
+                    getVentaStatusColor(row.estatus)
+                  }`}
+                >
+                  {getVentaStatusLabel(row.estatus)}
+                </span>
+              ),
+            },
+            {
               key: 'actions',
               label: 'Acciones',
               render: (row: VentaWithDetails) => (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate(`/admin/ventas/${row.ventaid}`)}
+                  onClick={() => navigate(`/admin/ventas/${row.ventaid}`, { state: { from: '/admin/ventas' } })}
                   className="inline-flex items-center gap-1"
                 >
                   <Eye size={16} />
@@ -223,6 +382,16 @@ export const Ventas = () => {
           </Button>
         </div>
       </div>
+
+      {/* ── Modal: Nueva Venta ─────────────────────────────── */}
+      <Modal
+        isOpen={showCreateModal}
+        title="Nueva Venta"
+        onClose={() => !isSubmitting && setShowCreateModal(false)}
+        size="xl"
+      >
+        <VentaForm onSubmit={handleCreateVenta} isLoading={isSubmitting} />
+      </Modal>
     </AdminLayout>
   )
 }

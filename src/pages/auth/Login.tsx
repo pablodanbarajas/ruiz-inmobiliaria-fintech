@@ -1,15 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 
 export const Login = () => {
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Navigate once AuthContext confirms the user is authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/admin/dashboard', { replace: true })
+    }
+  }, [isAuthenticated, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,13 +33,12 @@ export const Login = () => {
 
       if (error) {
         setError(error.message)
-        return
+        setLoading(false)
       }
-
-      navigate('/admin/dashboard')
+      // On success: keep loading=true; the useEffect above will navigate
+      // when onAuthStateChange fires and isAuthenticated becomes true
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
       setLoading(false)
     }
   }

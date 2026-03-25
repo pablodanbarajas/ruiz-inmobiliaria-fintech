@@ -10,9 +10,11 @@ import { ClienteForm } from '@/components/forms/ClienteForm'
 import { Eye, Trash2, ChevronLeft, ChevronRight, Edit2 } from 'lucide-react'
 import type { Cliente } from '@/types/database'
 import { getStatusLabel } from '@/utils/helpers'
+import { useAuth } from '@/context/AuthContext'
 
 export const Clientes = () => {
   const navigate = useNavigate()
+  const { role } = useAuth()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [allClientsCache, setAllClientsCache] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
@@ -327,18 +329,20 @@ export const Clientes = () => {
                   >
                     <Edit2 size={16} />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setClienteToDelete(row)
-                      setShowDeleteConfirm(true)
-                    }}
-                    className="inline-flex items-center gap-1 text-red-600 hover:text-red-700"
-                    title="Eliminar cliente"
-                  >
-                    <Trash2 size={16} />
-                  </Button>
+                  {role === 'admin' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setClienteToDelete(row)
+                        setShowDeleteConfirm(true)
+                      }}
+                      className="inline-flex items-center gap-1 text-red-600 hover:text-red-700"
+                      title="Eliminar cliente"
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  )}
                 </div>
               ),
             },

@@ -16,7 +16,13 @@ export const formatCurrency = (value: number | null | undefined | string): strin
  */
 export const formatDate = (dateString: string | null | undefined): string => {
   if (!dateString) return '-'
-  const date = new Date(dateString)
+  // Date-only strings (YYYY-MM-DD) are parsed as UTC midnight by JS, which
+  // shifts the displayed day backwards in negative-offset timezones (e.g. Mexico).
+  // Appending T12:00:00 anchors the time to local noon, avoiding the shift.
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(dateString)
+    ? dateString + 'T12:00:00'
+    : dateString
+  const date = new Date(normalized)
   return new Intl.DateTimeFormat('es-MX', {
     year: 'numeric',
     month: 'long',
@@ -29,7 +35,10 @@ export const formatDate = (dateString: string | null | undefined): string => {
  */
 export const formatDateShort = (dateString: string | null | undefined): string => {
   if (!dateString) return '-'
-  const date = new Date(dateString)
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(dateString)
+    ? dateString + 'T12:00:00'
+    : dateString
+  const date = new Date(normalized)
   return new Intl.DateTimeFormat('es-MX', {
     year: 'numeric',
     month: '2-digit',
@@ -104,9 +113,49 @@ export const getVentaStatusColor = (status: string | null | undefined): string =
 }
 
 /**
- * Get pago (payment) status label
- * P: Pagado | C: Cancelado
+ * Get pago forma de pago label
  */
+export const getPagoFormaLabel = (formapago: number | null | undefined): string => {
+  switch (formapago) {
+    case 1:
+      return 'Efectivo'
+    case 2:
+      return 'Transferencia Bancaria'
+    case 3:
+      return 'Cheque'
+    case 4:
+      return 'Tarjeta de Débito/Crédito'
+    case 5:
+      return 'Depósito Bancario'
+    default:
+      return formapago != null ? formapago.toString() : '-'
+  }
+}
+
+/**
+ * Calcula el recargo por atraso: $150 por cada 6 días vencidos.
+ * fechaPago defaults to today if not provided.
+ */
+export const calcularRecargo = (fechaVencimiento: string, fechaPago?: string, diasTolerancia = 0): number => {
+  const hoy = fechaPago ?? new Date().toISOString().split('T')[0]
+  const venc = new Date(fechaVencimiento + 'T12:00:00')
+  const pago = new Date(hoy + 'T12:00:00')
+  const diffMs = pago.getTime() - venc.getTime()
+  if (diffMs <= 0) return 0
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const effectiveDays = diffDays - diasTolerancia
+  if (effectiveDays <= 0) return 0
+  return Math.floor(effectiveDays / 6) * 150
+}
+
+export const FORMAS_PAGO = [
+  { value: 1, label: 'Efectivo' },
+  { value: 2, label: 'Transferencia Bancaria' },
+  { value: 3, label: 'Cheque' },
+  { value: 4, label: 'Tarjeta de Débito/Crédito' },
+  { value: 5, label: 'Depósito Bancario' },
+] as const
+
 export const getPagoStatusLabel = (status: string | null | undefined): string => {
   switch (status?.toUpperCase()) {
     case 'P':
@@ -179,5 +228,31 @@ export const getStatusLabel = (status: string | null | undefined): string => {
       return 'Apartado'
     default:
       return status || '-'
+  }
+}
+
+export const MOTIVOS_CONVENIO = [
+  'Atraso en pagos',
+  'Dificultad económica temporal',
+  'Reestructuración de deuda',
+  'Acuerdo voluntario',
+  'Otro',
+] as const
+
+export const getConvenioStatusLabel = (status: string | null | undefined): string => {
+  switch (status?.toUpperCase()) {
+    case 'V': return 'Vigente'
+    case 'C': return 'Cumplido'
+    case 'X': return 'Cancelado'
+    default: return status || '-'
+  }
+}
+
+export const getConvenioStatusColor = (status: string | null | undefined): string => {
+  switch (status?.toUpperCase()) {
+    case 'V': return 'bg-blue-100 text-blue-800'
+    case 'C': return 'bg-green-100 text-green-800'
+    case 'X': return 'bg-red-100 text-red-800'
+    default: return 'bg-gray-100 text-gray-800'
   }
 }

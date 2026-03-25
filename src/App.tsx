@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from '@/context/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { Login } from '@/pages/auth/Login'
 import { Dashboard } from '@/pages/admin/Dashboard'
@@ -12,10 +13,14 @@ import { Ventas } from '@/pages/admin/Ventas'
 import { VentaDetail } from '@/pages/admin/VentaDetail'
 import { Pagos } from '@/pages/admin/Pagos'
 import { PagoDetail } from '@/pages/admin/PagoDetail'
+import { Convenios } from '@/pages/admin/Convenios'
+import { ConvenioDetail } from '@/pages/admin/ConvenioDetail'
+import { CargosExtra } from '@/pages/admin/CargosExtra'
 
 function App() {
   return (
     <BrowserRouter>
+      <AuthProvider>
       <Routes>
         {/* Auth Routes */}
         <Route path="/login" element={<Login />} />
@@ -34,7 +39,7 @@ function App() {
         <Route
           path="/admin/desarrollos"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin']}>
               <Desarrollos />
             </ProtectedRoute>
           }
@@ -42,7 +47,7 @@ function App() {
         <Route
           path="/admin/desarrollos/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin']}>
               <DesarrolloDetail />
             </ProtectedRoute>
           }
@@ -52,7 +57,7 @@ function App() {
         <Route
           path="/admin/lotes"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin']}>
               <Lotes />
             </ProtectedRoute>
           }
@@ -60,7 +65,7 @@ function App() {
         <Route
           path="/admin/lotes/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin']}>
               <LoteDetail />
             </ProtectedRoute>
           }
@@ -120,10 +125,39 @@ function App() {
           }
         />
 
+        {/* Convenios */}
+        <Route
+          path="/admin/convenios"
+          element={
+            <ProtectedRoute>
+              <Convenios />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/convenios/:id"
+          element={
+            <ProtectedRoute>
+              <ConvenioDetail />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Cargos Extra */}
+        <Route
+          path="/admin/cargos-extra"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <CargosExtra />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      </AuthProvider>
     </BrowserRouter>
   )
 }

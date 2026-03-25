@@ -5,7 +5,10 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { Eye, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
+import { PagoForm } from '@/components/forms/PagoForm'
+import type { PagoFormData } from '@/components/forms/PagoForm'
+import { Eye, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { Pago, CorridaFinanciera, Venta, Cliente } from '@/types/database'
 import { getPagoStatusLabel, getPagoStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
 
@@ -31,6 +34,8 @@ export const Pagos = () => {
   const itemsPerPage = 10
   const [prevFilters, setPrevFilters] = useState(filters)
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     const fetchClientes = async () => {
@@ -130,12 +135,52 @@ export const Pagos = () => {
     fetchPagos()
   }, [filters, currentPage])
 
+  const handleCreatePago = async (data: PagoFormData) => {
+    try {
+      setIsSubmitting(true)
+      const { data: newPago, error } = await supabase
+        .from('pagos')
+        .insert({
+          corridafinancieraid: data.corridafinancieraid,
+          fechapago: data.fechapago,
+          montopagado: data.montopagado,
+          formapago: data.formapago,
+          estatus: data.estatus,
+          referencia: data.referencia,
+          comentario: data.comentario,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setShowCreateModal(false)
+      navigate(`/admin/pagos/${newPago.pagoid}`)
+    } catch (err: any) {
+      console.error('Error creating pago:', err)
+      alert(`Error al registrar el pago: ${err.message}`)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
+    <>
     <AdminLayout>
       <div className="w-full">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Pagos</h1>
-          <p className="text-[#9e9f92] mt-2">Registro de pagos realizados</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Pagos</h1>
+            <p className="text-[#9e9f92] mt-2">Registro de pagos realizados</p>
+          </div>
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-2"
+            style={{ backgroundColor: '#eaae4c', color: '#000' }}
+          >
+            <Plus size={18} />
+            Nuevo Pago
+          </Button>
         </div>
 
         {/* Filters */}
@@ -266,5 +311,16 @@ export const Pagos = () => {
         </div>
       </div>
     </AdminLayout>
+
+    {/* ── Modal: Nuevo Pago ──────────────────────────────────── */}
+    <Modal
+      isOpen={showCreateModal}
+      title="Nuevo Pago"
+      onClose={() => !isSubmitting && setShowCreateModal(false)}
+      size="xl"
+    >
+      <PagoForm onSubmit={handleCreatePago} isLoading={isSubmitting} />
+    </Modal>
+    </>
   )
 }

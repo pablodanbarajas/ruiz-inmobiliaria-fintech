@@ -5,8 +5,10 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { ClienteForm } from '@/components/forms/ClienteForm'
+import { ClienteDocumentos } from '@/components/ClienteDocumentos'
 import { ChevronLeft, Edit2, Trash2 } from 'lucide-react'
 import type { Cliente, Venta, Lote, Pago, CorridaFinanciera, Desarrollo } from '@/types/database'
+import { useAuth } from '@/context/AuthContext'
 import { formatDate, formatCurrency, getStatusLabel, getPagoStatusLabel, getPagoStatusColor } from '@/utils/helpers'
 
 interface VentaWithDetails extends Venta {
@@ -24,6 +26,7 @@ interface PagoWithDetails extends Pago {
 export const ClienteDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { role } = useAuth()
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const [ventas, setVentas] = useState<VentaWithDetails[]>([])
   const [pagos, setPagos] = useState<PagoWithDetails[]>([])
@@ -195,13 +198,15 @@ export const ClienteDetail = () => {
               <Edit2 size={18} />
               Editar
             </Button>
-            <Button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="bg-red-600 hover:bg-red-700 text-white font-semibold inline-flex items-center gap-2"
-            >
-              <Trash2 size={18} />
-              Eliminar
-            </Button>
+            {role === 'admin' && (
+              <Button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold inline-flex items-center gap-2"
+              >
+                <Trash2 size={18} />
+                Eliminar
+              </Button>
+            )}
           </div>
         </div>
 
@@ -372,6 +377,9 @@ export const ClienteDetail = () => {
             </div>
           </div>
         </div>
+
+        {/* Expediente Documental */}
+        <ClienteDocumentos clienteid={cliente.clienteid} />
 
         {/* Ventas section */}
         <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
