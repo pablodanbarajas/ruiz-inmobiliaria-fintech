@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import {
@@ -10,8 +9,6 @@ import {
   TrendingUp,
   FileText,
   Wrench,
-  Menu,
-  X,
   LogOut,
   User,
 } from 'lucide-react'
@@ -68,11 +65,15 @@ const MENU_ITEMS = [
   },
 ]
 
-export const Sidebar = () => {
+interface SidebarProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, role, logout } = useAuth()
-  const [isOpen, setIsOpen] = useState(true)
 
   const handleLogout = async () => {
     try {
@@ -85,14 +86,6 @@ export const Sidebar = () => {
 
   return (
     <>
-      {/* Mobile toggle button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-[#eaae4c] text-black rounded cursor-pointer"
-      >
-        {isOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
-
       {/* Sidebar */}
       <aside
         className={cn(
@@ -141,7 +134,7 @@ export const Sidebar = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  onClick={() => setIsOpen(false)}
+                  onClick={onClose}
                   className={cn(
                     'flex items-center gap-4 px-4 py-3 rounded-lg transition-colors',
                     isActive
@@ -174,7 +167,7 @@ export const Sidebar = () => {
       {isOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
-          onClick={() => setIsOpen(false)}
+          onClick={onClose}
         />
       )}
     </>

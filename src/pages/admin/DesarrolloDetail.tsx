@@ -136,7 +136,7 @@ export const DesarrolloDetail = () => {
   return (
     <AdminLayout>
       <div className="w-full">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <Button
             variant="ghost"
             onClick={() => navigate('/admin/desarrollos')}
@@ -164,7 +164,7 @@ export const DesarrolloDetail = () => {
         </div>
 
         {/* Development Details */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8 border-t-4 border-[#504840]">
+        <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mb-8 border-t-4 border-[#504840]">
           <h1 className="text-3xl font-bold text-black mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>
             {desarrollo.nombre}
           </h1>
@@ -237,8 +237,8 @@ export const DesarrolloDetail = () => {
 
         {/* Lotes associated */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-8 py-6 border-b border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-900">Lotes Asociados</h2>
+          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Lotes Asociados</h2>
           </div>
 
           {lotes.length === 0 ? (

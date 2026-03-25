@@ -101,7 +101,7 @@ export const ConvenioDetail = () => {
     <AdminLayout>
       <div className="w-full">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <Button
             variant="ghost"
             onClick={() => {

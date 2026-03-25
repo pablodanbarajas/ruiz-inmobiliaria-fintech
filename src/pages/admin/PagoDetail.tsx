@@ -136,7 +136,7 @@ export const PagoDetail = () => {
     <>
     <AdminLayout>
       <div className="w-full">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <Button
             variant="ghost"
             onClick={() => {
@@ -173,8 +173,8 @@ export const PagoDetail = () => {
         </div>
 
         {/* Pago Details */}
-        <div className="bg-white rounded-lg shadow-md p-8 mb-8 border-t-4 border-[#504840]">
-          <h1 className="text-4xl font-bold text-black mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>Pago #{pago.pagoid}</h1>
+        <div className="bg-white rounded-lg shadow-md p-4 md:p-8 mb-8 border-t-4 border-[#504840]">
+          <h1 className="text-3xl md:text-4xl font-bold text-black mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>Pago #{pago.pagoid}</h1>
 
           {/* Row 1: Monto + Recargo + Fecha + Forma + Estado */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">

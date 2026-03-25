@@ -195,7 +195,7 @@ export const Dashboard = () => {
     <AdminLayout>
       <div className="w-full">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Dashboard</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Dashboard</h1>
           <p className="text-[#9e9f92] mt-2">Bienvenido al sistema de administración</p>
         </div>
 

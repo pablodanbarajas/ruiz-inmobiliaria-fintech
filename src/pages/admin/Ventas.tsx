@@ -228,9 +228,9 @@ export const Ventas = () => {
   return (
     <AdminLayout>
       <div className="w-full">
-        <div className="mb-8 flex items-start justify-between">
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Ventas</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Ventas</h1>
             <p className="text-[#9e9f92] mt-2">Histórico de transacciones</p>
           </div>
           <Button
@@ -357,7 +357,7 @@ export const Ventas = () => {
         />
 
         {/* Pagination */}
-        <div className="flex items-center justify-between mt-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mt-6">
           <Button
             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}

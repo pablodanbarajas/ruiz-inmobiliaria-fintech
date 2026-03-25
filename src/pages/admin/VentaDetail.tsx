@@ -384,7 +384,7 @@ export const VentaDetail = () => {
   return (
     <AdminLayout>
       <div className="w-full">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <Button
             variant="ghost"
             onClick={() => {
@@ -421,8 +421,8 @@ export const VentaDetail = () => {
         </div>
 
         {/* Venta Details */}
-        <div className="bg-white rounded-lg shadow-md p-8 mb-8 border-t-4 border-[#504840]">
-          <h1 className="text-4xl font-bold text-black mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>Venta #{venta.ventaid}</h1>
+        <div className="bg-white rounded-lg shadow-md p-4 md:p-8 mb-8 border-t-4 border-[#504840]">
+          <h1 className="text-3xl md:text-4xl font-bold text-black mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>Venta #{venta.ventaid}</h1>
 
           {/* Row 1: Identificación */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -606,28 +606,28 @@ export const VentaDetail = () => {
         )}
 
         {/* Resumen financiero */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-lg shadow p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Precio Total</p>
-            <p className="text-2xl font-bold text-blue-600">{formatCurrency(venta.preciolote)}</p>
+            <p className="text-xl md:text-2xl font-bold text-blue-600">{formatCurrency(venta.preciolote)}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Mensualidad</p>
-            <p className="text-2xl font-bold text-[#504840]">{formatCurrency(venta.mensualidad)}</p>
+            <p className="text-xl md:text-2xl font-bold text-[#504840]">{formatCurrency(venta.mensualidad)}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Total Pagado</p>
-            <p className="text-2xl font-bold text-green-600">{formatCurrency(totalPagado)}</p>
+            <p className="text-xl md:text-2xl font-bold text-green-600">{formatCurrency(totalPagado)}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Saldo Pendiente</p>
-            <p className="text-2xl font-bold text-orange-600">{formatCurrency(saldoPendiente)}</p>
+            <p className="text-xl md:text-2xl font-bold text-orange-600">{formatCurrency(saldoPendiente)}</p>
           </div>
         </div>
 
         {/* Convenios */}
         <div className="bg-white rounded-lg shadow overflow-hidden mt-8 mb-8">
-          <div className="px-8 py-6 border-b border-gray-200 flex items-center justify-between">
+          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <h2 className="text-2xl font-bold text-gray-900">Convenios</h2>
               <span
@@ -711,8 +711,8 @@ export const VentaDetail = () => {
 
         {/* Corrida Financiera */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-8 py-6 border-b border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-900">Corrida Financiera</h2>
+          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Corrida Financiera</h2>
           </div>
 
           {corridas.length === 0 ? (
@@ -815,7 +815,7 @@ export const VentaDetail = () => {
       {/* ── Cargos Extra ───────────────────────────────── */}
       {cargosExtra.length > 0 && (
         <div className="bg-white rounded-lg shadow overflow-hidden mt-8 mb-8">
-          <div className="px-8 py-6 border-b border-gray-200 flex items-center justify-between">
+          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Wrench size={20} className="text-[#504840]" />
               <h2 className="text-xl font-semibold text-gray-900">Cargos Extra</h2>

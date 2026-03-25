@@ -181,7 +181,7 @@ export const ClienteDetail = () => {
   return (
     <AdminLayout>
       <div className="w-full">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <Button
             variant="ghost"
             onClick={() => navigate('/admin/clientes')}
@@ -211,7 +211,7 @@ export const ClienteDetail = () => {
         </div>
 
         {/* Cliente Details */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8 border-t-4 border-[#504840]">
+        <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mb-8 border-t-4 border-[#504840]">
           <h1 className="text-3xl font-bold text-black mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>
             {cliente.nombre}
           </h1>
@@ -383,8 +383,8 @@ export const ClienteDetail = () => {
 
         {/* Ventas section */}
         <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
-          <div className="px-8 py-6 border-b border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-900">Ventas Asociadas ({ventas.length})</h2>
+          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Ventas Asociadas ({ventas.length})</h2>
           </div>
 
           {ventas.length === 0 ? (
@@ -441,8 +441,8 @@ export const ClienteDetail = () => {
 
         {/* Pagos section */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-8 py-6 border-b border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-900">Pagos Realizados ({pagos.length})</h2>
+          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Pagos Realizados ({pagos.length})</h2>
           </div>
 
           {pagos.length === 0 ? (
