@@ -727,7 +727,9 @@ export const VentaDetail = () => {
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">No. Pago</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Fecha Esperada</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Mensualidad</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Cargos Extra</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Recargo</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Total a Pagar</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Saldo Pendiente</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Pagos Realizados</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Acción</th>
@@ -738,6 +740,21 @@ export const VentaDetail = () => {
                     const totalPagadoCorrida = corrida.pagos
                       ?.filter((p) => p.estatus !== 'C')
                       .reduce((s, p) => s + (p.montopagado || 0), 0) ?? 0
+
+                    // Cargos extra aplicables: activos (no cancelados) cuya fecha de inicio
+                    // es anterior o igual a la fecha de esta mensualidad (solo en mensualidades, no enganche)
+                    const cargosAplicables = corrida.nopago !== 0
+                      ? cargosExtra.filter(
+                          (c) => c.estatus !== 'X' && c.fecha && corrida.fecha && c.fecha <= corrida.fecha
+                        )
+                      : []
+                    const totalCargosExtras = cargosAplicables.reduce((s, c) => s + (c.monto || 0), 0)
+
+                    const recargo = (!totalPagadoCorrida && corrida.fecha)
+                      ? calcularRecargo(corrida.fecha)
+                      : 0
+
+                    const totalAPagar = (corrida.mensualidad || 0) + totalCargosExtras + recargo
                     const isCorrIdaPaid = totalPagadoCorrida >= (corrida.mensualidad || 0)
                     return (
                       <tr key={corrida.corridafinancieraid} className="hover:bg-gray-50 transition-colors">
@@ -748,6 +765,22 @@ export const VentaDetail = () => {
                         <td className="px-6 py-4 text-sm text-gray-700">
                           {formatCurrency(corrida.mensualidad)}
                         </td>
+                        {/* Cargos Extra */}
+                        <td className="px-6 py-4 text-sm">
+                          {cargosAplicables.length > 0 ? (
+                            <div className="space-y-0.5">
+                              {cargosAplicables.map((c) => (
+                                <div key={c.cargoid} className="text-purple-700 font-medium">
+                                  +{formatCurrency(c.monto)}
+                                  <span className="text-xs text-gray-400 ml-1">({c.concepto})</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        {/* Recargo */}
                         <td className="px-6 py-4 text-sm font-semibold">
                           {(() => {
                             if (isCorrIdaPaid || !corrida.fecha) return <span className="text-gray-400">—</span>
@@ -756,6 +789,15 @@ export const VentaDetail = () => {
                               ? <span className="text-orange-600">{formatCurrency(r)}</span>
                               : <span className="text-gray-400">—</span>
                           })()}
+                        </td>
+                        {/* Total a Pagar */}
+                        <td className="px-6 py-4 text-sm font-bold text-gray-900">
+                          {isCorrIdaPaid
+                            ? <span className="text-green-600">{formatCurrency(corrida.mensualidad)}</span>
+                            : <span className={totalCargosExtras > 0 || recargo > 0 ? 'text-purple-800' : ''}>
+                                {formatCurrency(totalAPagar)}
+                              </span>
+                          }
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
                           {formatCurrency(corrida.saldo)}

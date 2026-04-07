@@ -90,7 +90,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false }: VentaFormProps
       const [{ data: lotesData }] = await Promise.all([
         supabase
           .from('lote')
-          .select('loteid, desarrolloid, manzana, nolote, clavelote, superficie, preciolote, estatus, desarrollo:desarrollo(desarrolloid, nombre, clavedesarrollo)')
+          .select('loteid, desarrolloid, manzana, nolote, clavelote, superficie, preciolote, estatus, desarrollo:desarrollo(*)')
           .eq('estatus', 'D')
           .order('desarrolloid'),
         // clientes: placeholder, fetched with pagination below
@@ -125,7 +125,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false }: VentaFormProps
         if (!already) {
           const { data: currentLote } = await supabase
             .from('lote')
-            .select('loteid, desarrolloid, manzana, nolote, clavelote, superficie, preciolote, estatus, desarrollo:desarrollo(desarrolloid, nombre, clavedesarrollo)')
+            .select('loteid, desarrolloid, manzana, nolote, clavelote, superficie, preciolote, estatus, desarrollo:desarrollo(*)')
             .eq('loteid', venta.loteid)
             .single()
           if (currentLote) {
@@ -140,16 +140,29 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false }: VentaFormProps
     fetchCatalogos()
   }, [venta?.loteid])
 
-  // Auto-fill preciolote when a lote is selected (create mode only)
+  // Helper: Supabase sometimes returns the join as array, sometimes as object
+  const getDesarrolloEnganche = (lote: LoteWithDesarrollo): number => {
+    const dev = Array.isArray(lote.desarrollo) ? lote.desarrollo[0] : lote.desarrollo
+    if (!dev?.enganche) return 0
+    return parseFloat(dev.enganche) || 0
+  }
+
+  // Auto-fill preciolote and enganche when a lote is selected (create mode only)
   const handleLoteChange = (loteid: string) => {
     if (isEditMode) return
     const selected = lotes.find((l) => l.loteid.toString() === loteid)
+    const min = selected ? getDesarrolloEnganche(selected) : 0
     setFormData((prev) => ({
       ...prev,
       loteid,
       preciolote: selected?.preciolote?.toString() ?? prev.preciolote,
+      enganche: min > 0 ? min.toString() : prev.enganche,
     }))
   }
+
+  // Minimum enganche from the selected lote's desarrollo
+  const selectedLote = lotes.find((l) => l.loteid.toString() === formData.loteid)
+  const enganchemin = selectedLote ? getDesarrolloEnganche(selectedLote) : 0
 
   const validate = () => {
     const errs: Record<string, string> = {}
@@ -162,7 +175,9 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false }: VentaFormProps
         errs.preciolote = 'Precio del lote requerido y debe ser mayor a 0'
       if (!formData.enganche || engancheNum <= 0)
         errs.enganche = 'Enganche requerido y debe ser mayor a 0'
-      if (engancheNum >= precioNum)
+      else if (enganchemin > 0 && engancheNum < enganchemin)
+        errs.enganche = `El enganche mínimo del desarrollo es ${formatCurrency(enganchemin)}`
+      else if (engancheNum >= precioNum)
         errs.enganche = 'El enganche no puede ser igual o mayor al precio total'
       if (!formData.plazo || plazoNum <= 0) errs.plazo = 'Plazo requerido y debe ser mayor a 0'
     }
@@ -343,7 +358,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false }: VentaFormProps
             <Input
               type="number"
               step="0.01"
-              min="0"
+              min={enganchemin > 0 ? enganchemin : 0}
               placeholder="0.00"
               value={formData.enganche}
               onChange={(e) => setFormData({ ...formData, enganche: e.target.value })}
@@ -351,6 +366,9 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false }: VentaFormProps
             />
             {errors.enganche && (
               <p className="text-red-500 text-xs mt-1">{errors.enganche}</p>
+            )}
+            {!isEditMode && enganchemin > 0 && !errors.enganche && (
+              <p className="text-xs text-gray-500 mt-1">Mínimo: {formatCurrency(enganchemin)}</p>
             )}
           </div>
           <div>

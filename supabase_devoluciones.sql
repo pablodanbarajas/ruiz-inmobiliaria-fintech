@@ -91,10 +91,19 @@ CREATE TABLE IF NOT EXISTS cargos_extra (
 
 ALTER TABLE cargos_extra ENABLE ROW LEVEL SECURITY;
 
--- Elimina la política anterior si existe (por si cambió el esquema de la tabla)
+-- Elimina políticas anteriores si existen
 DROP POLICY IF EXISTS "Admin full access cargos_extra" ON cargos_extra;
 
+-- Política que cubre todas las ubicaciones posibles del rol en el JWT de Supabase
 CREATE POLICY "Admin full access cargos_extra"
   ON cargos_extra FOR ALL TO authenticated
-  USING ((auth.jwt() ->> 'role') = 'admin')
-  WITH CHECK ((auth.jwt() ->> 'role') = 'admin');
+  USING (
+    (auth.jwt() ->> 'role') = 'admin'
+    OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+    OR (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
+  )
+  WITH CHECK (
+    (auth.jwt() ->> 'role') = 'admin'
+    OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+    OR (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
+  );
