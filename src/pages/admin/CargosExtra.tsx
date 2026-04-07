@@ -89,7 +89,7 @@ export const CargosExtra = () => {
 
       let list = (data || []) as CargoExtraWithDetails[]
 
-      if (DEMO_DESARROLLOIDS !== null) {
+      if (DEMO_DESARROLLOIDS.length > 0) {
         list = list.filter((c) => {
           const dev = c.lote?.desarrollo
           const devId = (Array.isArray(dev) ? dev[0] : dev)?.desarrolloid
@@ -130,7 +130,7 @@ export const CargosExtra = () => {
       .order('nombre')
     const all = (data || []) as Desarrollo[]
     setDesarrollos(
-      DEMO_DESARROLLOIDS !== null
+      DEMO_DESARROLLOIDS.length > 0
         ? all.filter((d) => DEMO_DESARROLLOIDS.includes(d.desarrolloid))
         : all
     )

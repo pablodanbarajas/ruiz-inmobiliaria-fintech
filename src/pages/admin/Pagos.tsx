@@ -115,7 +115,7 @@ export const Pagos = () => {
           filteredData = (pagosFull || [])
         }
 
-        if (DEMO_DESARROLLOIDS !== null) {
+        if (DEMO_DESARROLLOIDS.length > 0) {
           filteredData = filteredData.filter((p: any) => {
             const lote = p.corridafinanciera?.venta?.lote
             const devId = (Array.isArray(lote) ? lote[0] : lote)?.desarrolloid

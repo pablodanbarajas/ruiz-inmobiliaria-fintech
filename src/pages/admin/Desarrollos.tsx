@@ -42,7 +42,7 @@ export const Desarrollos = () => {
       if (error) throw error
 
       let filteredData = data || []
-      if (DEMO_DESARROLLOIDS !== null) {
+      if (DEMO_DESARROLLOIDS.length > 0) {
         filteredData = filteredData.filter(
           (d: DesarrolloWithTipo) => DEMO_DESARROLLOIDS.includes(d.desarrolloid)
         )

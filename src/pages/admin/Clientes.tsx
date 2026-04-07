@@ -80,7 +80,7 @@ export const Clientes = () => {
         setAllClientsCache(allData)
 
         // In demo mode, restrict to clients that have ventas in the demo desarrollo
-        if (DEMO_DESARROLLOIDS !== null && allData.length > 0) {
+        if (DEMO_DESARROLLOIDS.length > 0 && allData.length > 0) {
           const { data: lotesDemo } = await supabase
             .from('lote')
             .select('loteid')
@@ -99,6 +99,7 @@ export const Clientes = () => {
             setAllClientsCache([])
           }
         }
+      } catch (error) {
         console.error('Error fetching clientes:', error)
         setAllClientsCache([])
       } finally {

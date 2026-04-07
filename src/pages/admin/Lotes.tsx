@@ -59,7 +59,7 @@ export const Lotes = () => {
         .select('*')
         .order('nombre', { ascending: true })
       if (data) setDesarrollos(
-        DEMO_DESARROLLOIDS !== null
+        DEMO_DESARROLLOIDS.length > 0
           ? data.filter((d) => DEMO_DESARROLLOIDS.includes(d.desarrolloid))
           : data
       )
@@ -85,7 +85,7 @@ export const Lotes = () => {
           .order('manzana', { ascending: true })
           .order('nolote', { ascending: true })
 
-        if (DEMO_DESARROLLOIDS !== null) {
+        if (DEMO_DESARROLLOIDS.length > 0) {
           if (filters.desarrolloId && DEMO_DESARROLLOIDS.includes(Number(filters.desarrolloId))) {
             query = query.eq('desarrolloid', filters.desarrolloId)
           } else {
@@ -152,7 +152,7 @@ export const Lotes = () => {
         .order('manzana', { ascending: true })
         .order('nolote', { ascending: true })
         .then(({ data }) => data)) || []) as any[]
-      if (DEMO_DESARROLLOIDS !== null) {
+      if (DEMO_DESARROLLOIDS.length > 0) {
         refetchData1 = refetchData1.filter((l: any) => DEMO_DESARROLLOIDS.includes(l.desarrolloid))
       }
       setLotes(refetchData1)
@@ -193,7 +193,7 @@ export const Lotes = () => {
         .order('manzana', { ascending: true })
         .order('nolote', { ascending: true })
         .then(({ data }) => data)) || []) as any[]
-      if (DEMO_DESARROLLOIDS !== null) {
+      if (DEMO_DESARROLLOIDS.length > 0) {
         refetchData2 = refetchData2.filter((l: any) => DEMO_DESARROLLOIDS.includes(l.desarrolloid))
       }
       setLotes(refetchData2)
@@ -243,7 +243,7 @@ export const Lotes = () => {
         .order('manzana', { ascending: true })
         .order('nolote', { ascending: true })
         .then(({ data }) => data)) || []) as any[]
-      if (DEMO_DESARROLLOIDS !== null) {
+      if (DEMO_DESARROLLOIDS.length > 0) {
         refetchData3 = refetchData3.filter((l: any) => DEMO_DESARROLLOIDS.includes(l.desarrolloid))
       }
       setLotes(refetchData3)

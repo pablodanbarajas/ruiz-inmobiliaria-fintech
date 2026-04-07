@@ -49,7 +49,7 @@ export const Convenios = () => {
 
       let list = (data || []) as ConvenioWithDetails[]
 
-      if (DEMO_DESARROLLOIDS !== null) {
+      if (DEMO_DESARROLLOIDS.length > 0) {
         list = list.filter((c) => {
           const lote = c.venta?.lote
           const devId = (Array.isArray(lote) ? lote[0] : lote as any)?.desarrolloid

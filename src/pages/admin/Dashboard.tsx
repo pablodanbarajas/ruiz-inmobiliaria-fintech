@@ -37,7 +37,7 @@ export const Dashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        if (DEMO_DESARROLLOIDS !== null) {
+        if (DEMO_DESARROLLOIDS.length > 0) {
           // Scoped stats: only data related to the demo desarrollos
 
           // 1. Lotes of these desarrollos
@@ -126,7 +126,7 @@ export const Dashboard = () => {
         if (corridasErr || !corridasData?.length) { setLoadingRiesgo(false); return }
 
         // Filter by demo desarrolloid after fetch
-        const corridasFiltradas = DEMO_DESARROLLOIDS !== null
+        const corridasFiltradas = DEMO_DESARROLLOIDS.length > 0
           ? (corridasData as any[]).filter((c) => {
               const lote = Array.isArray(c.venta?.lote) ? c.venta.lote[0] : c.venta?.lote
               return DEMO_DESARROLLOIDS.includes(lote?.desarrolloid)

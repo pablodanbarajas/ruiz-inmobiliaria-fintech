@@ -73,7 +73,7 @@ export const Ventas = () => {
 
         let filteredData = (data || []) as VentaWithDetails[]
 
-        if (DEMO_DESARROLLOIDS !== null) {
+        if (DEMO_DESARROLLOIDS.length > 0) {
           filteredData = filteredData.filter(
             (v) => DEMO_DESARROLLOIDS.includes(v.lote?.desarrolloid as number)
           )
