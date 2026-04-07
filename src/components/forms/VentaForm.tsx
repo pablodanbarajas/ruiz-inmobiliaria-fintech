@@ -6,6 +6,7 @@ import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import type { Lote, Cliente, Venta, Desarrollo } from '@/types/database'
 import { formatCurrency } from '@/utils/helpers'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 // ── VentaForm ────────────────────────────────────────────────────────────────
 export interface VentaFormData {
@@ -93,7 +94,13 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false }: VentaFormProps
           .from('lote')
           .select('loteid, desarrolloid, manzana, nolote, clavelote, superficie, preciolote, estatus, desarrollo:desarrollo(*)')
           .eq('estatus', 'D')
-          .order('desarrolloid'),
+          .order('desarrolloid')
+          .then((res) => ({
+            ...res,
+            data: DEMO_DESARROLLOIDS.length > 0
+              ? (res.data || []).filter((l: any) => DEMO_DESARROLLOIDS.includes(l.desarrolloid))
+              : res.data,
+          })),
         // clientes: placeholder, fetched with pagination below
         Promise.resolve({ data: null }),
       ])
