@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import type { CargoExtra, Desarrollo, Lote } from '@/types/database'
 import { formatDate, formatCurrency } from '@/utils/helpers'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 interface CargoExtraWithDetails extends CargoExtra {
   lote?: Lote & { desarrollo?: Desarrollo }
@@ -88,6 +89,14 @@ export const CargosExtra = () => {
 
       let list = (data || []) as CargoExtraWithDetails[]
 
+      if (DEMO_DESARROLLOIDS !== null) {
+        list = list.filter((c) => {
+          const dev = c.lote?.desarrollo
+          const devId = (Array.isArray(dev) ? dev[0] : dev)?.desarrolloid
+          return DEMO_DESARROLLOIDS.includes(devId)
+        })
+      }
+
       if (filters.estatus) {
         list = list.filter((c) => c.estatus === filters.estatus)
       }
@@ -119,7 +128,12 @@ export const CargosExtra = () => {
       .select('desarrolloid, nombre, clavedesarrollo')
       .eq('estatus', 'A')
       .order('nombre')
-    setDesarrollos((data || []) as Desarrollo[])
+    const all = (data || []) as Desarrollo[]
+    setDesarrollos(
+      DEMO_DESARROLLOIDS !== null
+        ? all.filter((d) => DEMO_DESARROLLOIDS.includes(d.desarrolloid))
+        : all
+    )
   }
 
   useEffect(() => { fetchCargos() }, [filters, currentPage])

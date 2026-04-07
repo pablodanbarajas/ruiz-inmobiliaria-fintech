@@ -10,6 +10,7 @@ import { DesarrolloForm } from '@/components/forms/DesarrolloForm'
 import { Eye, Plus, Edit2, Trash2 } from 'lucide-react'
 import type { Desarrollo, TipoDesarrollo } from '@/types/database'
 import { getStatusLabel } from '@/utils/helpers'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 interface DesarrolloWithTipo extends Desarrollo {
   tipodesarrollo?: TipoDesarrollo
@@ -41,6 +42,11 @@ export const Desarrollos = () => {
       if (error) throw error
 
       let filteredData = data || []
+      if (DEMO_DESARROLLOIDS !== null) {
+        filteredData = filteredData.filter(
+          (d: DesarrolloWithTipo) => DEMO_DESARROLLOIDS.includes(d.desarrolloid)
+        )
+      }
       if (searchTerm) {
         filteredData = filteredData.filter(
           (d: DesarrolloWithTipo) =>

@@ -11,6 +11,7 @@ import type { PagoFormData } from '@/components/forms/PagoForm'
 import { Eye, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { Pago, CorridaFinanciera, Venta, Cliente } from '@/types/database'
 import { getPagoStatusLabel, getPagoStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 interface PagoWithDetails extends Pago {
   corridafinanciera?: CorridaFinanciera & {
@@ -107,11 +108,19 @@ export const Pagos = () => {
           // If no client filter, fetch with relations for display
           const { data: pagosFull } = await supabase
             .from('pagos')
-            .select('pagoid, fechapago, montopagado, estatus, corridafinanciera(venta(ventaid, clienteid, cliente(nombre)))')
+            .select('pagoid, fechapago, montopagado, estatus, corridafinanciera(venta(ventaid, clienteid, cliente(nombre), lote:lote(desarrolloid)))')
             .order('fechapago', { ascending: false })
             .limit(5000)
 
           filteredData = (pagosFull || [])
+        }
+
+        if (DEMO_DESARROLLOIDS !== null) {
+          filteredData = filteredData.filter((p: any) => {
+            const lote = p.corridafinanciera?.venta?.lote
+            const devId = (Array.isArray(lote) ? lote[0] : lote)?.desarrolloid
+            return DEMO_DESARROLLOIDS.includes(devId)
+          })
         }
 
         if (filters.fechaDesde) {

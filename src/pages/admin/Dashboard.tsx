@@ -4,6 +4,7 @@ import { Users, MapPin, ShoppingCart, DollarSign, AlertTriangle, Eye, CheckCircl
 import { supabase } from '@/lib/supabaseClient'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { formatCurrency, formatDate } from '@/utils/helpers'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 interface VentaEnRiesgo {
   ventaid: number
@@ -36,24 +37,67 @@ export const Dashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [clientesRes, desarrollosRes, ventasRes, pagosRes] = await Promise.all([
-          supabase.from('cliente').select('*', { count: 'exact', head: true }),
-          supabase.from('desarrollo').select('*', { count: 'exact', head: true }),
-          supabase.from('venta').select('*', { count: 'exact', head: true }),
-          supabase.from('pagos').select('montopagado'),
-        ])
+        if (DEMO_DESARROLLOIDS !== null) {
+          // Scoped stats: only data related to the demo desarrollos
 
-        const totalPagado = pagosRes.data?.reduce(
-          (sum, pago) => sum + (pago.montopagado || 0),
-          0
-        ) || 0
+          // 1. Lotes of these desarrollos
+          const { data: lotesDemo } = await supabase
+            .from('lote')
+            .select('loteid')
+            .in('desarrolloid', DEMO_DESARROLLOIDS)
+          const loteIds = (lotesDemo || []).map((l: any) => l.loteid)
 
-        setStats({
-          totalClientes: clientesRes.count || 0,
-          totalDesarrollos: desarrollosRes.count || 0,
-          totalVentas: ventasRes.count || 0,
-          totalPagado,
-        })
+          // 2. Ventas of those lotes
+          const { data: ventasDemo } = await supabase
+            .from('venta')
+            .select('ventaid, clienteid')
+            .in('loteid', loteIds.length ? loteIds : [-1])
+          const ventaIds = (ventasDemo || []).map((v: any) => v.ventaid)
+          const clienteIds = [...new Set((ventasDemo || []).map((v: any) => v.clienteid).filter(Boolean))]
+
+          // 3. Corridas of those ventas → pagos
+          const { data: corridasDemo } = await supabase
+            .from('corridafinanciera')
+            .select('corridafinancieraid')
+            .in('ventaid', ventaIds.length ? ventaIds : [-1])
+          const corridaIds = (corridasDemo || []).map((c: any) => c.corridafinancieraid)
+
+          const { data: pagosDemo } = corridaIds.length
+            ? await supabase
+                .from('pagos')
+                .select('montopagado')
+                .in('corridafinancieraid', corridaIds)
+            : { data: [] }
+
+          const totalPagado = (pagosDemo || []).reduce(
+            (sum: number, p: any) => sum + (p.montopagado || 0), 0
+          )
+
+          setStats({
+            totalClientes: clienteIds.length,
+            totalDesarrollos: 1,
+            totalVentas: ventaIds.length,
+            totalPagado,
+          })
+        } else {
+          const [clientesRes, desarrollosRes, ventasRes, pagosRes] = await Promise.all([
+            supabase.from('cliente').select('*', { count: 'exact', head: true }),
+            supabase.from('desarrollo').select('*', { count: 'exact', head: true }),
+            supabase.from('venta').select('*', { count: 'exact', head: true }),
+            supabase.from('pagos').select('montopagado'),
+          ])
+
+          const totalPagado = pagosRes.data?.reduce(
+            (sum, pago) => sum + (pago.montopagado || 0), 0
+          ) || 0
+
+          setStats({
+            totalClientes: clientesRes.count || 0,
+            totalDesarrollos: desarrollosRes.count || 0,
+            totalVentas: ventasRes.count || 0,
+            totalPagado,
+          })
+        }
       } catch (error) {
         console.error('Error fetching stats:', error)
       } finally {
@@ -74,14 +118,24 @@ export const Dashboard = () => {
         // Query 1: todas las corridas vencidas de ventas activas (una sola query con join)
         const { data: corridasData, error: corridasErr } = await supabase
           .from('corridafinanciera')
-          .select('corridafinancieraid, ventaid, mensualidad, venta:venta!inner(estatus, clienteid, cliente:cliente(nombre), lote:lote(manzana, nolote))')
+          .select('corridafinancieraid, ventaid, mensualidad, venta:venta!inner(estatus, clienteid, cliente:cliente(nombre), lote:lote(manzana, nolote, desarrolloid))') 
           .lt('fecha', today)
           .gt('nopago', 0)
           .eq('venta.estatus', 'A')
 
         if (corridasErr || !corridasData?.length) { setLoadingRiesgo(false); return }
 
-        const corridaIds = corridasData.map((c: any) => c.corridafinancieraid)
+        // Filter by demo desarrolloid after fetch
+        const corridasFiltradas = DEMO_DESARROLLOIDS !== null
+          ? (corridasData as any[]).filter((c) => {
+              const lote = Array.isArray(c.venta?.lote) ? c.venta.lote[0] : c.venta?.lote
+              return DEMO_DESARROLLOIDS.includes(lote?.desarrolloid)
+            })
+          : (corridasData as any[])
+
+        if (!corridasFiltradas.length) { setVentasEnRiesgo([]); setLoadingRiesgo(false); return }
+
+        const corridaIds = corridasFiltradas.map((c: any) => c.corridafinancieraid)
 
         // Query 2: todos los pagos activos de esas corridas (una sola query)
         const { data: pagosData } = await supabase
@@ -99,7 +153,7 @@ export const Dashboard = () => {
 
         // Group corridas by ventaid, count vencidas
         const ventaMap = new Map<number, { venta: any; vencidas: number }>()
-        for (const c of corridasData as any[]) {
+        for (const c of corridasFiltradas) {
           const pagado = pagosMap.get(c.corridafinancieraid) ?? 0
           if (pagado >= (c.mensualidad || 0)) continue  // ya pagada
 

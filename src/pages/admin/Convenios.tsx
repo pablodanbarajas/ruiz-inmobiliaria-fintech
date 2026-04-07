@@ -11,6 +11,7 @@ import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
 import { ChevronLeft, ChevronRight, Eye, Plus } from 'lucide-react'
 import type { Convenio, Venta, Cliente, Lote } from '@/types/database'
 import { formatDate, getConvenioStatusLabel, getConvenioStatusColor } from '@/utils/helpers'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 interface ConvenioWithDetails extends Convenio {
   venta?: Venta & { cliente?: Cliente; lote?: Lote }
@@ -41,12 +42,20 @@ export const Convenios = () => {
       setLoading(true)
       const { data, error } = await supabase
         .from('convenios')
-        .select('*, venta:venta(ventaid, estatus, cliente:cliente(clienteid, nombre), lote:lote(manzana, nolote, clavelote))')
+        .select('*, venta:venta(ventaid, estatus, cliente:cliente(clienteid, nombre), lote:lote(manzana, nolote, clavelote, desarrolloid))')
         .order('fecha', { ascending: false })
 
       if (error) throw error
 
       let list = (data || []) as ConvenioWithDetails[]
+
+      if (DEMO_DESARROLLOIDS !== null) {
+        list = list.filter((c) => {
+          const lote = c.venta?.lote
+          const devId = (Array.isArray(lote) ? lote[0] : lote as any)?.desarrolloid
+          return DEMO_DESARROLLOIDS.includes(devId)
+        })
+      }
 
       if (filters.clienteNombre) {
         const term = filters.clienteNombre.toLowerCase()

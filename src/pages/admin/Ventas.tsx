@@ -11,6 +11,7 @@ import type { VentaFormData } from '@/components/forms/VentaForm'
 import { Eye, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { Venta, Cliente, Lote, Desarrollo } from '@/types/database'
 import { formatCurrency, formatDate, getVentaStatusLabel, getVentaStatusColor } from '@/utils/helpers'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 interface VentaWithDetails extends Venta {
   cliente?: Cliente
@@ -71,6 +72,12 @@ export const Ventas = () => {
         if (error) throw error
 
         let filteredData = (data || []) as VentaWithDetails[]
+
+        if (DEMO_DESARROLLOIDS !== null) {
+          filteredData = filteredData.filter(
+            (v) => DEMO_DESARROLLOIDS.includes(v.lote?.desarrolloid as number)
+          )
+        }
 
         if (filters.fechaDesde) {
           filteredData = filteredData.filter((v) => v.fecha && v.fecha >= filters.fechaDesde)

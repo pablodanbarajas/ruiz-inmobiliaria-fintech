@@ -10,6 +10,7 @@ import { ClienteForm } from '@/components/forms/ClienteForm'
 import { Eye, Trash2, ChevronLeft, ChevronRight, Edit2 } from 'lucide-react'
 import type { Cliente } from '@/types/database'
 import { getStatusLabel } from '@/utils/helpers'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { useAuth } from '@/context/AuthContext'
 
 export const Clientes = () => {
@@ -77,7 +78,27 @@ export const Clientes = () => {
         }
 
         setAllClientsCache(allData)
-      } catch (error) {
+
+        // In demo mode, restrict to clients that have ventas in the demo desarrollo
+        if (DEMO_DESARROLLOIDS !== null && allData.length > 0) {
+          const { data: lotesDemo } = await supabase
+            .from('lote')
+            .select('loteid')
+            .in('desarrolloid', DEMO_DESARROLLOIDS)
+          const loteIds = (lotesDemo || []).map((l: any) => l.loteid)
+          if (loteIds.length > 0) {
+            const { data: ventasDemo } = await supabase
+              .from('venta')
+              .select('clienteid')
+              .in('loteid', loteIds)
+            const demoClienteIds = new Set(
+              (ventasDemo || []).map((v: any) => v.clienteid).filter(Boolean)
+            )
+            setAllClientsCache(allData.filter((c) => demoClienteIds.has(c.clienteid)))
+          } else {
+            setAllClientsCache([])
+          }
+        }
         console.error('Error fetching clientes:', error)
         setAllClientsCache([])
       } finally {

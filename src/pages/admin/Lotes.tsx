@@ -10,6 +10,7 @@ import { LoteForm } from '@/components/forms/LoteForm'
 import { Eye, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Lote, Desarrollo } from '@/types/database'
 import { getLoteStatusLabel, getLoteStatusColor, formatCurrency } from '@/utils/helpers'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 export const Lotes = () => {
   const navigate = useNavigate()
@@ -57,7 +58,11 @@ export const Lotes = () => {
         .from('desarrollo')
         .select('*')
         .order('nombre', { ascending: true })
-      if (data) setDesarrollos(data)
+      if (data) setDesarrollos(
+        DEMO_DESARROLLOIDS !== null
+          ? data.filter((d) => DEMO_DESARROLLOIDS.includes(d.desarrolloid))
+          : data
+      )
     }
     fetchDesarrollos()
   }, [])
@@ -80,7 +85,13 @@ export const Lotes = () => {
           .order('manzana', { ascending: true })
           .order('nolote', { ascending: true })
 
-        if (filters.desarrolloId) {
+        if (DEMO_DESARROLLOIDS !== null) {
+          if (filters.desarrolloId && DEMO_DESARROLLOIDS.includes(Number(filters.desarrolloId))) {
+            query = query.eq('desarrolloid', filters.desarrolloId)
+          } else {
+            query = query.in('desarrolloid', DEMO_DESARROLLOIDS)
+          }
+        } else if (filters.desarrolloId) {
           query = query.eq('desarrolloid', filters.desarrolloId)
         }
         if (filters.status) {
@@ -135,14 +146,17 @@ export const Lotes = () => {
       setCurrentPage(1)
       
       // Refetch data
-      const { data } = await supabase
+      let refetchData1 = ((await supabase
         .from('lote')
         .select('*, desarrollo:desarrollo(*)')
         .order('manzana', { ascending: true })
         .order('nolote', { ascending: true })
-      
-      setLotes((data as any) || [])
-      setTotalItems((data || []).length)
+        .then(({ data }) => data)) || []) as any[]
+      if (DEMO_DESARROLLOIDS !== null) {
+        refetchData1 = refetchData1.filter((l: any) => DEMO_DESARROLLOIDS.includes(l.desarrolloid))
+      }
+      setLotes(refetchData1)
+      setTotalItems(refetchData1.length)
     } catch (err) {
       console.error('Error creating lote:', err)
       alert('Error al crear el lote')
@@ -173,14 +187,17 @@ export const Lotes = () => {
       setLoteEnEdicion(null)
 
       // Refetch data
-      const { data } = await supabase
+      let refetchData2 = ((await supabase
         .from('lote')
         .select('*, desarrollo:desarrollo(*)')
         .order('manzana', { ascending: true })
         .order('nolote', { ascending: true })
-      
-      setLotes((data as any) || [])
-      setTotalItems((data || []).length)
+        .then(({ data }) => data)) || []) as any[]
+      if (DEMO_DESARROLLOIDS !== null) {
+        refetchData2 = refetchData2.filter((l: any) => DEMO_DESARROLLOIDS.includes(l.desarrolloid))
+      }
+      setLotes(refetchData2)
+      setTotalItems(refetchData2.length)
     } catch (err) {
       console.error('Error updating lote:', err)
       alert('Error al actualizar el lote')
@@ -220,14 +237,17 @@ export const Lotes = () => {
       setLoteEnEdicion(null)
 
       // Refetch data
-      const { data } = await supabase
+      let refetchData3 = ((await supabase
         .from('lote')
         .select('*, desarrollo:desarrollo(*)')
         .order('manzana', { ascending: true })
         .order('nolote', { ascending: true })
-      
-      setLotes((data as any) || [])
-      setTotalItems((data || []).length)
+        .then(({ data }) => data)) || []) as any[]
+      if (DEMO_DESARROLLOIDS !== null) {
+        refetchData3 = refetchData3.filter((l: any) => DEMO_DESARROLLOIDS.includes(l.desarrolloid))
+      }
+      setLotes(refetchData3)
+      setTotalItems(refetchData3.length)
     } catch (err) {
       console.error('Error deleting lote:', err)
       alert('Error al eliminar el lote')
