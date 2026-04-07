@@ -59,6 +59,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false }: VentaFormProps
   const [lotes, setLotes] = useState<LoteWithDesarrollo[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [enganchemin, setEnganchemin] = useState<number>(0)
 
   // Combobox option arrays (memoised from loaded data)
   const loteOptions: ComboOption[] = lotes.map((l) => ({
@@ -148,21 +149,40 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false }: VentaFormProps
   }
 
   // Auto-fill preciolote and enganche when a lote is selected (create mode only)
-  const handleLoteChange = (loteid: string) => {
+  const handleLoteChange = async (loteid: string) => {
     if (isEditMode) return
     const selected = lotes.find((l) => l.loteid.toString() === loteid)
-    const min = selected ? getDesarrolloEnganche(selected) : 0
+
+    // Pre-fill price immediately from lote data
     setFormData((prev) => ({
       ...prev,
       loteid,
       preciolote: selected?.preciolote?.toString() ?? prev.preciolote,
-      enganche: min > 0 ? min.toString() : prev.enganche,
     }))
+
+    // Fetch desarrollo directly to reliably get enganche
+    const desarrolloid = selected?.desarrolloid
+    if (desarrolloid) {
+      const { data: dev } = await supabase
+        .from('desarrollo')
+        .select('enganche')
+        .eq('desarrolloid', desarrolloid)
+        .single()
+      const rawEnganche = dev?.enganche ?? ''
+      const min = rawEnganche ? parseFloat(rawEnganche.replace(/[$,\s]/g, '')) || 0 : 0
+      setEnganchemin(min)
+      if (min > 0) {
+        setFormData((prev) => ({ ...prev, enganche: min.toString() }))
+      }
+    } else {
+      setEnganchemin(0)
+    }
   }
 
-  // Minimum enganche from the selected lote's desarrollo
-  const selectedLote = lotes.find((l) => l.loteid.toString() === formData.loteid)
-  const enganchemin = selectedLote ? getDesarrolloEnganche(selectedLote) : 0
+  // reset enganchemin when loteid is cleared
+  useEffect(() => {
+    if (!formData.loteid) setEnganchemin(0)
+  }, [formData.loteid])
 
   const validate = () => {
     const errs: Record<string, string> = {}
