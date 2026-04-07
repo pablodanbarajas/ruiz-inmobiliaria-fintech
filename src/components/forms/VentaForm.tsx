@@ -141,13 +141,6 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false }: VentaFormProps
     fetchCatalogos()
   }, [venta?.loteid])
 
-  // Helper: Supabase sometimes returns the join as array, sometimes as object
-  const getDesarrolloEnganche = (lote: LoteWithDesarrollo): number => {
-    const dev = Array.isArray(lote.desarrollo) ? lote.desarrollo[0] : lote.desarrollo
-    if (!dev?.enganche) return 0
-    return parseFloat(dev.enganche) || 0
-  }
-
   // Auto-fill preciolote and enganche when a lote is selected (create mode only)
   const handleLoteChange = async (loteid: string) => {
     if (isEditMode) return
