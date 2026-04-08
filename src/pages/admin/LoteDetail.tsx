@@ -5,7 +5,9 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { LoteForm } from '@/components/forms/LoteForm'
-import { ChevronLeft } from 'lucide-react'
+import { VentaForm } from '@/components/forms/VentaForm'
+import type { VentaFormData } from '@/components/forms/VentaForm'
+import { ChevronLeft, Plus } from 'lucide-react'
 import type { Lote, Desarrollo, Venta, Cliente } from '@/types/database'
 import { getLoteStatusLabel, getLoteStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
 
@@ -17,11 +19,13 @@ export const LoteDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const searchParams = new URLSearchParams(location.search)
   const [lote, setLote] = useState<Lote & { desarrollo?: Desarrollo }  | null>(null)
   const [ventas, setVentas] = useState<VentaWithCliente[]>([])
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showVentaModal, setShowVentaModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
@@ -127,6 +131,69 @@ export const LoteDetail = () => {
     }
   }
 
+  const generateCorridaFinanciera = (
+    ventaid: number,
+    data: Pick<VentaFormData, 'preciolote' | 'enganche' | 'plazo' | 'fechaenganche' | 'fechaprimeramensualidad' | 'mensualidad'>
+  ) => {
+    const saldoInicial = data.preciolote - data.enganche
+    const records: { ventaid: number; nopago: number; fecha: string; mensualidad: number; saldo: number }[] = []
+    records.push({ ventaid, nopago: 0, fecha: data.fechaenganche, mensualidad: data.enganche, saldo: saldoInicial })
+    const fechaPrimera = new Date(data.fechaprimeramensualidad + 'T12:00:00')
+    for (let i = 1; i <= data.plazo; i++) {
+      const fechaPago = new Date(fechaPrimera)
+      fechaPago.setMonth(fechaPago.getMonth() + (i - 1))
+      const saldoRestante = i === data.plazo ? 0 : parseFloat((saldoInicial - data.mensualidad * i).toFixed(2))
+      records.push({ ventaid, nopago: i, fecha: fechaPago.toISOString().split('T')[0], mensualidad: data.mensualidad, saldo: Math.max(0, saldoRestante) })
+    }
+    return records
+  }
+
+  const handleCreateVenta = async (data: VentaFormData) => {
+    try {
+      setIsSubmitting(true)
+      const { data: loteCheck } = await supabase.from('lote').select('loteid, estatus').eq('loteid', data.loteid).single()
+      if (!loteCheck || loteCheck.estatus !== 'D') {
+        alert('El lote ya no está disponible.')
+        return
+      }
+      const { data: authData } = await supabase.auth.getUser()
+      const usuarioid = authData.user?.id ?? null
+      const { data: ventaData, error: ventaError } = await supabase
+        .from('venta')
+        .insert([{
+          loteid: data.loteid, clienteid: data.clienteid, fecha: data.fecha,
+          fechacontrato: data.fechacontrato, usuarioid, preciolote: data.preciolote,
+          enganche: data.enganche, porcenganche: data.porcenganche,
+          fechaenganche: data.fechaenganche, plazo: data.plazo,
+          fechaprimeramensualidad: data.fechaprimeramensualidad,
+          mensualidad: data.mensualidad, estatus: 'A',
+          comentarios: data.comentarios ?? null, plazoenganche: data.plazoenganche ?? 1,
+        }])
+        .select().single()
+      if (ventaError) throw new Error(ventaError.message)
+      const ventaid: number = ventaData.ventaid
+      const { error: loteUpdateError } = await supabase.from('lote').update({ estatus: 'V' }).eq('loteid', data.loteid)
+      if (loteUpdateError) {
+        await supabase.from('venta').delete().eq('ventaid', ventaid)
+        throw new Error(loteUpdateError.message)
+      }
+      const corridaRecords = generateCorridaFinanciera(ventaid, data)
+      const { error: corridaError } = await supabase.from('corridafinanciera').insert(corridaRecords)
+      if (corridaError) {
+        await supabase.from('venta').delete().eq('ventaid', ventaid)
+        await supabase.from('lote').update({ estatus: 'D' }).eq('loteid', data.loteid)
+        throw new Error(corridaError.message)
+      }
+      setShowVentaModal(false)
+      navigate(`/admin/ventas/${ventaid}`, { state: { from: `/admin/lotes/${id}` } })
+    } catch (err: any) {
+      console.error('Error creating venta:', err)
+      alert(`Error al registrar la venta: ${err.message}`)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   if (loading) {
     return (
       <AdminLayout>
@@ -159,7 +226,7 @@ export const LoteDetail = () => {
           <Button
             variant="ghost"
             onClick={() => {
-              const from = (location.state as any)?.from
+              const from = (location.state as any)?.from || searchParams.get('from')
               navigate(from || '/admin/lotes')
             }}
             className="inline-flex items-center gap-2"
@@ -321,8 +388,17 @@ export const LoteDetail = () => {
 
         {/* Ventas associated */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200">
+          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200 flex items-center justify-between gap-4">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">Ventas Asociadas</h2>
+            {ventas.length === 0 && lote.estatus === 'D' && (
+              <Button
+                onClick={() => setShowVentaModal(true)}
+                className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold inline-flex items-center gap-2"
+              >
+                <Plus size={16} />
+                Nueva Venta
+              </Button>
+            )}
           </div>
 
           {ventas.length === 0 ? (
@@ -373,6 +449,15 @@ export const LoteDetail = () => {
       {/* Edit Modal */}
       <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Editar Lote">
         <LoteForm lote={lote} onSubmit={handleUpdateLote} isLoading={isSubmitting} />
+      </Modal>
+
+      {/* Nueva Venta Modal */}
+      <Modal isOpen={showVentaModal} onClose={() => setShowVentaModal(false)} title={`Nueva Venta — Lote ${lote.nolote} Mza ${lote.manzana}`} size="xl">
+        <VentaForm
+          defaultLoteId={lote.loteid}
+          onSubmit={handleCreateVenta}
+          isLoading={isSubmitting}
+        />
       </Modal>
 
       {/* Delete Confirmation Modal */}

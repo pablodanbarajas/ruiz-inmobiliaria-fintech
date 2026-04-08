@@ -31,16 +31,17 @@ interface VentaFormProps {
   venta?: Venta | null
   onSubmit: (data: VentaFormData) => Promise<void>
   isLoading?: boolean
+  defaultLoteId?: number
 }
 
 type LoteWithDesarrollo = Lote & { desarrollo?: Desarrollo }
 
-export const VentaForm = ({ venta, onSubmit, isLoading = false }: VentaFormProps) => {
+export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId }: VentaFormProps) => {
   const isEditMode = !!venta
   const today = new Date().toISOString().split('T')[0]
 
   const [formData, setFormData] = useState({
-    loteid: venta?.loteid?.toString() ?? '',
+    loteid: venta?.loteid?.toString() ?? (defaultLoteId?.toString() ?? ''),
     clienteid: venta?.clienteid?.toString() ?? '',
     fecha: venta?.fecha ? venta.fecha.split('T')[0] : today,
     fechacontrato: venta?.fechacontrato ? venta.fechacontrato.split('T')[0] : today,
@@ -147,6 +148,12 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false }: VentaFormProps
     }
     fetchCatalogos()
   }, [venta?.loteid])
+
+  // When defaultLoteId is provided and lotes have loaded, auto-fill prices
+  useEffect(() => {
+    if (!defaultLoteId || isEditMode || lotes.length === 0) return
+    handleLoteChange(defaultLoteId.toString())
+  }, [lotes, defaultLoteId])
 
   // Auto-fill preciolote and enganche when a lote is selected (create mode only)
   const handleLoteChange = async (loteid: string) => {
