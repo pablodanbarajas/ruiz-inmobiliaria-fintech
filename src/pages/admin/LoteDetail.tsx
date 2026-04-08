@@ -9,7 +9,7 @@ import { VentaForm } from '@/components/forms/VentaForm'
 import type { VentaFormData } from '@/components/forms/VentaForm'
 import { ChevronLeft, Plus } from 'lucide-react'
 import type { Lote, Desarrollo, Venta, Cliente } from '@/types/database'
-import { getLoteStatusLabel, getLoteStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
+import { getLoteStatusLabel, getLoteStatusColor, getVentaStatusLabel, getVentaStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
 
 interface VentaWithCliente extends Venta {
   cliente?: Cliente
@@ -422,7 +422,14 @@ export const LoteDetail = () => {
                 <tbody className="divide-y divide-gray-200">
                   {ventas.map((venta) => (
                     <tr key={venta.ventaid} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">{venta.ventaid}</td>
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                        <div className="flex items-center gap-2">
+                          {venta.ventaid}
+                          {venta.estatus === 'C' && (
+                            <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Cancelada</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 text-sm text-gray-700">{venta.cliente?.nombre || '-'}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{formatDate(venta.fecha)}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{formatCurrency(venta.preciolote)}</td>

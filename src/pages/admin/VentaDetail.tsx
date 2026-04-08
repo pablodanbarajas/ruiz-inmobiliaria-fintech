@@ -17,6 +17,7 @@ import {
   formatDate,
   formatCurrency,
   getStatusLabel,
+  getVentaStatusLabel,
   getVentaStatusColor,
   getPagoStatusLabel,
   getPagoStatusColor,
@@ -511,7 +512,7 @@ export const VentaDetail = () => {
                     getVentaStatusColor(venta.estatus)
                   }`}
                 >
-                  {getStatusLabel(venta.estatus)}
+                  {getVentaStatusLabel(venta.estatus)}
                 </span>
                 {(venta.dias_tolerancia ?? 0) > 0 && (
                   <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
