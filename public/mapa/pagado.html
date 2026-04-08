@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>¡Apartado confirmado!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink:      #0f172a;
+      --ink-2:    #334155;
+      --ink-3:    #64748b;
+      --ink-4:    #94a3b8;
+      --ink-5:    #e2e8f0;
+      --indigo:   #4f46e5;
+      --indigo-d: #4338ca;
+      --indigo-l: #eef2ff;
+      --green:    #16a34a;
+      --green-m:  #22c55e;
+      --green-l:  #dcfce7;
+      --green-ll: #f0fdf4;
+    }
+
+    html, body {
+      min-height: 100vh;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--ink);
+      background: #f0f4f8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px 64px;
+      overflow-x: hidden;
+    }
+
+    /* ── Fondo animado ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 700px 500px at 15% 10%,  rgba(79,70,229,0.07) 0%, transparent 70%),
+        radial-gradient(ellipse 600px 400px at 85% 90%,  rgba(34,197,94,0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 400px 300px at 50% 50%,  rgba(79,70,229,0.04) 0%, transparent 70%),
+        radial-gradient(#94a3b8 0.7px, transparent 0.7px);
+      background-size: auto, auto, auto, 22px 22px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Confetti partículas CSS ── */
+    .confetti-wrap {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 1;
+    }
+    .dot {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      opacity: 0;
+      animation: fall linear forwards;
+    }
+    @keyframes fall {
+      0%   { opacity: 1; transform: translateY(-20px) rotate(0deg); }
+      100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
+    }
+
+    /* ── Layout ── */
+    .page {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    /* ── Ícono de éxito ── */
+    .success-ring {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 0 0 8px var(--green-l), 0 8px 32px rgba(22,163,74,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      animation-delay: 0.1s;
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.4); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    /* ── Título ── */
+    .title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2rem;
+      color: var(--ink);
+      text-align: center;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 8px;
+      animation: slideUp 0.5s ease both;
+      animation-delay: 0.25s;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: var(--ink-3);
+      text-align: center;
+      margin-bottom: 32px;
+      animation: slideUp 0.5s ease both;
+      animation-delay: 0.35s;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Card ── */
+    .card {
+      background: white;
+      border-radius: 28px;
+      box-shadow: 0 20px 60px rgba(15,23,42,0.1), 0 4px 16px rgba(15,23,42,0.05);
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.9);
+      overflow: hidden;
+      animation: slideUp 0.5s ease both;
+      animation-delay: 0.4s;
+      margin-bottom: 16px;
+    }
+
+    /* Banda superior verde */
+    .card-header {
+      background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .card-header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .card-header-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+    }
+    .card-header-ref {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.1rem;
+      color: white;
+      letter-spacing: 0.02em;
+    }
+    .card-header-badge {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    /* Cuerpo de la card */
+    .card-body { padding: 24px; }
+
+    .detail-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 11px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .detail-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .detail-row:first-child { padding-top: 0; }
+
+    .detail-key {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--ink-3);
+      font-weight: 500;
+    }
+    .detail-key iconify-icon {
+      flex-shrink: 0;
+    }
+    .detail-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      text-align: right;
+    }
+    .detail-val.green { color: var(--green); }
+    .detail-val.indigo { color: var(--indigo); }
+
+    /* ── Resumen de pago ── */
+    .pay-summary {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      border-radius: 20px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+      animation: slideUp 0.5s ease both;
+      animation-delay: 0.5s;
+    }
+    .pay-summary::before {
+      content: '';
+      position: absolute;
+      top: -30px; right: -30px;
+      width: 120px; height: 120px;
+      background: rgba(79,70,229,0.12);
+      border-radius: 50%;
+    }
+    .pay-summary::after {
+      content: '';
+      position: absolute;
+      bottom: -20px; left: 20px;
+      width: 80px; height: 80px;
+      background: rgba(34,197,94,0.08);
+      border-radius: 50%;
+    }
+    .pay-summary-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 4px;
+      position: relative;
+    }
+    .pay-summary-amount {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.2rem;
+      color: white;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      margin-bottom: 12px;
+      position: relative;
+    }
+    .pay-summary-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #64748b;
+      position: relative;
+    }
+    .pay-summary-row span:last-child {
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    /* ── Info de tiempo ── */
+    .time-card {
+      background: linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%);
+      border: 1.5px solid #fed7aa;
+      border-radius: 20px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+      animation: slideUp 0.5s ease both;
+      animation-delay: 0.55s;
+    }
+    .time-card-icon {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: #fed7aa;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .time-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #92400e;
+      margin-bottom: 2px;
+    }
+    .time-card-sub {
+      font-size: 12px;
+      color: #b45309;
+      line-height: 1.4;
+    }
+
+    /* ── Próximos pasos ── */
+    .steps-card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 4px 16px rgba(15,23,42,0.06);
+      border: 1px solid #f1f5f9;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+      animation: slideUp 0.5s ease both;
+      animation-delay: 0.6s;
+    }
+    .steps-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .next-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #f8fafc;
+    }
+    .next-step:last-child { border-bottom: none; padding-bottom: 0; }
+    .next-step:first-of-type { padding-top: 0; }
+    .step-num {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--indigo-l);
+      color: var(--indigo);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .next-step-text {
+      font-size: 13px;
+      color: var(--ink-2);
+      line-height: 1.5;
+    }
+    .next-step-text strong { color: var(--ink); }
+
+    /* ── Botones ── */
+    .btn-primary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      background: var(--indigo);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      padding: 15px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.18s;
+      box-shadow: 0 4px 14px rgba(79,70,229,0.3);
+      margin-bottom: 10px;
+      animation: slideUp 0.5s ease both;
+      animation-delay: 0.65s;
+    }
+    .btn-primary:hover {
+      background: var(--indigo-d);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(79,70,229,0.4);
+    }
+    .btn-ghost {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      background: white;
+      color: var(--ink-3);
+      border: 1.5px solid var(--ink-5);
+      border-radius: 14px;
+      padding: 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.18s;
+      animation: slideUp 0.5s ease both;
+      animation-delay: 0.7s;
+    }
+    .btn-ghost:hover { color: var(--ink); border-color: #94a3b8; background: #f8fafc; }
+
+    /* ── Folio chip ── */
+    .folio-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f1f5f9;
+      border-radius: 999px;
+      padding: 5px 12px 5px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ink-3);
+      font-family: monospace;
+      margin-bottom: 28px;
+      animation: slideUp 0.5s ease both;
+      animation-delay: 0.3s;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Confetti -->
+  <div class="confetti-wrap" id="confetti"></div>
+
+  <div class="page">
+
+    <!-- Ícono -->
+    <div class="success-ring">
+      <iconify-icon icon="solar:check-circle-bold" width="52" height="52" style="color:#16a34a;"></iconify-icon>
+    </div>
+
+    <!-- Título -->
+    <h1 class="title">¡Lote apartado<br>con éxito!</h1>
+    <p class="subtitle">Tu pago fue recibido y el lote está bloqueado para ti.</p>
+
+    <!-- Folio -->
+    <div class="folio-chip">
+      <iconify-icon icon="solar:tag-linear" width="13" height="13"></iconify-icon>
+      Folio: <span id="folio-num">APT-2025-4471</span>
+    </div>
+
+    <!-- Card principal: detalles del lote -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <span class="card-header-label">Lote apartado</span>
+          <span class="card-header-ref" id="lote-display">Lote M1-32 · Pueblo de Barrancas</span>
+        </div>
+        <div class="card-header-badge">
+          <iconify-icon icon="solar:shield-check-bold" width="13" height="13"></iconify-icon>
+          Reservado
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="detail-row">
+          <span class="detail-key">
+            <iconify-icon icon="solar:map-point-linear" width="15" height="15" style="color:#4f46e5"></iconify-icon>
+            Fraccionamiento
+          </span>
+          <span class="detail-val">Pueblo de Barrancas</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">
+            <iconify-icon icon="solar:ruler-linear" width="15" height="15" style="color:#4f46e5"></iconify-icon>
+            Superficie
+          </span>
+          <span class="detail-val">185 m²</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">
+            <iconify-icon icon="solar:tag-price-linear" width="15" height="15" style="color:#4f46e5"></iconify-icon>
+            Precio de lista
+          </span>
+          <span class="detail-val">$320,000 MXN</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">
+            <iconify-icon icon="solar:calendar-linear" width="15" height="15" style="color:#4f46e5"></iconify-icon>
+            Fecha de apartado
+          </span>
+          <span class="detail-val" id="fecha-display">—</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">
+            <iconify-icon icon="solar:card-linear" width="15" height="15" style="color:#4f46e5"></iconify-icon>
+            Método de pago
+          </span>
+          <span class="detail-val indigo" id="metodo-display">Tarjeta</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-key">
+            <iconify-icon icon="solar:user-linear" width="15" height="15" style="color:#4f46e5"></iconify-icon>
+            Asesor asignado
+          </span>
+          <span class="detail-val">Carlos Méndez</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resumen de pago -->
+    <div class="pay-summary">
+      <div class="pay-summary-label">Monto pagado</div>
+      <div class="pay-summary-amount">$2,000.00 <span style="font-size:1rem;opacity:0.6;font-family:'DM Sans',sans-serif;font-weight:400;">MXN</span></div>
+      <div class="pay-summary-row">
+        <span>Apartado confirmado</span>
+        <span id="folio-mini">APT-2025-4471</span>
+      </div>
+    </div>
+
+    <!-- Tiempo límite -->
+    <div class="time-card">
+      <div class="time-card-icon">
+        <iconify-icon icon="solar:clock-circle-bold" width="22" height="22" style="color:#d97706;"></iconify-icon>
+      </div>
+      <div>
+        <div class="time-card-title">Tienes 24 horas para firmar</div>
+        <div class="time-card-sub">
+          Tu asesor se contactará pronto para agendar la firma del contrato.<br>
+          Vencimiento: <strong id="vencimiento-display" style="color:#92400e;">—</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Próximos pasos -->
+    <div class="steps-card">
+      <div class="steps-title">
+        <iconify-icon icon="solar:list-check-linear" width="14" height="14"></iconify-icon>
+        ¿Qué sigue?
+      </div>
+      <div class="next-step">
+        <div class="step-num">1</div>
+        <div class="next-step-text">Tu asesor <strong>Carlos Méndez</strong> te llamará en las próximas 2 horas hábiles.</div>
+      </div>
+      <div class="next-step">
+        <div class="step-num">2</div>
+        <div class="next-step-text">Recibirás un <strong>correo de confirmación</strong> con el folio y los detalles del lote.</div>
+      </div>
+      <div class="next-step">
+        <div class="step-num">3</div>
+        <div class="next-step-text">Prepara tu <strong>identificación oficial</strong> y comprobante de domicilio para la firma del contrato.</div>
+      </div>
+      <div class="next-step">
+        <div class="step-num">4</div>
+        <div class="next-step-text">El enganche de <strong>$15,000 MXN</strong> deberá liquidarse al momento de la firma.</div>
+      </div>
+    </div>
+
+    <!-- Botones -->
+    <a href="index.html" class="btn-primary">
+      <iconify-icon icon="solar:map-linear" width="18" height="18"></iconify-icon>
+      Volver al mapa de lotes
+    </a>
+    <a href="#" class="btn-ghost" onclick="window.print(); return false;">
+      <iconify-icon icon="solar:printer-linear" width="16" height="16"></iconify-icon>
+      Imprimir comprobante
+    </a>
+
+  </div><!-- /page -->
+
+  <script>
+    // ── Datos desde URL ────────────────────────────────────────────────
+    var params = new URLSearchParams(window.location.search);
+
+    if (params.get('lote')) {
+      document.getElementById('lote-display').textContent = params.get('lote');
+    }
+
+    var metodoMap = { tarjeta: 'Tarjeta bancaria', transferencia: 'Transferencia SPEI', efectivo: 'Efectivo OXXO' };
+    var metodo = params.get('metodo') || 'tarjeta';
+    document.getElementById('metodo-display').textContent = metodoMap[metodo] || 'Tarjeta bancaria';
+
+    // ── Folio simulado ─────────────────────────────────────────────────
+    var folio = 'APT-2025-' + Math.floor(1000 + Math.random() * 9000);
+    document.getElementById('folio-num').textContent  = folio;
+    document.getElementById('folio-mini').textContent = folio;
+
+    // ── Fecha y vencimiento ────────────────────────────────────────────
+    var now  = new Date();
+    var venc = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    var opts = { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+    document.getElementById('fecha-display').textContent    = now.toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
+    document.getElementById('vencimiento-display').textContent = venc.toLocaleDateString('es-MX', opts);
+
+    // ── Confetti ───────────────────────────────────────────────────────
+    var colors = ['#4f46e5','#22c55e','#f59e0b','#f43f5e','#06b6d4','#a855f7','#ffffff'];
+    var wrap   = document.getElementById('confetti');
+
+    function burst() {
+      for (var i = 0; i < 60; i++) {
+        (function(i) {
+          setTimeout(function () {
+            var dot       = document.createElement('div');
+            dot.className = 'dot';
+            var size      = 6 + Math.random() * 8;
+            dot.style.cssText = [
+              'left:'            + (10 + Math.random() * 80) + '%',
+              'top:-10px',
+              'width:'           + size + 'px',
+              'height:'          + size + 'px',
+              'background:'      + colors[Math.floor(Math.random() * colors.length)],
+              'border-radius:'   + (Math.random() > 0.5 ? '50%' : '2px'),
+              'animation-duration:' + (1.8 + Math.random() * 1.8) + 's',
+              'animation-delay:0s'
+            ].join(';');
+            wrap.appendChild(dot);
+            setTimeout(function () { dot.remove(); }, 4000);
+          }, i * 30);
+        })(i);
+      }
+    }
+
+    // Lanzar confetti al cargar
+    setTimeout(burst, 300);
+    setTimeout(burst, 900);
+  </script>
+</body>
+</html>

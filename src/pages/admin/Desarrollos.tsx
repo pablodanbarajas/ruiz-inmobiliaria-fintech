@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { DesarrolloForm } from '@/components/forms/DesarrolloForm'
-import { Eye, Plus, Edit2, Trash2 } from 'lucide-react'
+import { Eye, Plus, Edit2, Trash2, Map } from 'lucide-react'
 import type { Desarrollo, TipoDesarrollo } from '@/types/database'
 import { getStatusLabel } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
@@ -260,6 +260,17 @@ export const Desarrollos = () => {
                   >
                     <Trash2 size={16} />
                   </Button>
+                  {row.desarrolloid === 11 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/admin/mapa')}
+                      className="inline-flex items-center gap-1 text-[#eaae4c] hover:text-[#d99c38]"
+                      title="Ver mapa de lotes"
+                    >
+                      <Map size={16} />
+                    </Button>
+                  )}
                 </div>
               ),
             },

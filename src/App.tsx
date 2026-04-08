@@ -16,6 +16,7 @@ import { PagoDetail } from '@/pages/admin/PagoDetail'
 import { Convenios } from '@/pages/admin/Convenios'
 import { ConvenioDetail } from '@/pages/admin/ConvenioDetail'
 import { CargosExtra } from '@/pages/admin/CargosExtra'
+import { Mapa } from '@/pages/admin/Mapa'
 
 function App() {
   return (
@@ -149,6 +150,16 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <CargosExtra />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Mapa */}
+        <Route
+          path="/admin/mapa"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Mapa />
             </ProtectedRoute>
           }
         />
