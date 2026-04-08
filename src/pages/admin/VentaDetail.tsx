@@ -16,7 +16,6 @@ import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Conveni
 import {
   formatDate,
   formatCurrency,
-  getStatusLabel,
   getVentaStatusLabel,
   getVentaStatusColor,
   getPagoStatusLabel,

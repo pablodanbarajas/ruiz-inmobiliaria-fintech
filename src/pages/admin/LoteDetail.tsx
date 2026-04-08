@@ -9,7 +9,7 @@ import { VentaForm } from '@/components/forms/VentaForm'
 import type { VentaFormData } from '@/components/forms/VentaForm'
 import { ChevronLeft, Plus } from 'lucide-react'
 import type { Lote, Desarrollo, Venta, Cliente } from '@/types/database'
-import { getLoteStatusLabel, getLoteStatusColor, getVentaStatusLabel, getVentaStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
+import { getLoteStatusLabel, getLoteStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
 
 interface VentaWithCliente extends Venta {
   cliente?: Cliente
