@@ -45,7 +45,7 @@ export const router = createBrowserRouter([
 
   // Rutas privadas de cliente
   {
-    path: '/portal',
+    path: '/home',
     Component: ClientRoute,
     children: [
       {
@@ -71,4 +71,4 @@ export const router = createBrowserRouter([
       }
     ]
   }
-]);
+], { basename: '/portal' });

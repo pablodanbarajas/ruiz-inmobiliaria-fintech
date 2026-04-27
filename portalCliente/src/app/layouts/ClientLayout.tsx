@@ -5,10 +5,10 @@ import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
 
 const clientMenuItems = [
-  { path: '/portal',           label: 'Home',      icon: Home },
-  { path: '/portal/mis-lotes', label: 'Mis lotes', icon: MapPin },
-  { path: '/portal/mis-pagos', label: 'Mis pagos', icon: CreditCard },
-  { path: '/portal/soporte',   label: 'Soporte',   icon: MessageCircle }
+  { path: '/home',           label: 'Home',      icon: Home },
+  { path: '/home/mis-lotes', label: 'Mis lotes', icon: MapPin },
+  { path: '/home/mis-pagos', label: 'Mis pagos', icon: CreditCard },
+  { path: '/home/soporte',   label: 'Soporte',   icon: MessageCircle }
 ];
 
 export function ClientLayout() {

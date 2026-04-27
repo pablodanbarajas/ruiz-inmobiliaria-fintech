@@ -17,7 +17,7 @@ export function LoginCliente() {
 
     try {
       await login({ email, password });
-      navigate('/portal');
+      navigate('/home');
     } catch {
       setError('Correo o contraseña incorrectos. Intenta de nuevo.');
     }

@@ -27,7 +27,7 @@ export function RegistroCliente() {
     try {
       // Mock: reutiliza login hasta que se implemente register() en Supabase
       await login({ email: formData.email, password: formData.password });
-      navigate('/portal');
+      navigate('/home');
     } catch {
       setError('No se pudo completar el registro. Intenta de nuevo.');
     }
