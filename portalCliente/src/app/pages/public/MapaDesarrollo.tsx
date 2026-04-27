@@ -79,12 +79,27 @@ export function MapaDesarrollo() {
       </div>
 
       <div className="flex-1">
-        <iframe
-          src="/portal/mapa/index.html"
-          className="w-full h-full border-0"
-          style={{ minHeight: 'calc(100vh - 120px)' }}
-          title={`Mapa interactivo — ${development.name}`}
-        />
+        {development.hasInteractiveMap ? (
+          <iframe
+            src="/portal/mapa/index.html"
+            className="w-full h-full border-0"
+            style={{ minHeight: 'calc(100vh - 120px)' }}
+            title={`Mapa interactivo — ${development.name}`}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full min-h-[calc(100vh-120px)] bg-gray-50">
+            <div className="text-center max-w-md px-8">
+              <div className="w-16 h-16 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ArrowLeft className="w-8 h-8 rotate-180" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-700 mb-2">Mapa no disponible</h2>
+              <p className="text-gray-500 text-sm">
+                El mapa interactivo de este desarrollo aún no está disponible.
+                Contacta a un asesor para más información.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

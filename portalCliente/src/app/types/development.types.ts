@@ -12,6 +12,8 @@ export interface PublicDevelopment {
   location: string;
   /** URL de Google Maps u otro proveedor de mapas */
   mapsUrl: string;
+  /** true si existe un mapa interactivo de lotes para este desarrollo */
+  hasInteractiveMap?: boolean;
 }
 
 export type Development = PublicDevelopment;
