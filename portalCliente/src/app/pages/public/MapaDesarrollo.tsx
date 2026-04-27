@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router';
-import { ArrowLeft, Map as MapIcon, Info } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { developmentsService } from '../../services';
 import type { PublicDevelopment } from '../../types/development.types';
 
@@ -78,26 +78,13 @@ export function MapaDesarrollo() {
         </div>
       </div>
 
-      <div className="flex-1 bg-gray-100 flex flex-col items-center justify-center p-8 text-center">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 max-w-lg">
-          <div className="w-16 h-16 bg-teal-100 text-teal-700 rounded-full flex items-center justify-center mx-auto mb-4">
-            <MapIcon className="w-8 h-8" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            Mapa en construcción
-          </h2>
-          <p className="text-gray-600 mb-6">
-            Esta vista mostrará el mapa interactivo con disponibilidad en tiempo real,
-            conectado a Supabase.
-          </p>
-          <div className="bg-blue-50 text-blue-800 p-4 rounded-lg flex items-start gap-3 text-left">
-            <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <p className="text-sm">
-              Los clientes podrán seleccionar un lote disponible, ver precio y
-              superficie, y generar un apartado pagando $2,000 directamente desde aquí.
-            </p>
-          </div>
-        </div>
+      <div className="flex-1">
+        <iframe
+          src="/portal/mapa/index.html"
+          className="w-full h-full border-0"
+          style={{ minHeight: 'calc(100vh - 120px)' }}
+          title={`Mapa interactivo — ${development.name}`}
+        />
       </div>
     </div>
   );
