@@ -4,4 +4,9 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  base: '/portal/',
+  build: {
+    outDir: '../dist/portal',
+    emptyOutDir: true,
+  },
 });
