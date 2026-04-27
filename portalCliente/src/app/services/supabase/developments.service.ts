@@ -33,7 +33,8 @@ export const supabaseDevelopmentsService: IDevelopmentsService = {
       location: row.location || 'Ubicación pendiente',
       availableLots: row.available_lots ?? 0,
       image: row.image_url || '',
-      googleMapsUrl: row.google_maps_url || '#'
+      googleMapsUrl: row.google_maps_url || '#',
+      hasInteractiveMap: /barranca/i.test(row.name)
     }));
   }
 };
