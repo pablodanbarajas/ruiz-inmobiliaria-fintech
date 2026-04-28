@@ -106,22 +106,19 @@
         <div>
           <div class="enganche-label">Enganche</div>
           <div class="enganche-val">$15,000</div>
-          <div class="enganche-note">¿Quieres negociar el enganche?<br>Comunícate con un asesor.</div>
         </div>
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7a8c7e" stroke-width="1.5" style="flex-shrink:0;opacity:0.5"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7a8c7e" stroke-width="1.5" style="flex-shrink:0;opacity:0.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
       </div>
 
-      <div style="margin-bottom:16px;">
-        <div class="plazo-header">Plazo de pago (meses)</div>
-        <div class="plazo-grid" id="plazoBtns">
-          <button class="plazo-btn" data-meses="48">48</button>
-          <button class="plazo-btn" data-meses="60">60</button>
-          <button class="plazo-btn" data-meses="84">84</button>
-          <button class="plazo-btn" data-meses="100">100</button>
-          <button class="plazo-btn" data-meses="125">125</button>
-          <button class="plazo-btn" data-meses="150">150</button>
+      <div style="margin-bottom:10px;">
+        <div class="enganche-block">
+          <div>
+            <div class="enganche-label">Plazo de pago</div>
+            <div class="enganche-val">100 meses</div>
+          </div>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7a8c7e" stroke-width="1.5" style="flex-shrink:0;opacity:0.5"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>
         </div>
-        <div id="mensualidadBox">
+        <div id="mensualidadBox" style="display:flex;">
           <div>
             <div class="mensualidad-label">Pago mensual aprox.</div>
             <div id="mensualidadVal"></div>
@@ -129,6 +126,8 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2a7a4b" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>
         </div>
       </div>
+
+      <p style="font-size:12px;color:#7a8c7e;text-align:center;margin-bottom:12px;">¿Quieres negociar el enganche o mensualidad?<br><a href="/portal/soporte" target="_top" style="color:#e08e00;font-weight:600;text-decoration:underline;">Comunícate con un asesor.</a></p>
 
       <a id="modalCTA" href="apartado.html">Solicitar apartado</a>
     </div>
@@ -311,16 +310,7 @@
     overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-    document.getElementById('plazoBtns').addEventListener('click', e => {
-      const btn = e.target.closest('.plazo-btn');
-      if (!btn) return;
-      document.querySelectorAll('.plazo-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const meses = parseInt(btn.dataset.meses);
-      const restante = (overlay._precioNum || 0) - 15000;
-      document.getElementById('mensualidadVal').textContent = fmt.format(restante > 0 ? Math.ceil(restante/meses) : 0) + ' / mes';
-      document.getElementById('mensualidadBox').style.display = 'flex';
-    });
+    // Plazo fijo: sin listener de botones
 
     initPanZoom();
   }
@@ -345,8 +335,8 @@
     document.getElementById('modalPsm').textContent    = lote.preciopormt2 ? `${fmt.format(lote.preciopormt2)} / m²` : '';
     overlay._precioNum = precio;
 
-    document.querySelectorAll('.plazo-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('mensualidadBox').style.display = 'none';
+    const restante = precio - 15000;
+    document.getElementById('mensualidadVal').textContent = fmt.format(restante > 0 ? Math.ceil(restante / 100) : 0) + ' / mes';
 
     const cta = document.getElementById('modalCTA');
     const p   = new URLSearchParams({ lote: lote.nolote, manzana: lote.manzana, precio: fmt.format(precio) });
