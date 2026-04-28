@@ -18,32 +18,19 @@
   --radius:   16px;
 }
 
-html, body { height: 100%; }
+html, body { height: 100%; overflow: hidden; }
 
 body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--sans);
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
 /* ── Header ── */
-header {
-  background: #f3f4f6;
-  color: #1a1a1a;
-  padding: 0 32px;
-  height: 84px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  border-bottom: 1px solid #e5e7eb;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-}
+header { display: none; }
 
 .header-left {
   display: flex;
@@ -52,47 +39,47 @@ header {
 }
 
 .header-title {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
-  color: #111827;
-  letter-spacing: 0.06em;
+  color: var(--gold);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .back-btn {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 13px;
+  gap: 6px;
+  font-size: 12px;
   font-weight: 500;
-  color: #4b5563;
+  color: #d4d4d4;
   text-decoration: none;
-  padding: 7px 14px 7px 10px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  transition: all 0.18s ease;
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: 1px solid #3a4a3f;
+  transition: all 0.15s ease;
   cursor: pointer;
-  background: #f9fafb;
+  background: #2a3a2e;
   font-family: var(--sans);
 }
-.back-btn svg { transition: transform 0.18s ease; color: #6b7280; }
-.back-btn:hover { background: #f3f4f6; border-color: #d1d5db; color: #111827; }
-.back-btn:hover svg { transform: translateX(-2px); color: #374151; }
+.back-btn svg { transition: transform 0.18s ease; color: #a0b0a5; }
+.back-btn:hover { background: #3a4a3e; border-color: var(--gold); color: #fff; }
+.back-btn:hover svg { transform: translateX(-2px); color: #fff; }
 
 .header-sep { width: 1px; height: 22px; background: #e5e7eb; margin: 0 6px; }
 
 .legend {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 14px;
 }
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 13px;
+  gap: 5px;
+  font-size: 11px;
   font-weight: 500;
-  color: #374151;
+  color: #d4d4d4;
 }
 .legend-dot {
   width: 10px; height: 10px;
@@ -103,69 +90,58 @@ header {
 
 .hero-section {
   background: var(--bg);
-  padding: 42px 32px 32px;
+  padding: 10px 20px;
   text-align: center;
+  display: flex;
+  justify-content: center;
 }
-.hero-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: -0.02em;
-  margin-bottom: 8px;
-}
-.hero-subtitle {
-  font-size: 0.95rem;
-  color: var(--muted);
-  max-width: 380px;
-  margin: 0 auto 24px;
-  line-height: 1.5;
-}
+.hero-title { display: none; }
+.hero-subtitle { display: none; }
 
 
 .stats-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 999px;
-  padding: 10px 24px;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  padding: 7px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 .stat-item {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 .stat-num {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #111827;
   line-height: 1;
 }
 .stat-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
   color: #374151;
 }
 .stat-dot {
-  width: 9px; height: 9px;
+  width: 8px; height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 .stat-divider {
   width: 1px;
-  height: 16px;
+  height: 14px;
   background: #e5e7eb;
-  margin: 0 18px;
+  margin: 0 12px;
 }
 
 /* ── estadisticas ── */
 .stats-band { display: none; }
 
 /* ── Mapa ── */
-main { flex: 1; padding: 24px 32px 32px; }
+main { flex: 1; padding: 0 16px 16px; }
 
 .map-card {
   background: var(--surface);
@@ -173,7 +149,7 @@ main { flex: 1; padding: 24px 32px 32px; }
   border: 1px solid var(--border);
   overflow: hidden;
   position: relative;
-  height: 74vh;
+  height: calc(100vh - 50px);
   box-shadow: 0 4px 24px rgba(26,74,60,0.08);
 }
 .map-card::before {
