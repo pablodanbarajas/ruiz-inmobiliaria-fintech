@@ -1,15 +1,30 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Mail, Lock, Building2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
+/**
+ * Pantalla de login del portal cliente.
+ *
+ * Lee el parámetro `redirect` de la URL para saber a dónde regresar
+ * después de iniciar sesión. Esto permite el flujo:
+ *
+ *   Mapa → clic "Solicitar apartado" sin sesión
+ *     → /login?redirect=/desarrollos/dev-1/mapa
+ *   Login exitoso → vuelve a /desarrollos/dev-1/mapa
+ *
+ * Si no hay parámetro redirect, navega al portal por defecto.
+ */
 export function LoginCliente() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, isLoading } = useAuth();
 
-  const [email, setEmail] = useState('');
+  const redirectTo = searchParams.get('redirect') || '/portal';
+
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]       = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,7 +32,7 @@ export function LoginCliente() {
 
     try {
       await login({ email, password });
-      navigate('/home');
+      navigate(redirectTo, { replace: true });
     } catch {
       setError('Correo o contraseña incorrectos. Intenta de nuevo.');
     }
@@ -108,7 +123,10 @@ export function LoginCliente() {
 
         <div className="mt-6 text-center text-sm">
           <span className="text-gray-600">¿Aún no tienes cuenta? </span>
-          <Link to="/registro" className="font-medium text-teal-600 hover:text-teal-500">
+          <Link
+            to={`/registro${redirectTo !== '/portal' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
+            className="font-medium text-teal-600 hover:text-teal-500"
+          >
             Regístrate aquí
           </Link>
         </div>

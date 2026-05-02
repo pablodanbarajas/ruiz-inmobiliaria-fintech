@@ -1,17 +1,25 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { User, Mail, Lock, Phone, Building2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 /**
  * Registro de nuevo cliente.
  *
+ * Lee el parámetro `redirect` de la URL para saber a dónde regresar
+ * después de registrarse, manteniendo la intención del usuario
+ * (ej. volver al lote que quería apartar).
+ *
  * TODO: agregar register() a IAuthService cuando se implemente Supabase.
  * Por ahora simula el registro haciendo login con credenciales mock.
  */
 export function RegistroCliente() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, isLoading } = useAuth();
+
+  const redirectTo = searchParams.get('redirect') || '/portal';
+
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     nombre: '',
@@ -27,7 +35,7 @@ export function RegistroCliente() {
     try {
       // Mock: reutiliza login hasta que se implemente register() en Supabase
       await login({ email: formData.email, password: formData.password });
-      navigate('/home');
+      navigate(redirectTo, { replace: true });
     } catch {
       setError('No se pudo completar el registro. Intenta de nuevo.');
     }
@@ -153,7 +161,10 @@ export function RegistroCliente() {
 
         <div className="mt-6 text-center text-sm">
           <span className="text-gray-600">¿Ya tienes cuenta? </span>
-          <Link to="/login" className="font-medium text-teal-600 hover:text-teal-500">
+          <Link
+            to={`/login${redirectTo !== '/portal' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
+            className="font-medium text-teal-600 hover:text-teal-500"
+          >
             Inicia sesión
           </Link>
         </div>

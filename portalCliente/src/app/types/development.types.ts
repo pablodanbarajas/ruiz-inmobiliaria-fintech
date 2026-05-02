@@ -1,7 +1,6 @@
 /**
  * Tipos canónicos de desarrollos inmobiliarios.
  * PublicDevelopment: datos visibles para cualquier visitante.
- * Development: objeto completo usado internamente.
  */
 
 export interface PublicDevelopment {
@@ -12,7 +11,10 @@ export interface PublicDevelopment {
   location: string;
   /** URL de Google Maps u otro proveedor de mapas */
   mapsUrl: string;
-  /** true si existe un mapa interactivo de lotes para este desarrollo */
+  /**
+   * true cuando este desarrollo tiene mapa interactivo de lotes activo.
+   * Solo el primer desarrollo (Pueblo de Barrancas) lo tiene por ahora.
+   */
   hasInteractiveMap?: boolean;
 }
 

@@ -138,25 +138,25 @@ export function HomeContent({
 
       {isAuthenticated && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-          <Link
-            to="/portal/mis-lotes"
-            className="bg-gradient-to-br from-teal-700 to-teal-800 text-white rounded-lg p-6 hover:shadow-lg transition-shadow block"
-          >
-            <h3 className="text-xl font-semibold mb-2">Ver mis lotes</h3>
-            <p className="text-teal-100 text-sm">
-              Consulta el estado de tus apartados y avance de compra.
-            </p>
-          </Link>
+        <Link
+          to="/mis-lotes"
+          className="bg-gradient-to-br from-teal-700 to-teal-800 text-white rounded-lg p-6 hover:shadow-lg transition-shadow block"
+        >
+          <h3 className="text-xl font-semibold mb-2">Ver mis lotes</h3>
+          <p className="text-teal-100 text-sm">
+            Consulta el estado de tus apartados y avance de compra.
+          </p>
+        </Link>
 
-          <Link
-            to="/portal/mis-pagos"
-            className="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-lg p-6 hover:shadow-lg transition-shadow block"
-          >
-            <h3 className="text-xl font-semibold mb-2">Mis pagos</h3>
-            <p className="text-amber-100 text-sm">
-              Revisa tu calendario de pagos e historial.
-            </p>
-          </Link>
+         <Link
+          to="/mis-pagos"
+          className="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-lg p-6 hover:shadow-lg transition-shadow block"
+        >
+          <h3 className="text-xl font-semibold mb-2">Mis pagos</h3>
+          <p className="text-amber-100 text-sm">
+            Revisa tu calendario de pagos e historial.
+          </p>
+        </Link>
         </div>
       )}
     </div>

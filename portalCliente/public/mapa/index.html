@@ -6,7 +6,6 @@
   <title>Pueblos de Barranca — Plano de Lotes</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="styles.css" rel="stylesheet">
-
 </head>
 <body>
 
@@ -129,27 +128,47 @@
 
       <p style="font-size:12px;color:#7a8c7e;text-align:center;margin-bottom:12px;">¿Quieres negociar el enganche o mensualidad?<br><a href="/portal/soporte" target="_top" style="color:#e08e00;font-weight:600;text-decoration:underline;">Comunícate con un asesor.</a></p>
 
-      <a id="modalCTA" href="apartado.html">Solicitar apartado</a>
+      <!--
+        CTA de apartado.
+        Ahora es un <button> — el click se maneja en JS con validación de sesión.
+        Si no hay sesión: redirige window.top a /login?redirect=<ruta del mapa>
+        Si hay sesión: navega a apartado.html con los parámetros del lote.
+      -->
+      <button id="modalCTA" class="cta-btn">Solicitar apartado</button>
+
     </div>
 
   </div>
 </div>
-
 <script>
   const SUPABASE_URL = 'https://ivbyroqxyfclzfhaixjd.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2Ynlyb3F4eWZjbHpmaGFpeGpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MjMxOTksImV4cCI6MjA4ODI5OTE5OX0.804JjH0MBZqfjvKLMkXmjlwXNkt7hUiiK1vFA2Zv0LI';
 
-  const sbFetch = p => fetch(`${SUPABASE_URL}/rest/v1/${p}`, {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-  }).then(r => r.json());
+  const sbFetch = (p) =>
+    fetch(`${SUPABASE_URL}/rest/v1/${p}`, {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`
+      }
+    }).then(async (r) => {
+      if (!r.ok) {
+        const text = await r.text();
+        throw new Error(text || `Error HTTP ${r.status}`);
+      }
+      return r.json();
+    });
 
-  const fmt = new Intl.NumberFormat('es-MX', { style:'currency', currency:'MXN', maximumFractionDigits:0 });
+  const fmt = new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    maximumFractionDigits: 0
+  });
 
-  const CONTORNOS     = ['path21','path253'];
-  const ZONA_VERDE    = /^zona-verde/;
+  const CONTORNOS = ['path21', 'path253'];
+  const ZONA_VERDE = /^zona-verde/;
   const ZONA_DONACION = /^zona-donacion/;
-  const ZONA_RESERVA  = /^areadereserva/;
-  const ZONA_N        = /^N-/;
+  const ZONA_RESERVA = /^areadereserva/;
+  const ZONA_N = /^N-/;
 
   const zoneStyle = {
     verde:    { fill:'rgba(45,107,82,0.4)',  fillHover:'rgba(45,107,82,0.65)',  stroke:'#1a4a3c', sw:'1.5', tip:'Zona verde' },
@@ -162,59 +181,81 @@
   const stateStyle = {
     D: { fill:'rgba(76,175,130,0.4)',   fillHover:'rgba(76,175,130,0.75)',  stroke:'#2a7a4b', badge:'background:#e8f5ee;color:#1a5c35', label:'Disponible' },
     V: { fill:'rgba(192,96,90,0.4)',    fillHover:'rgba(192,96,90,0.75)',   stroke:'#c0392b', badge:'background:#fdecea;color:#9b2335', label:'Vendido' },
-    R: { fill:'rgba(212,146,10,0.4)',   fillHover:'rgba(212,146,10,0.75)', stroke:'#b5620a', badge:'background:#fef3e2;color:#8a4800', label:'Reservado' },
-    B: { fill:'rgba(107,114,128,0.35)', fillHover:'rgba(107,114,128,0.6)', stroke:'#4b5563', badge:'background:#f1f5f9;color:#334155', label:'Bloqueado' },
+    R: { fill:'rgba(212,146,10,0.4)',   fillHover:'rgba(212,146,10,0.75)',  stroke:'#b5620a', badge:'background:#fef3e2;color:#8a4800', label:'Reservado' },
+    B: { fill:'rgba(107,114,128,0.35)', fillHover:'rgba(107,114,128,0.6)',  stroke:'#4b5563', badge:'background:#f1f5f9;color:#334155', label:'Bloqueado' },
   };
 
   function getCategory(id, lotesData) {
-    if (CONTORNOS.includes(id))  return 'contorno';
-    if (ZONA_VERDE.test(id))     return 'verde';
-    if (ZONA_DONACION.test(id))  return 'donacion';
-    if (ZONA_RESERVA.test(id))   return 'reserva';
-    if (ZONA_N.test(id))         return 'naranja';
-    if (lotesData[id])           return 'lote';
+    if (CONTORNOS.indexOf(id) !== -1) return 'contorno';
+    if (ZONA_VERDE.test(id))          return 'verde';
+    if (ZONA_DONACION.test(id))       return 'donacion';
+    if (ZONA_RESERVA.test(id))        return 'reserva';
+    if (ZONA_N.test(id))              return 'naranja';
+    if (lotesData[id])                return 'lote';
     return 'other';
   }
+
+  function getActiveSession() {
+    try {
+      const raw = localStorage.getItem('sb-' + SUPABASE_URL.split('//')[1].split('.')[0] + '-auth-token');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed?.access_token ? parsed : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  let _apartadoUrl = '/portal/mapa/apartado.html';
 
   async function init() {
     try {
       const [svgText, mapeos, lotes] = await Promise.all([
-        fetch('mapa.svg').then(r => r.text()),
+        fetch('/portal/mapa/mapa.svg').then(async (r) => {
+          if (!r.ok) throw new Error(`No se pudo cargar mapa.svg (${r.status})`);
+          return r.text();
+        }),
         sbFetch('lote_mapa?select=path_id,lote_id'),
         sbFetch('lote?select=loteid,nolote,manzana,coto,tipolote,superficie,preciolote,preciopormt2,estatus&desarrolloid=eq.11&limit=2000')
       ]);
 
       const lotesById = {};
-      lotes.forEach(l => { lotesById[l.loteid] = l; });
+      lotes.forEach((l) => { lotesById[l.loteid] = l; });
 
       const lotesData = {};
-      mapeos.forEach(m => { if (lotesById[m.lote_id]) lotesData[m.path_id] = lotesById[m.lote_id]; });
+      mapeos.forEach((m) => {
+        if (lotesById[m.lote_id]) lotesData[m.path_id] = lotesById[m.lote_id];
+      });
 
       document.getElementById('mapInner').innerHTML = svgText;
       document.getElementById('mapLoading').style.display = 'none';
       initMap(lotesData);
-
-    } catch(e) {
+    } catch (e) {
       document.getElementById('mapLoading').innerHTML =
-        `<div style="text-align:center;color:#c0392b;font-size:13px;padding:40px;">Error al cargar datos.<br><small style="color:#7a8c7e">${e.message}</small></div>`;
+        '<div style="text-align:center;color:#c0392b;font-size:13px;padding:40px;">Error al cargar datos.<br><small style="color:#7a8c7e">' + e.message + '</small></div>';
+      console.error('Error en init mapa:', e);
     }
   }
 
   function initMap(lotesData) {
     const tooltip = document.getElementById('tooltip');
     const overlay = document.getElementById('modalOverlay');
-    const modal   = document.getElementById('modal');
+    const modal = document.getElementById('modal');
     let hasDragged = false;
-    const counts = { D:0, V:0, R:0, B:0 };
+    const counts = { D: 0, V: 0, R: 0, B: 0 };
 
-    document.querySelectorAll('[id^="text-blanco"]').forEach(el => {
-      el.style.fill = 'white'; el.style.stroke = 'none';
-      el.querySelectorAll('tspan').forEach(t => { t.style.fill='white'; t.style.stroke='none'; });
+    document.querySelectorAll('[id^="text-blanco"]').forEach((el) => {
+      el.style.fill = 'white';
+      el.style.stroke = 'none';
+      el.querySelectorAll('tspan').forEach((t) => {
+        t.style.fill = 'white';
+        t.style.stroke = 'none';
+      });
     });
 
-    document.querySelectorAll('#svgMap path').forEach(path => {
-      const id   = path.id;
-      const cat  = getCategory(id, lotesData);
+    document.querySelectorAll('#svgMap path').forEach((path) => {
+      const id = path.id;
+      const cat = getCategory(id, lotesData);
       const lote = lotesData[id];
       path.style.transition = 'fill 0.15s, stroke-opacity 0.15s, stroke-width 0.15s';
 
@@ -224,63 +265,70 @@
 
         const clickable = lote.estatus === 'D' || lote.estatus === 'R';
 
-        path.style.fill          = st.fill;
-        path.style.stroke        = st.stroke;
-        path.style.strokeWidth   = '0.8';
+        path.style.fill = st.fill;
+        path.style.stroke = st.stroke;
+        path.style.strokeWidth = '0.8';
         path.style.strokeOpacity = '0.8';
-        path.style.cursor        = clickable ? 'pointer' : 'default';
+        path.style.cursor = clickable ? 'pointer' : 'default';
 
         path.addEventListener('mouseenter', () => {
           path.style.fill = st.fillHover;
           path.style.strokeOpacity = '1';
           path.style.strokeWidth = '2';
         });
+
         path.addEventListener('mouseleave', () => {
           path.style.fill = st.fill;
           path.style.strokeOpacity = '0.8';
           path.style.strokeWidth = '0.8';
           tooltip.style.opacity = '0';
         });
-        path.addEventListener('mousemove', e => {
+
+        path.addEventListener('mousemove', (e) => {
           if (!clickable) return;
           tooltip.style.opacity = '1';
-          tooltip.style.left = (e.clientX + 14) + 'px';
-          tooltip.style.top  = (e.clientY - 40) + 'px';
-          tooltip.textContent = `Lote ${lote.nolote}  ·  ${lote.superficie ?? '—'} m²  ·  ${lote.preciolote ? fmt.format(lote.preciolote) : ''}`;
+          tooltip.style.left = e.clientX + 14 + 'px';
+          tooltip.style.top = e.clientY - 40 + 'px';
+          tooltip.textContent = `Lote ${lote.nolote} · ${lote.superficie ?? '—'} m² · ${lote.preciolote ? fmt.format(lote.preciolote) : ''}`;
         });
+
         path.addEventListener('click', () => {
           if (hasDragged || !clickable) return;
           openModal(lote, st);
         });
-
       } else if (zoneStyle[cat]) {
         const z = zoneStyle[cat];
-        path.style.fill          = z.fill;
-        path.style.stroke        = z.stroke;
-        path.style.strokeWidth   = z.sw;
+        path.style.fill = z.fill;
+        path.style.stroke = z.stroke;
+        path.style.strokeWidth = z.sw;
         path.style.strokeOpacity = '0.7';
-        path.style.cursor        = 'default';
+        path.style.cursor = 'default';
         path.style.pointerEvents = cat === 'naranja' ? 'none' : 'auto';
+
         if (z.tip && cat !== 'naranja' && cat !== 'contorno') {
-          path.addEventListener('mouseenter', () => { path.style.fill = z.fillHover; });
-          path.addEventListener('mouseleave', () => { path.style.fill = z.fill; tooltip.style.opacity='0'; });
-          path.addEventListener('mousemove', e => {
+          path.addEventListener('mouseenter', () => {
+            path.style.fill = z.fillHover;
+          });
+          path.addEventListener('mouseleave', () => {
+            path.style.fill = z.fill;
+            tooltip.style.opacity = '0';
+          });
+          path.addEventListener('mousemove', (e) => {
             tooltip.style.opacity = '1';
-            tooltip.style.left = (e.clientX + 14) + 'px';
-            tooltip.style.top  = (e.clientY - 40) + 'px';
+            tooltip.style.left = e.clientX + 14 + 'px';
+            tooltip.style.top = e.clientY - 40 + 'px';
             tooltip.textContent = z.tip;
           });
         }
       } else {
-        path.style.fill          = 'transparent';
-        path.style.stroke        = '#c0bab0';
-        path.style.strokeWidth   = '0.5';
+        path.style.fill = 'transparent';
+        path.style.stroke = '#c0bab0';
+        path.style.strokeWidth = '0.5';
         path.style.strokeOpacity = '0.4';
         path.style.pointerEvents = 'none';
       }
     });
 
-    // estadisticas generales
     document.getElementById('statsBar').innerHTML = `
       <div class="stat-item">
         <span class="stat-label">Total lotes:</span>
@@ -306,48 +354,78 @@
       modal.style.transform = 'scale(0.96) translateY(10px)';
       modal.style.opacity = '0';
     };
-    document.getElementById('modalClose').addEventListener('click', closeModal);
-    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-    // Plazo fijo: sin listener de botones
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+    document.getElementById('modalCTA').addEventListener('click', function (e) {
+      e.preventDefault();
+
+      if (this.dataset.ctaMode === 'soporte') {
+        window.top.location.href = '/portal/soporte';
+        return;
+      }
+
+      const session = getActiveSession();
+
+      if (!session) {
+        const topPath =
+          window.top.location.pathname.replace(/^\/portal/, '') +
+          window.top.location.search;
+
+        window.top.location.href =
+          '/portal/login?redirect=' + encodeURIComponent(topPath);
+        return;
+      }
+
+      window.location.href = _apartadoUrl;
+    }, true);
 
     initPanZoom();
   }
 
   function openModal(lote, st) {
     const overlay = document.getElementById('modalOverlay');
-    const modal   = document.getElementById('modal');
+    const modal = document.getElementById('modal');
+    const cta = document.getElementById('modalCTA');
 
     const badge = document.getElementById('modalBadge');
     badge.textContent = st.label;
-    badge.style.cssText = `display:inline-flex;align-items:center;padding:4px 11px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;margin-bottom:7px;${st.badge}`;
+    badge.style.cssText =
+      'display:inline-flex;align-items:center;padding:4px 11px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;margin-bottom:7px;' + st.badge;
 
-    document.getElementById('modalTitle').textContent     = `Lote ${lote.nolote}`;
-    document.getElementById('modalSubtitle').textContent  = `Manzana ${lote.manzana} · Coto ${lote.coto}`;
-    document.getElementById('modalSuperficie').textContent = lote.superficie ? `${lote.superficie} m²` : '—';
-    document.getElementById('modalManzana').textContent   = lote.manzana || '—';
-    document.getElementById('modalTipo').textContent      = lote.tipolote || '—';
-    document.getElementById('modalNolote').textContent    = lote.nolote || '—';
+    document.getElementById('modalTitle').textContent = 'Lote ' + lote.nolote;
+    document.getElementById('modalSubtitle').textContent = 'Manzana ' + lote.manzana + ' · Coto ' + lote.coto;
+    document.getElementById('modalSuperficie').textContent = lote.superficie ? (lote.superficie + ' m²') : '—';
+    document.getElementById('modalManzana').textContent = lote.manzana || '—';
+    document.getElementById('modalTipo').textContent = lote.tipolote || '—';
+    document.getElementById('modalNolote').textContent = lote.nolote || '—';
 
     const precio = lote.preciolote || 0;
     document.getElementById('modalPrecio').textContent = precio ? fmt.format(precio) : '—';
-    document.getElementById('modalPsm').textContent    = lote.preciopormt2 ? `${fmt.format(lote.preciopormt2)} / m²` : '';
-    overlay._precioNum = precio;
+    document.getElementById('modalPsm').textContent = lote.preciopormt2 ? (fmt.format(lote.preciopormt2) + ' / m²') : '';
 
     const restante = precio - 15000;
     document.getElementById('mensualidadVal').textContent = fmt.format(restante > 0 ? Math.ceil(restante / 100) : 0) + ' / mes';
 
-    const cta = document.getElementById('modalCTA');
-    const p   = new URLSearchParams({ lote: lote.nolote, manzana: lote.manzana, precio: fmt.format(precio) });
+    const p = new URLSearchParams({
+      lote: lote.nolote,
+      manzana: lote.manzana,
+      precio: fmt.format(precio)
+    });
+
     if (lote.estatus === 'R') {
-      cta.className = 'reservado';
+      cta.className = 'cta-btn reservado';
       cta.textContent = 'Consultar disponibilidad';
+      cta.dataset.ctaMode = 'soporte';
     } else {
-      cta.className = '';
+      cta.className = 'cta-btn';
       cta.textContent = 'Solicitar apartado';
+      cta.dataset.ctaMode = 'apartado';
     }
-    cta.href = 'apartado.html?' + p.toString();
+
+    _apartadoUrl = '/portal/mapa/apartado.html?' + p.toString();
 
     overlay.style.opacity = '1';
     overlay.style.pointerEvents = 'auto';
@@ -357,77 +435,150 @@
 
   function initPanZoom() {
     const viewport = document.getElementById('mapViewport');
-    const inner    = document.getElementById('mapInner');
-    const badge    = document.getElementById('zoomBadge');
-    const hint     = document.getElementById('panHint');
-    let scale=1, tx=0, ty=0;
-    const MIN=0.4, MAX=6, STEP=0.3;
+    const inner = document.getElementById('mapInner');
+    const badge = document.getElementById('zoomBadge');
+    const hint = document.getElementById('panHint');
+    let scale = 1, tx = 0, ty = 0;
+    const MIN = 0.4, MAX = 6, STEP = 0.3;
 
     function center() {
-      tx=(viewport.clientWidth-500*scale)/2;
-      ty=(viewport.clientHeight-500*(1344/768)*scale)/2;
+      tx = (viewport.clientWidth - 500 * scale) / 2;
+      ty = (viewport.clientHeight - 500 * (1344 / 768) * scale) / 2;
     }
+
     function clamp() {
-      const vw=viewport.clientWidth, vh=viewport.clientHeight, m=60;
-      tx=Math.min(vw-m, Math.max(m-500*scale, tx));
-      ty=Math.min(vh-m, Math.max(m-500*(1344/768)*scale, ty));
+      const vw = viewport.clientWidth, vh = viewport.clientHeight, m = 60;
+      tx = Math.min(vw - m, Math.max(m - 500 * scale, tx));
+      ty = Math.min(vh - m, Math.max(m - 500 * (1344 / 768) * scale, ty));
     }
+
     function apply(anim) {
       inner.style.transition = anim ? 'transform 0.22s cubic-bezier(0.4,0,0.2,1)' : 'none';
-      inner.style.transform  = `translate(${tx}px,${ty}px) scale(${scale})`;
-      badge.textContent      = Math.round(scale*100) + '%';
+      inner.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+      badge.textContent = Math.round(scale * 100) + '%';
     }
-    center(); apply(false);
 
-    document.getElementById('zoomIn').addEventListener('click',    () => { scale=Math.min(MAX,+(scale+STEP).toFixed(2)); clamp(); apply(true); });
-    document.getElementById('zoomOut').addEventListener('click',   () => { scale=Math.max(MIN,+(scale-STEP).toFixed(2)); clamp(); apply(true); });
-    document.getElementById('zoomReset').addEventListener('click', () => { scale=1; center(); apply(true); });
+    center();
+    apply(false);
 
-    viewport.addEventListener('wheel', e => {
+    document.getElementById('zoomIn').addEventListener('click', () => {
+      scale = Math.min(MAX, +(scale + STEP).toFixed(2));
+      clamp();
+      apply(true);
+    });
+
+    document.getElementById('zoomOut').addEventListener('click', () => {
+      scale = Math.max(MIN, +(scale - STEP).toFixed(2));
+      clamp();
+      apply(true);
+    });
+
+    document.getElementById('zoomReset').addEventListener('click', () => {
+      scale = 1;
+      center();
+      apply(true);
+    });
+
+    viewport.addEventListener('wheel', (e) => {
       e.preventDefault();
-      const rect=viewport.getBoundingClientRect();
-      const mx=e.clientX-rect.left, my=e.clientY-rect.top;
-      const d=e.deltaY<0?0.12:-0.12;
-      const ns=Math.min(MAX,Math.max(MIN,+(scale+d).toFixed(2)));
-      const r=ns/scale;
-      tx=mx-r*(mx-tx); ty=my-r*(my-ty);
-      scale=ns; clamp(); apply(false);
-    },{passive:false});
+      const rect = viewport.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const d = e.deltaY < 0 ? 0.12 : -0.12;
+      const ns = Math.min(MAX, Math.max(MIN, +(scale + d).toFixed(2)));
+      const r = ns / scale;
+      tx = mx - r * (mx - tx);
+      ty = my - r * (my - ty);
+      scale = ns;
+      clamp();
+      apply(false);
+    }, { passive: false });
 
-    let dragging=false, hasDragged=false, ox, oy, stx, sty;
-    viewport.addEventListener('mousedown', e => {
+    let dragging = false, hasDragged = false, ox, oy, stx, sty;
+
+    viewport.addEventListener('mousedown', (e) => {
       if (e.target.closest('button')) return;
-      dragging=true; hasDragged=false;
-      ox=e.clientX; oy=e.clientY; stx=tx; sty=ty;
-      inner.style.transition='none';
+      dragging = true;
+      hasDragged = false;
+      ox = e.clientX;
+      oy = e.clientY;
+      stx = tx;
+      sty = ty;
+      inner.style.transition = 'none';
     });
-    window.addEventListener('mousemove', e => {
-      if (!dragging) return;
-      const dx=e.clientX-ox, dy=e.clientY-oy;
-      if (Math.abs(dx)>3||Math.abs(dy)>3) hasDragged=true;
-      tx=stx+dx; ty=sty+dy; clamp();
-      inner.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;
-    });
-    window.addEventListener('mouseup', () => { dragging=false; });
-    viewport.addEventListener('click', e => { if(hasDragged){e.stopPropagation();hasDragged=false;} }, true);
 
-    let lt=null;
-    viewport.addEventListener('touchstart', e=>{ if(e.touches.length===1) lt=e.touches[0]; },{passive:true});
-    viewport.addEventListener('touchmove', e=>{
-      if(e.touches.length===1&&lt){
-        e.preventDefault();
-        tx+=e.touches[0].clientX-lt.clientX; ty+=e.touches[0].clientY-lt.clientY;
-        lt=e.touches[0]; clamp();
-        inner.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - ox;
+      const dy = e.clientY - oy;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) hasDragged = true;
+      tx = stx + dx;
+      ty = sty + dy;
+      clamp();
+      inner.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+    });
+
+    window.addEventListener('mouseup', () => {
+      dragging = false;
+    });
+
+    viewport.addEventListener('click', (e) => {
+      if (hasDragged) {
+        e.stopPropagation();
+        hasDragged = false;
       }
-    },{passive:false});
+    }, true);
+
+    let lt = null;
+    viewport.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) lt = e.touches[0];
+    }, { passive: true });
+
+    viewport.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1 && lt) {
+        e.preventDefault();
+        tx += e.touches[0].clientX - lt.clientX;
+        ty += e.touches[0].clientY - lt.clientY;
+        lt = e.touches[0];
+        clamp();
+        inner.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+      }
+    }, { passive: false });
 
     viewport.addEventListener('mousedown', () => {
-      hint.style.opacity='0'; setTimeout(()=>hint.style.display='none',450);
-    },{once:true});
+      hint.style.opacity = '0';
+      setTimeout(() => hint.style.display = 'none', 450);
+    }, { once: true });
   }
 
   init();
 </script>
+
+<!-- Estilos para el botón CTA (estilo inline para no depender de styles.css externo) -->
+<style>
+  .cta-btn {
+    display: block;
+    width: 100%;
+    padding: 13px 20px;
+    background: #2a7a4b;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.18s, transform 0.12s;
+    letter-spacing: 0.01em;
+  }
+  .cta-btn:hover  { background: #1f5c38; transform: translateY(-1px); }
+  .cta-btn:active { transform: translateY(0); }
+  .cta-btn.reservado {
+    background: #b5620a;
+  }
+  .cta-btn.reservado:hover { background: #8a4800; }
+</style>
+
 </body>
 </html>

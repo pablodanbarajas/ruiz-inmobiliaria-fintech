@@ -14,61 +14,34 @@ import { PortalSoporte } from './pages/client/PortalSoporte';
 import { MisLotes } from './pages/client/MisLotes';
 import { MisPagos } from './pages/client/MisPagos';
 
-export const router = createBrowserRouter([
-  // Rutas públicas
-  {
-    path: '/',
-    Component: PublicLayout,
-    children: [
-      {
-        index: true,
-        Component: Home
-      },
-      {
-        path: 'soporte',
-        Component: Soporte
-      },
-      {
-        path: 'login',
-        Component: LoginCliente
-      },
-      {
-        path: 'registro',
-        Component: RegistroCliente
-      },
-      {
-        path: 'desarrollos/:id/mapa',
-        Component: MapaDesarrollo
-      }
-    ]
-  },
-
-  // Rutas privadas de cliente
-  {
-    path: '/home',
-    Component: ClientRoute,
-    children: [
-      {
-        Component: ClientLayout,
-        children: [
-          {
-            index: true,
-            Component: PortalHome       
-          },
-          {
-            path: 'mis-lotes',
-            Component: MisLotes
-          },
-          {
-            path: 'mis-pagos',
-            Component: MisPagos
-          },
-          {
-            path: 'soporte',
-            Component: PortalSoporte
-          }
-        ]
-      }
-    ]
-  }
-], { basename: '/portal' });
+export const router = createBrowserRouter(
+  [
+    {
+      path: '/',
+      Component: PublicLayout,
+      children: [
+        { index: true, Component: Home },
+        { path: 'soporte', Component: Soporte },
+        { path: 'login', Component: LoginCliente },
+        { path: 'registro', Component: RegistroCliente },
+        { path: 'desarrollos/:id/mapa', Component: MapaDesarrollo }
+      ]
+    },
+    {
+      path: '/',
+      Component: ClientRoute,
+      children: [
+        {
+          Component: ClientLayout,
+          children: [
+            { path: 'home', Component: PortalHome },
+            { path: 'mis-lotes', Component: MisLotes },
+            { path: 'mis-pagos', Component: MisPagos },
+            { path: 'portal-soporte', Component: PortalSoporte }
+          ]
+        }
+      ]
+    }
+  ],
+  { basename: '/portal' }
+);

@@ -1,19 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Map as MapIcon } from 'lucide-react';
 import { developmentsService } from '../../services';
 import type { PublicDevelopment } from '../../types/development.types';
 
 /**
  * Página del mapa interactivo de lotes por desarrollo.
  *
- * Estado actual: placeholder visual con la estructura correcta.
+ * El mapa vive en public/mapa/index.html y se carga en un iframe.
+ * Como comparten el mismo origen, el iframe puede leer localStorage
+ * para validar la sesión de Supabase antes de avanzar al apartado.
  *
- * Integración futura:
- *   - Consumir mapService.getMapLots(developmentId) para obtener MapLot[]
- *   - Renderizar el visor tipo boletería con estado de cada lote
- *   - Lotes disponibles permiten iniciar flujo de apartado (requiere auth)
- *   - Solo exponer MapLot (sin datos financieros ni de cliente)
+ * Ruta: /desarrollos/:id/mapa
+ *
+ * Flujo de acceso al apartado:
+ *   1. Visitante sin sesión → clic en "Solicitar apartado"
+ *      → el iframe redirige window.top a /login?redirect=/desarrollos/:id/mapa
+ *   2. Después del login → regresa a esta página
+ *   3. Ahora con sesión → clic en "Solicitar apartado" → avanza a apartado.html
  */
 export function MapaDesarrollo() {
   const { id } = useParams<{ id: string }>();
@@ -76,20 +80,26 @@ export function MapaDesarrollo() {
 
       <div className="flex-1 overflow-hidden">
         {development.hasInteractiveMap ? (
+          /*
+           * RUTA CORRECTA: public/mapa/index.html → servido en /mapa/index.html
+           * (Vite sirve public/ desde la raíz, sin prefijo de ruta)
+           */
           <iframe
             src="/portal/mapa/index.html"
             className="w-full h-full border-0 block"
             title={`Mapa interactivo — ${development.name}`}
           />
         ) : (
-          <div className="flex items-center justify-center h-full min-h-[calc(100vh-120px)] bg-gray-50">
+          <div className="flex items-center justify-center h-full bg-gray-50">
             <div className="text-center max-w-md px-8">
-              <div className="w-16 h-16 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                <ArrowLeft className="w-8 h-8 rotate-180" />
+              <div className="w-16 h-16 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MapIcon className="w-8 h-8" />
               </div>
-              <h2 className="text-xl font-bold text-gray-700 mb-2">Mapa no disponible</h2>
+              <h2 className="text-xl font-bold text-gray-700 mb-2">
+                Mapa no disponible aún
+              </h2>
               <p className="text-gray-500 text-sm">
-                El mapa interactivo de este desarrollo aún no está disponible.
+                El mapa interactivo de este desarrollo estará disponible próximamente.
                 Contacta a un asesor para más información.
               </p>
             </div>
