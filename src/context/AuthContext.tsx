@@ -49,18 +49,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     let mounted = true
 
     // getSession reads localStorage — no network, resolves in <1ms
-    // We resolve loading immediately so ProtectedRoute never blocks
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // We must wait for role before releasing loading to prevent unauthorized access
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!mounted) return
       if (session?.user) {
         setUser(buildUser(session.user))
-        // Fetch role in background — role arriving slightly later is fine
-        fetchRole(session.user.id).then((r) => {
-          if (mounted) setRole(r)
-        })
+        const r = await fetchRole(session.user.id)
+        if (mounted) setRole(r)
       }
-      // Unblock ProtectedRoute immediately — no network wait
-      setLoading(false)
+      if (mounted) setLoading(false)
     }).catch(() => {
       if (mounted) setLoading(false)
     })

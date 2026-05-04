@@ -28,7 +28,12 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" replace />
   }
 
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
+  // Accounts without a role in user_roles (e.g. client accounts) are not allowed in admin
+  if (!role) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (allowedRoles && !allowedRoles.includes(role)) {
     return <Navigate to="/admin/dashboard" replace />
   }
 
