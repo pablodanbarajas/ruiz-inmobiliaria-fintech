@@ -17,18 +17,20 @@ type SupabaseDevelopmentRow = {
 export const supabaseDevelopmentsService: IDevelopmentsService = {
   async getPublicDevelopments(): Promise<PublicDevelopment[]> {
     const ALLOWED_IDS = [11, 20]; // Pueblos de la Barranca, Desarrollo de Prueba
+    const ORDER = [11, 20];
 
     const { data, error } = await supabase
       .from('public_developments')
       .select('*')
-      .in('id', ALLOWED_IDS)
-      .order('name', { ascending: true });
+      .in('id', ALLOWED_IDS);
 
     if (error) {
       throw new Error(`Error al obtener desarrollos: ${error.message}`);
     }
 
-    return ((data ?? []) as SupabaseDevelopmentRow[]).map((row) => ({
+    return ((data ?? []) as SupabaseDevelopmentRow[])
+      .sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id))
+      .map((row) => ({
       id: String(row.id),
       name: row.name,
       location: row.location || 'Ubicación pendiente',
