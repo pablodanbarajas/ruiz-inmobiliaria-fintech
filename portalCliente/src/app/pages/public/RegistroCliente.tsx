@@ -18,7 +18,7 @@ export function RegistroCliente() {
   const [searchParams] = useSearchParams();
   const { login, isLoading } = useAuth();
 
-  const redirectTo = searchParams.get('redirect') || '/portal';
+  const redirectTo = searchParams.get('redirect') || '/home';
 
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -162,7 +162,7 @@ export function RegistroCliente() {
         <div className="mt-6 text-center text-sm">
           <span className="text-gray-600">¿Ya tienes cuenta? </span>
           <Link
-            to={`/login${redirectTo !== '/portal' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
+            to={`/login${redirectTo !== '/home' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
             className="font-medium text-teal-600 hover:text-teal-500"
           >
             Inicia sesión

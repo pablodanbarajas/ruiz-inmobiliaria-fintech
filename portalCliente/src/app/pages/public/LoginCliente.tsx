@@ -20,7 +20,7 @@ export function LoginCliente() {
   const [searchParams] = useSearchParams();
   const { login, isLoading } = useAuth();
 
-  const redirectTo = searchParams.get('redirect') || '/portal';
+  const redirectTo = searchParams.get('redirect') || '/home';
 
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -124,7 +124,7 @@ export function LoginCliente() {
         <div className="mt-6 text-center text-sm">
           <span className="text-gray-600">¿Aún no tienes cuenta? </span>
           <Link
-            to={`/registro${redirectTo !== '/portal' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
+            to={`/registro${redirectTo !== '/home' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
             className="font-medium text-teal-600 hover:text-teal-500"
           >
             Regístrate aquí
