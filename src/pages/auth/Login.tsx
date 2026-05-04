@@ -15,24 +15,10 @@ export const Login = () => {
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
 
-  // Navigate once AuthContext confirms the user is authenticated AND has an admin role.
-  // authLoading stays true while role is being fetched, so isAuthenticated+role arrive together.
+  // Only handles the case where user is already authenticated when visiting /login (e.g. page refresh)
   useEffect(() => {
-    if (authLoading) return
-    if (isAuthenticated && (role === 'admin' || role === 'vendedor')) {
+    if (!authLoading && isAuthenticated && (role === 'admin' || role === 'vendedor')) {
       navigate('/admin/dashboard', { replace: true })
-    } else if (isAuthenticated && role === 'cliente') {
-      // Client account — no admin access
-      supabase.auth.signOut().then(() => {
-        setError('No tienes permisos para acceder al panel de administración.')
-        setLoading(false)
-      })
-    } else if (isAuthenticated && role === null) {
-      // Authenticated but no role at all
-      supabase.auth.signOut().then(() => {
-        setError('No tienes permisos para acceder al panel de administración.')
-        setLoading(false)
-      })
     }
   }, [authLoading, isAuthenticated, role, navigate])
 
@@ -42,17 +28,36 @@ export const Login = () => {
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
-      if (error) {
-        setError(error.message)
+      if (signInError) {
+        setError(signInError.message)
+        setLoading(false)
+        return
+      }
+
+      // Check role directly after sign in — no race condition
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setError('Error al obtener sesión. Intenta de nuevo.')
+        setLoading(false)
+        return
+      }
+
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      const userRole = roleData?.role as string | null
+      if (userRole === 'admin' || userRole === 'vendedor') {
+        navigate('/admin/dashboard', { replace: true })
+      } else {
+        await supabase.auth.signOut()
+        setError('No tienes permisos para acceder al panel de administración.')
         setLoading(false)
       }
-      // On success: keep loading=true; the useEffect above will navigate
-      // when onAuthStateChange fires and isAuthenticated becomes true
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
       setLoading(false)

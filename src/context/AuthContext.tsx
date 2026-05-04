@@ -71,14 +71,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           return
         }
         if (session?.user) {
-          // Block UI while fetching role to avoid race condition in Login
-          setLoading(true)
-          const supabaseUser = session.user
-          fetchRole(supabaseUser.id).then((r) => {
-            if (!mounted) return
-            setUser(buildUser(supabaseUser))
-            setRole(r)
-            setLoading(false)
+          setUser(buildUser(session.user))
+          fetchRole(session.user.id).then((r) => {
+            if (mounted) setRole(r)
           })
         }
       }
