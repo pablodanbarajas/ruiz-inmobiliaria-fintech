@@ -13,6 +13,8 @@ export interface PublicDevelopment {
   mapsUrl: string;
   /** Monto mínimo de apartado en MXN */
   minApartado?: number;
+  /** Monto de enganche en MXN */
+  enganche?: number;
   /**
    * true cuando este desarrollo tiene mapa interactivo de lotes activo.
    * Solo el primer desarrollo (Pueblo de Barrancas) lo tiene por ahora.

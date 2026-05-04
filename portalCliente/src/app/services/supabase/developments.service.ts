@@ -33,6 +33,7 @@ export const supabaseDevelopmentsService: IDevelopmentsService = {
       imageUrl: row.image_url || '',
       mapsUrl: (row.google_maps_url && row.google_maps_url !== '#') ? row.google_maps_url : '',
       minApartado: row.min_apartado ?? undefined,
+      enganche: row.enganche ?? undefined,
       hasInteractiveMap: row.id === 11
     }));
   }

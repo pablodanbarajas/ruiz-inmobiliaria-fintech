@@ -1,4 +1,4 @@
-import { MapPin, Map } from 'lucide-react';
+import { MapPin, Map, Banknote, Wallet, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import type { PublicDevelopment } from '../../types/development.types';
 
@@ -6,11 +6,19 @@ interface DevelopmentCardProps {
   development: PublicDevelopment;
 }
 
+const fmt = (n: number) =>
+  n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
+
 export function DevelopmentCard({ development }: DevelopmentCardProps) {
+  const mensualidad = development.enganche && development.minApartado
+    ? Math.ceil((development.enganche) / 100)
+    : null;
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
       <div className="flex flex-col md:flex-row">
-        <div className="w-full md:w-72 h-48 flex-shrink-0 bg-gray-100">
+        {/* Imagen */}
+        <div className="relative w-full md:w-72 h-52 flex-shrink-0 bg-gray-100">
           {development.imageUrl ? (
             <img
               src={development.imageUrl}
@@ -18,28 +26,70 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
-              Sin imagen
+            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-2">
+              <Map className="w-10 h-10 opacity-30" />
+              <span className="text-xs">Sin imagen</span>
             </div>
+          )}
+          {development.hasInteractiveMap && (
+            <span className="absolute top-3 left-3 bg-teal-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
+              <Star className="w-3 h-3" />
+              Mapa interactivo
+            </span>
           )}
         </div>
 
-        <div className="flex-1 p-6 flex flex-col justify-between">
+        {/* Contenido */}
+        <div className="flex-1 p-5 flex flex-col justify-between gap-4">
+          {/* Header */}
           <div>
-            <div className="flex items-start justify-between mb-3">
-              <h3 className="text-xl font-bold text-gray-800">{development.name}</h3>
-              <span className="bg-teal-50 text-teal-700 text-sm font-medium px-3 py-1 rounded-full border border-teal-200 whitespace-nowrap ml-4">
-                {development.availableLots} lotes disponibles
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <h3 className="text-xl font-bold text-gray-800 leading-tight">{development.name}</h3>
+              <span className="bg-teal-50 text-teal-700 text-xs font-semibold px-3 py-1 rounded-full border border-teal-200 whitespace-nowrap flex-shrink-0">
+                {development.availableLots} disponibles
               </span>
             </div>
-
-            <div className="flex items-center gap-2 text-gray-600 mb-4">
-              <MapPin className="w-4 h-4 text-teal-600" />
+            <div className="flex items-center gap-1.5 text-gray-500">
+              <MapPin className="w-3.5 h-3.5 text-teal-500" />
               <span className="text-sm">{development.location}</span>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          {/* Datos promocionales */}
+          {(development.minApartado || development.enganche) && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {development.minApartado && (
+                <div className="bg-teal-50 border border-teal-100 rounded-lg p-3">
+                  <p className="text-xs text-teal-600 font-medium mb-0.5">Aparta desde</p>
+                  <p className="text-lg font-bold text-teal-700">{fmt(development.minApartado)}</p>
+                  <p className="text-xs text-teal-500">MXN</p>
+                </div>
+              )}
+              {development.enganche && (
+                <div className="bg-amber-50 border border-amber-100 rounded-lg p-3">
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <Banknote className="w-3 h-3 text-amber-500" />
+                    <p className="text-xs text-amber-600 font-medium">Enganche</p>
+                  </div>
+                  <p className="text-lg font-bold text-amber-700">{fmt(development.enganche)}</p>
+                  <p className="text-xs text-amber-500">MXN</p>
+                </div>
+              )}
+              {mensualidad && (
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <Wallet className="w-3 h-3 text-blue-500" />
+                    <p className="text-xs text-blue-600 font-medium">Mensualidad</p>
+                  </div>
+                  <p className="text-lg font-bold text-blue-700">{fmt(mensualidad)}</p>
+                  <p className="text-xs text-blue-500">aprox. / mes</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Acciones */}
+          <div className="flex flex-col sm:flex-row gap-2">
             {development.mapsUrl ? (
               <a
                 href={development.mapsUrl}
@@ -56,13 +106,12 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
                 Ubicación no disponible
               </span>
             )}
-
             <Link
               to={`/desarrollos/${development.id}/mapa`}
               className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors text-sm font-medium"
             >
               <Map className="w-4 h-4" />
-              Ver lotes
+              Ver lotes disponibles
             </Link>
           </div>
         </div>
