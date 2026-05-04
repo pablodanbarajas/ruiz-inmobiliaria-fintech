@@ -16,9 +16,17 @@ export const Login = () => {
   const [showPassword, setShowPassword] = useState(false)
 
   // Navigate once AuthContext confirms the user is authenticated AND has an admin role
+  // If authenticated but role is null, the account has no admin access — show error and sign out
   useEffect(() => {
-    if (!authLoading && isAuthenticated && role) {
+    if (authLoading) return
+    if (isAuthenticated && role) {
       navigate('/admin/dashboard', { replace: true })
+    } else if (isAuthenticated && !role) {
+      // Valid credentials but no admin role (e.g. client account)
+      supabase.auth.signOut().then(() => {
+        setError('No tienes permisos para acceder al panel de administración.')
+        setLoading(false)
+      })
     }
   }, [authLoading, isAuthenticated, role, navigate])
 
