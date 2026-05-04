@@ -1,4 +1,4 @@
-import { MapPin, Map, Banknote, Wallet, Star } from 'lucide-react';
+import { MapPin, Map, Banknote, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import type { PublicDevelopment } from '../../types/development.types';
 
@@ -10,23 +10,19 @@ const fmt = (n: number) =>
   n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
 
 export function DevelopmentCard({ development }: DevelopmentCardProps) {
-  const mensualidad = development.enganche && development.minApartado
-    ? Math.ceil((development.enganche) / 100)
-    : null;
-
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
       <div className="flex flex-col md:flex-row">
-        {/* Imagen */}
-        <div className="relative w-full md:w-72 h-52 flex-shrink-0 bg-gray-100">
+        {/* Imagen — altura dinámica para cubrir todo el contenido */}
+        <div className="relative w-full md:w-72 flex-shrink-0 bg-gray-100 min-h-[200px] self-stretch">
           {development.imageUrl ? (
             <img
               src={development.imageUrl}
               alt={development.name}
-              className="w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-2">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 gap-2">
               <Map className="w-10 h-10 opacity-30" />
               <span className="text-xs">Sin imagen</span>
             </div>
@@ -57,7 +53,7 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
 
           {/* Datos promocionales */}
           {(development.minApartado || development.enganche) && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {development.minApartado && (
                 <div className="bg-teal-50 border border-teal-100 rounded-lg p-3">
                   <p className="text-xs text-teal-600 font-medium mb-0.5">Aparta desde</p>
@@ -73,16 +69,6 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
                   </div>
                   <p className="text-lg font-bold text-amber-700">{fmt(development.enganche)}</p>
                   <p className="text-xs text-amber-500">MXN</p>
-                </div>
-              )}
-              {mensualidad && (
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
-                  <div className="flex items-center gap-1 mb-0.5">
-                    <Wallet className="w-3 h-3 text-blue-500" />
-                    <p className="text-xs text-blue-600 font-medium">Mensualidad</p>
-                  </div>
-                  <p className="text-lg font-bold text-blue-700">{fmt(mensualidad)}</p>
-                  <p className="text-xs text-blue-500">aprox. / mes</p>
                 </div>
               )}
             </div>
