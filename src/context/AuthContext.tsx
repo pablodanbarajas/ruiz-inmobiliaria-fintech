@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 
-export type UserRole = 'admin' | 'vendedor'
+export type UserRole = 'admin' | 'vendedor' | 'cliente'
 
 interface AuthUser {
   id: string
@@ -71,9 +71,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           return
         }
         if (session?.user) {
-          setUser(buildUser(session.user))
-          fetchRole(session.user.id).then((r) => {
-            if (mounted) setRole(r)
+          // Block UI while fetching role to avoid race condition in Login
+          setLoading(true)
+          const supabaseUser = session.user
+          fetchRole(supabaseUser.id).then((r) => {
+            if (!mounted) return
+            setUser(buildUser(supabaseUser))
+            setRole(r)
+            setLoading(false)
           })
         }
       }
