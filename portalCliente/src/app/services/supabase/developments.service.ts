@@ -32,6 +32,7 @@ export const supabaseDevelopmentsService: IDevelopmentsService = {
       availableLots: row.available_lots ?? 0,
       imageUrl: row.image_url || '',
       mapsUrl: (row.google_maps_url && row.google_maps_url !== '#') ? row.google_maps_url : '',
+      minApartado: row.min_apartado ?? undefined,
       hasInteractiveMap: row.id === 11
     }));
   }

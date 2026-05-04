@@ -15,6 +15,7 @@ export function HomeContent({
   userName = null
 }: HomeContentProps) {
   const [developments, setDevelopments] = useState<PublicDevelopment[]>([]);
+  const [allDevelopments, setAllDevelopments] = useState<PublicDevelopment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchParams, setSearchParams] = useState({
     location: '',
@@ -25,13 +26,34 @@ export function HomeContent({
   useEffect(() => {
     developmentsService
       .getPublicDevelopments()
-      .then(setDevelopments)
+      .then((data) => {
+        setAllDevelopments(data);
+        setDevelopments(data);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: conectar búsqueda a Supabase con filtros por ubicación y precio
+    const loc = searchParams.location.toLowerCase().trim();
+    const min = searchParams.minPrice ? Number(searchParams.minPrice) : null;
+    const max = searchParams.maxPrice ? Number(searchParams.maxPrice) : null;
+
+    const filtered = allDevelopments.filter((d) => {
+      const matchesLocation = !loc ||
+        d.name.toLowerCase().includes(loc) ||
+        d.location.toLowerCase().includes(loc);
+      const price = d.minApartado ?? 0;
+      const matchesMin = min === null || price >= min;
+      const matchesMax = max === null || price <= max;
+      return matchesLocation && matchesMin && matchesMax;
+    });
+    setDevelopments(filtered);
+  };
+
+  const handleReset = () => {
+    setSearchParams({ location: '', minPrice: '', maxPrice: '' });
+    setDevelopments(allDevelopments);
   };
 
   const displayName = userName ?? 'Cliente';
@@ -108,6 +130,15 @@ export function HomeContent({
             <Search className="w-5 h-5" />
             Buscar
           </button>
+          {(searchParams.location || searchParams.minPrice || searchParams.maxPrice) && (
+            <button
+              type="button"
+              onClick={handleReset}
+              className="w-full md:w-auto border border-gray-300 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors h-[42px] text-sm"
+            >
+              Limpiar
+            </button>
+          )}
         </form>
       </div>
 
