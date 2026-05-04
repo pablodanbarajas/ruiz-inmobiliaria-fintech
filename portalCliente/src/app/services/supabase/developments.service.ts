@@ -25,15 +25,13 @@ export const supabaseDevelopmentsService: IDevelopmentsService = {
       throw new Error(`Error al obtener desarrollos: ${error.message}`);
     }
 
-    console.log('SUPABASE DEVELOPMENTS:', data);
-
     return ((data ?? []) as SupabaseDevelopmentRow[]).map((row) => ({
       id: String(row.id),
       name: row.name,
       location: row.location || 'Ubicación pendiente',
       availableLots: row.available_lots ?? 0,
-      image: row.image_url || '',
-      googleMapsUrl: row.google_maps_url || '#',
+      imageUrl: row.image_url || '',
+      mapsUrl: row.google_maps_url || '',
       hasInteractiveMap: row.id === 11
     }));
   }
