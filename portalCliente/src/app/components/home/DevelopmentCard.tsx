@@ -40,15 +40,22 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
-            <a
-              href={development.mapsUrl || '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
-            >
-              <MapPin className="w-4 h-4" />
-              Ver ubicación
-            </a>
+            {development.mapsUrl ? (
+              <a
+                href={development.mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                <MapPin className="w-4 h-4" />
+                Ver ubicación
+              </a>
+            ) : (
+              <span className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed">
+                <MapPin className="w-4 h-4" />
+                Ubicación no disponible
+              </span>
+            )}
 
             <Link
               to={`/desarrollos/${development.id}/mapa`}
