@@ -31,7 +31,7 @@ export const supabaseDevelopmentsService: IDevelopmentsService = {
       location: row.location || 'Ubicación pendiente',
       availableLots: row.available_lots ?? 0,
       imageUrl: row.image_url || '',
-      mapsUrl: (row.google_maps_url && row.google_maps_url !== '#') ? row.google_maps_url : '',,
+      mapsUrl: (row.google_maps_url && row.google_maps_url !== '#') ? row.google_maps_url : '',
       hasInteractiveMap: row.id === 11
     }));
   }
