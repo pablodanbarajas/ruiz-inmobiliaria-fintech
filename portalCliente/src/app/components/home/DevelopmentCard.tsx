@@ -11,9 +11,9 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
       <div className="flex flex-col md:flex-row">
         <div className="w-full md:w-72 h-48 flex-shrink-0 bg-gray-100">
-          {development.image ? (
+          {development.imageUrl ? (
             <img
-              src={development.image}
+              src={development.imageUrl}
               alt={development.name}
               className="w-full h-full object-cover"
             />
@@ -41,7 +41,7 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
 
           <div className="flex flex-col sm:flex-row gap-3">
             <a
-              href={development.googleMapsUrl || '#'}
+              href={development.mapsUrl || '#'}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
