@@ -16,9 +16,12 @@ type SupabaseDevelopmentRow = {
 
 export const supabaseDevelopmentsService: IDevelopmentsService = {
   async getPublicDevelopments(): Promise<PublicDevelopment[]> {
+    const ALLOWED_IDS = [11, 20]; // Pueblos de la Barranca, Desarrollo de Prueba
+
     const { data, error } = await supabase
       .from('public_developments')
       .select('*')
+      .in('id', ALLOWED_IDS)
       .order('name', { ascending: true });
 
     if (error) {
