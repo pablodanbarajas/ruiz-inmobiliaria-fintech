@@ -8,19 +8,19 @@ import { Input } from '@/components/ui/Input'
 
 export const Login = () => {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, role, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
 
-  // Navigate once AuthContext confirms the user is authenticated
+  // Navigate once AuthContext confirms the user is authenticated AND has an admin role
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!authLoading && isAuthenticated && role) {
       navigate('/admin/dashboard', { replace: true })
     }
-  }, [isAuthenticated, navigate])
+  }, [authLoading, isAuthenticated, role, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
