@@ -11,6 +11,7 @@ import {
   Wrench,
   LogOut,
   User,
+  Send,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 
@@ -61,6 +62,12 @@ const MENU_ITEMS = [
     label: 'Cargos Extra',
     path: '/admin/cargos-extra',
     icon: Wrench,
+    roles: ['admin'],
+  },
+  {
+    label: 'Portal — Invitar',
+    path: '/admin/invitar-clientes',
+    icon: Send,
     roles: ['admin'],
   },
 ]

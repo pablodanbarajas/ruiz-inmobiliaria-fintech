@@ -17,6 +17,7 @@ import { Convenios } from '@/pages/admin/Convenios'
 import { ConvenioDetail } from '@/pages/admin/ConvenioDetail'
 import { CargosExtra } from '@/pages/admin/CargosExtra'
 import { Mapa } from '@/pages/admin/Mapa'
+import { InvitarClientes } from '@/pages/admin/InvitarClientes'
 
 function App() {
   return (
@@ -160,6 +161,16 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <Mapa />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Portal - Invitaciones */}
+        <Route
+          path="/admin/invitar-clientes"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <InvitarClientes />
             </ProtectedRoute>
           }
         />
