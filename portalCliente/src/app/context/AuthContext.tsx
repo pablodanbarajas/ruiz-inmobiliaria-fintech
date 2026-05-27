@@ -55,7 +55,7 @@ function mapSupabaseSession(session: any): AuthSession {
 async function enrichWithClientFirstName(session: AuthSession): Promise<AuthSession> {
   if (!session.isAuthenticated || !session.user?.email) return session;
   const { data } = await supabase
-    .from('clientes')
+    .from('cliente')
     .select('nombre')
     .eq('email', session.user.email)
     .maybeSingle();
