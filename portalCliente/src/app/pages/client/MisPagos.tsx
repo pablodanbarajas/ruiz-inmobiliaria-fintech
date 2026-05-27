@@ -5,6 +5,12 @@ import { paymentsService } from '../../services';
 import type { Payment, PaymentStatus, PaymentSummary } from '../../types/payment.types';
 import { SummaryCard } from '../../components/shared/SummaryCard';
 
+// Las fechas de BD vienen como 'YYYY-MM-DD'. new Date('YYYY-MM-DD') las parsea como
+// UTC medianoche, lo que en México (UTC-5/6) muestra un día antes. Esta función lo corrige.
+function parseDate(str: string): Date {
+  return /^\d{4}-\d{2}-\d{2}$/.test(str) ? new Date(str + 'T12:00:00') : new Date(str);
+}
+
 const statusConfig: Record<PaymentStatus, { label: string; color: string; icon: typeof Clock }> = {
   pendiente:  { label: 'Pendiente',   color: 'bg-blue-100 text-blue-700',   icon: Clock },
   atrasado:   { label: 'Atrasado',    color: 'bg-red-100 text-red-700',     icon: AlertCircle },
@@ -25,7 +31,7 @@ function PaymentRow({
   return (
     <tr className="hover:bg-gray-50 transition-colors">
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-        {new Date(pago.date).toLocaleDateString('es-MX', {
+        {parseDate(pago.date).toLocaleDateString('es-MX', {
           year: 'numeric',
           month: 'long',
           day: 'numeric'
@@ -95,7 +101,7 @@ export function MisPagos() {
   const { pendingPayments, completedPayments } = summary;
 
   const proximoPago = [...pendingPayments].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    (a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime()
   )[0];
 
   const saldoPendiente = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -115,7 +121,7 @@ export function MisPagos() {
           value={proximoPago ? `$${proximoPago.amount.toLocaleString('es-MX')}` : 'N/A'}
           subtitle={
             proximoPago
-              ? `Vence el ${new Date(proximoPago.date).toLocaleDateString('es-MX')}`
+              ? `Vence el ${parseDate(proximoPago.date).toLocaleDateString('es-MX')}`
               : 'Sin pagos próximos'
           }
           icon={Calendar}

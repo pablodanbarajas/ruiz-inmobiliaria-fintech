@@ -8,6 +8,10 @@ import { SummaryCard } from '../../components/shared/SummaryCard';
 
 type FilterStatus = 'todos' | LotStatus;
 
+function parseDate(str: string): Date {
+  return /^\d{4}-\d{2}-\d{2}$/.test(str) ? new Date(str + 'T12:00:00') : new Date(str);
+}
+
 export function MisLotes() {
   const { session } = useAuth();
   const [lots, setLots] = useState<ClientLot[]>([]);
@@ -30,8 +34,8 @@ export function MisLotes() {
   const nextPayment = lots
     .filter((l) => l.nextPayment)
     .sort((a, b) => {
-      const dateA = a.nextPayment ? new Date(a.nextPayment.dueDate).getTime() : 0;
-      const dateB = b.nextPayment ? new Date(b.nextPayment.dueDate).getTime() : 0;
+      const dateA = a.nextPayment ? parseDate(a.nextPayment.dueDate).getTime() : 0;
+      const dateB = b.nextPayment ? parseDate(b.nextPayment.dueDate).getTime() : 0;
       return dateA - dateB;
     })[0]?.nextPayment;
 
@@ -102,7 +106,7 @@ export function MisLotes() {
           value={nextPayment ? `$${nextPayment.amount.toLocaleString('es-MX')}` : 'N/A'}
           subtitle={
             nextPayment
-              ? `Vence el ${new Date(nextPayment.dueDate).toLocaleDateString('es-MX')}`
+              ? `Vence el ${parseDate(nextPayment.dueDate).toLocaleDateString('es-MX')}`
               : 'Sin pagos pendientes'
           }
           icon={Calendar}

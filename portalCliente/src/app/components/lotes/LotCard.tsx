@@ -128,7 +128,7 @@ export function LotCard({ lote }: LotCardProps) {
                     <div className="flex items-center gap-2 text-orange-600">
                       <Clock className="w-4 h-4" />
                       <span className="text-sm font-medium">
-                        Vence: {new Date(lote.nextPayment.dueDate).toLocaleDateString('es-MX')}
+                        Vence: {new Date(lote.nextPayment.dueDate + 'T12:00:00').toLocaleDateString('es-MX')}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">{lote.nextPayment.paymentType}</p>
