@@ -18,23 +18,27 @@ import { useAuth } from '../../hooks/useAuth';
 export function LoginCliente() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login, isLoading } = useAuth();
+  const { login } = useAuth();
 
   const redirectTo = searchParams.get('redirect') || '/home';
 
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError]       = useState<string | null>(null);
+  const [email, setEmail]           = useState('');
+  const [password, setPassword]     = useState('');
+  const [error, setError]           = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setIsSubmitting(true);
 
     try {
       await login({ email, password });
       navigate(redirectTo, { replace: true });
     } catch {
       setError('Correo o contraseña incorrectos. Intenta de nuevo.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -117,7 +121,7 @@ export function LoginCliente() {
             disabled={isLoading}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isLoading ? 'Ingresando...' : 'Ingresar al portal'}
+            {isSubmitting ? 'Ingresando...' : 'Ingresar al portal'}
           </button>
         </form>
 

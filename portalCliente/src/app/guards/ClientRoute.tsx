@@ -12,7 +12,12 @@ import { useAuth } from '../hooks/useAuth';
  * Nunca asumir que ocultar rutas es suficiente protección.
  */
 export function ClientRoute() {
-  const { session } = useAuth();
+  const { session, isLoading } = useAuth();
+
+  // Esperar a que termine la verificación de sesión antes de decidir
+  if (isLoading) {
+    return null;
+  }
 
   const canAccess =
     session.isAuthenticated && session.user?.role === 'client';
