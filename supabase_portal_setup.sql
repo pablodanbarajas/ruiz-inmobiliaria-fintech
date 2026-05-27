@@ -188,7 +188,8 @@ LEFT JOIN (
   GROUP BY corridafinancieraid
 ) agg ON agg.corridafinancieraid = cf.corridafinancieraid
 WHERE c.user_id IS NOT NULL
-  AND c.user_id = auth.uid();
+  AND c.user_id = auth.uid()
+  AND v.estatus IS DISTINCT FROM 'C';
 
 REVOKE ALL   ON public.vista_pagos_cliente FROM anon;
 GRANT SELECT ON public.vista_pagos_cliente TO authenticated;
