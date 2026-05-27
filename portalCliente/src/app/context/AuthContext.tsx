@@ -85,9 +85,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        const enriched = await enrichWithClientFirstName(mapSupabaseSession(session));
-        setSession(enriched);
+      (_event, session) => {
+        // Sincrónico: no hacer await aquí porque Supabase awaita este callback
+        // internamente y bloquearía signInWithPassword. El nombre enriquecido
+        // se aplica en getSession (carga inicial) y en el login callback.
+        setSession(mapSupabaseSession(session));
       }
     );
 
@@ -101,7 +103,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoading(true);
     try {
       const newSession = await authService.login(credentials);
-      setSession(newSession);
+      const enriched = await enrichWithClientFirstName(newSession);
+      setSession(enriched);
     } finally {
       setIsLoading(false);
     }
