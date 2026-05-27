@@ -75,13 +75,66 @@ SELECT
   v.estatus             AS sale_status,
   v.fechacontrato,
   v.enganche,
-  v.mensualidad
+  v.mensualidad,
+  -- Estado real del lote en el portal basado en pagos de la corrida financiera
+  CASE
+    WHEN l.estatus = 'A' THEN 'apartado'
+    WHEN EXISTS (
+      SELECT 1 FROM public.corridafinanciera cf_chk
+      WHERE cf_chk.ventaid = v.ventaid AND cf_chk.nopago > 0
+    ) AND NOT EXISTS (
+      SELECT 1 FROM public.corridafinanciera cf2
+      LEFT JOIN (
+        SELECT corridafinancieraid, SUM(montopagado) AS total_pagado
+        FROM public.pagos
+        WHERE estatus IS DISTINCT FROM 'C'
+        GROUP BY corridafinancieraid
+      ) p2 ON p2.corridafinancieraid = cf2.corridafinancieraid
+      WHERE cf2.ventaid = v.ventaid
+        AND cf2.nopago > 0
+        AND COALESCE(p2.total_pagado, 0) < cf2.mensualidad
+    ) THEN 'finalizado'
+    ELSE 'en_pagos'
+  END AS portal_lot_status,
+  -- Fecha del próximo pago pendiente (nopago > 0)
+  (
+    SELECT cf3.fecha
+    FROM public.corridafinanciera cf3
+    LEFT JOIN (
+      SELECT corridafinancieraid, SUM(montopagado) AS total_pagado
+      FROM public.pagos
+      WHERE estatus IS DISTINCT FROM 'C'
+      GROUP BY corridafinancieraid
+    ) p3 ON p3.corridafinancieraid = cf3.corridafinancieraid
+    WHERE cf3.ventaid = v.ventaid
+      AND cf3.nopago > 0
+      AND COALESCE(p3.total_pagado, 0) < cf3.mensualidad
+    ORDER BY cf3.nopago ASC
+    LIMIT 1
+  ) AS next_due_date,
+  -- Monto del próximo pago pendiente
+  (
+    SELECT cf4.mensualidad
+    FROM public.corridafinanciera cf4
+    LEFT JOIN (
+      SELECT corridafinancieraid, SUM(montopagado) AS total_pagado
+      FROM public.pagos
+      WHERE estatus IS DISTINCT FROM 'C'
+      GROUP BY corridafinancieraid
+    ) p4 ON p4.corridafinancieraid = cf4.corridafinancieraid
+    WHERE cf4.ventaid = v.ventaid
+      AND cf4.nopago > 0
+      AND COALESCE(p4.total_pagado, 0) < cf4.mensualidad
+    ORDER BY cf4.nopago ASC
+    LIMIT 1
+  ) AS next_payment_amount
 FROM public.cliente       c
 JOIN public.venta         v  ON v.clienteid    = c.clienteid
 JOIN public.lote          l  ON l.loteid       = v.loteid
 JOIN public.desarrollo    d  ON d.desarrolloid = l.desarrolloid
 WHERE c.user_id IS NOT NULL
-  AND c.user_id = auth.uid();
+  AND c.user_id = auth.uid()
+  AND v.estatus IS DISTINCT FROM 'C';  -- Excluir ventas canceladas
 
 REVOKE ALL   ON public.client_lots FROM anon;
 GRANT SELECT ON public.client_lots TO authenticated;

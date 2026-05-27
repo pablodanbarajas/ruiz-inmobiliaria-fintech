@@ -10,6 +10,7 @@ type ClientLotRow = {
   superficie: number | null;
   preciolote: number | null;
   lot_status: string | null;
+  portal_lot_status: string | null;
   development_id: number;
   development_name: string;
   development_description: string;
@@ -18,24 +19,26 @@ type ClientLotRow = {
   fechacontrato: string | null;
   enganche: number | null;
   mensualidad: number | null;
+  next_due_date: string | null;
+  next_payment_amount: number | null;
 };
 
-function mapLotStatus(status: string | null): ClientLot['status'] {
-  const value = (status ?? '').toUpperCase();
+function mapLotStatus(portalStatus: string | null): ClientLot['status'] {
+  const value = (portalStatus ?? '').toLowerCase();
 
-  if (value === 'A') return 'apartado';
-  if (value === 'V') return 'finalizado';
-  if (value === 'D') return 'en_pagos';
+  if (value === 'apartado') return 'apartado';
+  if (value === 'finalizado') return 'finalizado';
+  if (value === 'en_pagos') return 'en_pagos';
 
   return 'apartado';
 }
 
-function mapProgressStage(status: string | null): number {
-  const value = (status ?? '').toUpperCase();
+function mapProgressStage(portalStatus: string | null): number {
+  const value = (portalStatus ?? '').toLowerCase();
 
-  if (value === 'A') return 1;
-  if (value === 'D') return 3;
-  if (value === 'V') return 5;
+  if (value === 'apartado') return 1;
+  if (value === 'en_pagos') return 4;
+  if (value === 'finalizado') return 5;
 
   return 1;
 }
@@ -60,16 +63,22 @@ export const supabaseLotsService: ILotsService = {
       surface: row.superficie ? `${row.superficie} m²` : 'N/D',
       price: Number(row.preciolote ?? 0),
       image: '',
-      status: mapLotStatus(row.lot_status),
-      nextPayment: row.enganche
+      status: mapLotStatus(row.portal_lot_status),
+      nextPayment: row.next_due_date
         ? {
-            amount: Number(row.enganche),
-            dueDate: row.fechacontrato ?? new Date().toISOString(),
-            type: 'Enganche'
+            amount: Number(row.next_payment_amount ?? row.mensualidad ?? 0),
+            dueDate: row.next_due_date,
+            type: 'Mensualidad'
           }
-        : undefined,
+        : row.enganche
+          ? {
+              amount: Number(row.enganche),
+              dueDate: row.fechacontrato ?? new Date().toISOString(),
+              type: 'Enganche'
+            }
+          : undefined,
       progress: {
-        currentStage: mapProgressStage(row.lot_status),
+        currentStage: mapProgressStage(row.portal_lot_status),
         stages: ['Solicitud', 'Pago de apartado', 'Enganche', 'Mensualidades', 'Liquidado']
       }
     }));
