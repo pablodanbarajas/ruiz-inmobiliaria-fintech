@@ -106,6 +106,30 @@ Deno.serve(async (req: Request) => {
     const dueDateLabel = row.due_date        // Fecha real para mostrar en descripción
 
     const apiKey = Deno.env.get('QUENTLI_API_KEY') ?? ''
+    const qHeaders = {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    }
+
+    // ── Asegurar que el cliente existe en Quentli (upsert) ──────
+    const customerPayload: Record<string, any> = {
+      username: String(row.clienteid),
+      name: cliente?.nombre ?? `Cliente ${row.clienteid}`,
+    }
+    if (cliente?.email) customerPayload.email = cliente.email
+    const e164 = toE164(cliente?.telefonocelular)
+    if (e164) customerPayload.phoneNumber = e164
+
+    const custRes = await fetch(`${QUENTLI_API}/v1/customers`, {
+      method: 'POST',
+      headers: qHeaders,
+      body: JSON.stringify({ input: customerPayload }),
+    })
+    // 409 = ya existe → ignorar, cualquier otro error no-ok → lanzar
+    if (!custRes.ok && custRes.status !== 409) {
+      const errText = await custRes.text()
+      throw new Error(`Error al crear cliente en Quentli (${custRes.status}): ${errText}`)
+    }
 
     const body: Record<string, any> = {
       input: {
@@ -113,7 +137,7 @@ Deno.serve(async (req: Request) => {
           name: cliente?.nombre ?? `Cliente ${row.clienteid}`,
           username: String(row.clienteid),
           ...(cliente?.email ? { email: cliente.email } : {}),
-          ...(toE164(cliente?.telefonocelular) ? { phoneNumber: toE164(cliente?.telefonocelular) } : {}),
+          ...(e164 ? { phoneNumber: e164 } : {}),
         },
         dueDate,
         collectionMethod: 'SEND_REMINDER',
@@ -134,10 +158,7 @@ Deno.serve(async (req: Request) => {
 
     const res = await fetch(`${QUENTLI_API}/v1/invoice-payment-sessions`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: qHeaders,
       body: JSON.stringify(body),
     })
 
