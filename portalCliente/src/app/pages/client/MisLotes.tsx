@@ -85,12 +85,10 @@ export function MisLotes() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-6">
+    <div className="max-w-7xl mx-auto px-6 py-4">
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-gray-800 mb-0.5">Mis lotes</h1>
-        <p className="text-sm text-gray-500">
-          Consulta el estado de tus apartados y avance de compra
-        </p>
+        <h1 className="text-xl font-bold text-gray-800 leading-tight">Mis lotes</h1>
+        <p className="text-xs text-gray-500">Consulta el estado de tus apartados y avance de compra</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">

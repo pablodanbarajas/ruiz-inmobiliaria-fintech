@@ -159,12 +159,10 @@ export function MisPagos() {
   const completedSlice = completedPayments.slice((completedPage - 1) * PAGE_SIZE, completedPage * PAGE_SIZE);
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Mis pagos</h1>
-        <p className="text-gray-600">
-          Consulta tu calendario, historial y comprobantes
-        </p>
+    <div className="max-w-7xl mx-auto px-8 py-4">
+      <div className="mb-4">
+        <h1 className="text-xl font-bold text-gray-800 leading-tight">Mis pagos</h1>
+        <p className="text-xs text-gray-500">Consulta tu calendario, historial y comprobantes</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
