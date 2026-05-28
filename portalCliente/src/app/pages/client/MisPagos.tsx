@@ -74,6 +74,8 @@ function PaymentRow({
 }) {
   const config = statusConfig[pago.status];
   const Icon = config.icon;
+  const bd = pago.breakdown;
+  const hasExtras = bd && (bd.cargoExtra > 0 || bd.recargo > 0);
 
   return (
     <tr className="hover:bg-gray-50 transition-colors">
@@ -85,8 +87,27 @@ function PaymentRow({
         })}
       </td>
       <td className="px-6 py-4 text-sm text-gray-800">{pago.reason}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800">
-        ${pago.amount.toLocaleString('es-MX')}
+      <td className="px-6 py-4 whitespace-nowrap text-sm">
+        <span className="font-semibold text-gray-800">
+          ${pago.amount.toLocaleString('es-MX')}
+        </span>
+        {hasExtras && bd && (
+          <div className="mt-1 space-y-0.5">
+            <div className="text-xs text-gray-400">
+              Mensualidad: ${bd.base.toLocaleString('es-MX')}
+            </div>
+            {bd.cargoExtra > 0 && (
+              <div className="text-xs text-purple-600 font-medium">
+                + Cargos extra: ${bd.cargoExtra.toLocaleString('es-MX')}
+              </div>
+            )}
+            {bd.recargo > 0 && (
+              <div className="text-xs text-red-500 font-medium">
+                + Recargo por mora: ${bd.recargo.toLocaleString('es-MX')}
+              </div>
+            )}
+          </div>
+        )}
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${config.color}`}>

@@ -38,14 +38,16 @@ function mapStatus(row: ClientPaymentRow): PaymentStatus {
 }
 
 function toPendingPayment(row: ClientPaymentRow): Payment {
+  const base       = Number(row.scheduled_amount ?? 0);
+  const cargoExtra = Number(row.cargo_extra_amount ?? 0);
+  const recargo    = Number(row.recargo_pendiente ?? 0);
   return {
     id: String(row.corridafinancieraid),
     date: row.due_date,
     reason: `${row.payment_type} · ${row.lot_key}`,
-    amount: Number(row.scheduled_amount ?? 0)
-      + Number(row.cargo_extra_amount ?? 0)
-      + Number(row.recargo_pendiente ?? 0),
-    status: mapStatus(row)
+    amount: base + cargoExtra + recargo,
+    status: mapStatus(row),
+    breakdown: { base, cargoExtra, recargo }
   };
 }
 

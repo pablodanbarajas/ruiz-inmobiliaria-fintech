@@ -19,6 +19,12 @@ export interface Payment {
   status: PaymentStatus;
   /** Clave del lote relacionado, ej: "06-042" */
   lotKey?: string;
+  /** Desglose del monto total para mostrar al cliente */
+  breakdown?: {
+    base: number;       // mensualidad base
+    cargoExtra: number; // suma de cargos extra activos
+    recargo: number;    // recargo por mora
+  };
 }
 
 export interface PaymentSummary {
