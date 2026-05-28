@@ -38,12 +38,12 @@ export function SoporteContent() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
+    <div className="max-w-7xl mx-auto px-8 py-4">
+      <div className="mb-4">
+        <h1 className="text-xl font-bold text-gray-800 leading-tight">
           {isAuthenticated ? `Soporte para ${userName ?? 'Cliente'}` : 'Soporte'}
         </h1>
-        <p className="text-gray-600">
+        <p className="text-xs text-gray-500">
           Estamos para ayudarte con dudas sobre desarrollos, lotes, pagos o seguimiento.
         </p>
       </div>
