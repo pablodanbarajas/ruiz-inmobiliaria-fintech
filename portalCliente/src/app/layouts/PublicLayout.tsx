@@ -11,21 +11,23 @@ const publicMenuItems = [
 
 export function PublicLayout() {
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar menuItems={publicMenuItems} />
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      <div className="flex flex-1">
+        <Sidebar menuItems={publicMenuItems} />
 
-      <div className="flex-1 flex flex-col">
-        <Header
-          title="Portal Web"
-          subtitle="Descubre tu próximo patrimonio"
-        />
+        <div className="flex-1 flex flex-col">
+          <Header
+            title="Portal Web"
+            subtitle="Descubre tu próximo patrimonio"
+          />
 
-        <main className="flex-1">
-          <Outlet />
-        </main>
-
-        <Footer />
+          <main className="flex-1">
+            <Outlet />
+          </main>
+        </div>
       </div>
+
+      <Footer />
     </div>
   );
 }
