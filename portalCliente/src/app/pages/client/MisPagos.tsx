@@ -1,5 +1,52 @@
 import { useEffect, useState } from 'react';
-import { Calendar, DollarSign, FileText, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Calendar, DollarSign, FileText, Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const PAGE_SIZE = 5;
+
+function Pagination({
+  total,
+  page,
+  onPage
+}: {
+  total: number;
+  page: number;
+  onPage: (p: number) => void;
+}) {
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 text-sm text-gray-600">
+      <span>{Math.min((page - 1) * PAGE_SIZE + 1, total)}–{Math.min(page * PAGE_SIZE, total)} de {total}</span>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPage(page - 1)}
+          disabled={page === 1}
+          className="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+          <button
+            key={p}
+            onClick={() => onPage(p)}
+            className={`w-7 h-7 rounded text-xs font-medium ${
+              p === page ? 'bg-teal-700 text-white' : 'hover:bg-gray-100'
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+        <button
+          onClick={() => onPage(page + 1)}
+          disabled={page === totalPages}
+          className="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
 import { useAuth } from '../../hooks/useAuth';
 import { paymentsService } from '../../services';
 import type { Payment, PaymentStatus, PaymentSummary } from '../../types/payment.types';
@@ -71,6 +118,8 @@ export function MisPagos() {
   const { session } = useAuth();
   const [summary, setSummary] = useState<PaymentSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [completedPage, setCompletedPage] = useState(1);
 
   useEffect(() => {
     if (!session.user) return;
@@ -105,6 +154,9 @@ export function MisPagos() {
   )[0];
 
   const saldoPendiente = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
+
+  const pendingSlice   = pendingPayments.slice((pendingPage - 1) * PAGE_SIZE, pendingPage * PAGE_SIZE);
+  const completedSlice = completedPayments.slice((completedPage - 1) * PAGE_SIZE, completedPage * PAGE_SIZE);
 
   return (
     <div className="max-w-7xl mx-auto px-8 py-8">
@@ -146,7 +198,7 @@ export function MisPagos() {
           <table className="w-full min-w-[700px]">
             {tableHeaders(['Fecha límite', 'Motivo', 'Monto', 'Estado', 'Acción'])}
             <tbody className="bg-white divide-y divide-gray-200">
-              {pendingPayments.map((pago) => (
+              {pendingSlice.map((pago) => (
                 <PaymentRow
                   key={pago.id}
                   pago={pago}
@@ -160,7 +212,7 @@ export function MisPagos() {
             </tbody>
           </table>
         </div>
-      </div>
+        <Pagination total={pendingPayments.length} page={pendingPage} onPage={setPendingPage} />
 
       {/* Historial */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -172,7 +224,7 @@ export function MisPagos() {
           <table className="w-full min-w-[700px]">
             {tableHeaders(['Fecha de pago', 'Motivo', 'Monto', 'Estado', 'Recibo'])}
             <tbody className="bg-white divide-y divide-gray-200">
-              {completedPayments.map((pago) => (
+              {completedSlice.map((pago) => (
                 <PaymentRow
                   key={pago.id}
                   pago={pago}
@@ -187,7 +239,7 @@ export function MisPagos() {
             </tbody>
           </table>
         </div>
-      </div>
+        <Pagination total={completedPayments.length} page={completedPage} onPage={setCompletedPage} />
     </div>
   );
 }
