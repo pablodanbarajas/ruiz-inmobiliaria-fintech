@@ -2,6 +2,17 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const QUENTLI_API = 'https://api.demo.quentli.com'
 
+/** Convierte teléfono mexicano a formato E.164. Si ya tiene + lo deja igual. */
+function toE164(phone: string | null | undefined): string | undefined {
+  if (!phone) return undefined
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length === 10) return `+52${digits}`           // 10 dígitos → México
+  if (digits.length === 12 && digits.startsWith('52')) return `+${digits}` // ya con código país
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`  // EE.UU.
+  if (phone.startsWith('+')) return phone                   // ya en E.164
+  return undefined                                           // no reconocido → omitir
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -102,7 +113,7 @@ Deno.serve(async (req: Request) => {
           name: cliente?.nombre ?? `Cliente ${row.clienteid}`,
           username: String(row.clienteid),
           ...(cliente?.email ? { email: cliente.email } : {}),
-          ...(cliente?.telefonocelular ? { phoneNumber: cliente.telefonocelular } : {}),
+          ...(toE164(cliente?.telefonocelular) ? { phoneNumber: toE164(cliente?.telefonocelular) } : {}),
         },
         dueDate,
         collectionMethod: 'SEND_REMINDER',
