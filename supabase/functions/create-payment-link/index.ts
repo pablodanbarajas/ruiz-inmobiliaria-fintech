@@ -91,7 +91,8 @@ Deno.serve(async (req: Request) => {
     const recargo = Number(row.recargo_pendiente ?? 0)
     const totalCentavos = Math.round((base + extra + recargo) * 100)
 
-    const dueDate = new Date(`${row.due_date}T12:00:00`).toISOString()
+    const dueDate = new Date().toISOString() // Hoy → Quentli lo acepta de inmediato
+    const dueDateLabel = row.due_date        // Fecha real para mostrar en descripción
 
     const apiKey = Deno.env.get('QUENTLI_API_KEY') ?? ''
 
@@ -107,7 +108,7 @@ Deno.serve(async (req: Request) => {
         collectionMethod: 'SEND_REMINDER',
         items: [
           {
-            description: `${row.payment_type ?? 'Mensualidad'} · ${row.lot_key ?? ''}`,
+            description: `${row.payment_type ?? 'Mensualidad'} · ${row.lot_key ?? ''} (vence ${dueDateLabel})`,
             amount: totalCentavos,
             quantity: 1,
           },
