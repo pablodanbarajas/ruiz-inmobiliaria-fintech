@@ -51,6 +51,29 @@ import { useAuth } from '../../hooks/useAuth';
 import { paymentsService } from '../../services';
 import type { Payment, PaymentStatus, PaymentSummary } from '../../types/payment.types';
 import { SummaryCard } from '../../components/shared/SummaryCard';
+import { supabase } from '../../services/supabase/client';
+
+async function createPaymentLink(corridafinancieraid: string): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sin sesión activa');
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+  const res = await fetch(`${supabaseUrl}/functions/v1/create-payment-link`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: anonKey,
+    },
+    body: JSON.stringify({ corridafinancieraid: Number(corridafinancieraid) }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? 'Error al generar link de pago');
+  return data.url as string;
+}
 
 // Las fechas de BD vienen como 'YYYY-MM-DD'. new Date('YYYY-MM-DD') las parsea como
 // UTC medianoche, lo que en México (UTC-5/6) muestra un día antes. Esta función lo corrige.
@@ -141,6 +164,19 @@ export function MisPagos() {
   const [isLoading, setIsLoading] = useState(true);
   const [pendingPage, setPendingPage] = useState(1);
   const [completedPage, setCompletedPage] = useState(1);
+  const [payingId, setPayingId] = useState<string | null>(null);
+
+  const handlePagar = async (pago: Payment) => {
+    try {
+      setPayingId(pago.id);
+      const url = await createPaymentLink(pago.id);
+      window.location.href = url;
+    } catch (err: any) {
+      alert(`Error al generar link de pago: ${err.message}`);
+    } finally {
+      setPayingId(null);
+    }
+  };
 
   useEffect(() => {
     if (!session.user) return;
@@ -222,8 +258,12 @@ export function MisPagos() {
                   key={pago.id}
                   pago={pago}
                   action={
-                    <button className="bg-teal-700 text-white px-4 py-2 rounded-lg hover:bg-teal-800 transition-colors text-sm font-medium">
-                      Pagar ahora
+                    <button
+                      onClick={() => handlePagar(pago)}
+                      disabled={payingId === pago.id}
+                      className="bg-teal-700 text-white px-4 py-2 rounded-lg hover:bg-teal-800 transition-colors text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {payingId === pago.id ? 'Generando...' : 'Pagar ahora'}
                     </button>
                   }
                 />

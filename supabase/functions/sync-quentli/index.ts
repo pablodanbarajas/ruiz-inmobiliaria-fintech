@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const QUENTLI_API = 'https://api.quentli.com'
+const QUENTLI_API = 'https://api.demo.quentli.com'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
