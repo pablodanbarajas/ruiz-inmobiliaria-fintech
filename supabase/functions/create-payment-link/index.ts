@@ -23,12 +23,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    )
-
-    // Verificar que quien llama es un cliente del portal autenticado
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'No autorizado' }), {
@@ -37,8 +31,23 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+    // Cliente con JWT del usuario → auth.uid() funciona correctamente en la vista
+    const userClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } },
+    )
+
+    // Cliente con service role → para queries que no dependen de auth.uid()
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    )
+
+    // Verificar que el token es válido
+    const { data: { user }, error: userError } = await serviceClient.auth.getUser(
+      authHeader.replace('Bearer ', ''),
+    )
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Token inválido' }), {
         status: 401,
@@ -54,11 +63,10 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    // Obtener datos del pago desde la vista (ya filtra por user_id = auth.uid())
-    const { data: row, error: dbError } = await supabase
+    // Consultar la vista CON el JWT del usuario → auth.uid() = user.id → RLS correcto
+    const { data: row, error: dbError } = await userClient
       .from('vista_pagos_cliente')
       .select('*')
-      .eq('user_id', user.id)
       .eq('corridafinancieraid', corridafinancieraid)
       .neq('payment_status', 'pagado')
       .single()
@@ -70,8 +78,8 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Obtener nombre del cliente
-    const { data: cliente } = await supabase
+    // Obtener nombre del cliente (sin restricción de RLS)
+    const { data: cliente } = await serviceClient
       .from('cliente')
       .select('nombre, email, telefonocelular')
       .eq('clienteid', row.clienteid)
