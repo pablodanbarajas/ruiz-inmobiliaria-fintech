@@ -109,119 +109,106 @@ export function HomeContent({
   const displayName = userName ?? 'Cliente';
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
-          {isAuthenticated
-            ? `Bienvenido, ${displayName}`
-            : 'Bienvenido a Ruiz Inmobiliaria'}
-        </h1>
-        <p className="text-gray-600">
-          Explora nuestros desarrollos disponibles y encuentra tu lote ideal.
-        </p>
-      </div>
+    <div className="max-w-7xl mx-auto px-8 py-4">
+      {/* Header compacto + filtros en una sola fila */}
+      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
+        <div className="shrink-0">
+          <h1 className="text-xl font-bold text-gray-800 leading-tight">
+            {isAuthenticated ? `Bienvenido, ${displayName}` : 'Ruiz Inmobiliaria'}
+          </h1>
+          <p className="text-xs text-gray-500">Encuentra tu lote ideal</p>
+        </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-        <form onSubmit={(e) => e.preventDefault()} className="flex flex-col md:flex-row gap-4 items-end">
-          {/* Ubicación con sugerencias */}
-          <div className="flex-1 w-full" ref={locationRef}>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Ubicación
-            </label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
-              <input
-                type="text"
-                placeholder="Nombre o ciudad..."
-                value={locationInput}
-                onChange={(e) => handleLocationChange(e.target.value)}
-                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                autoComplete="off"
-              />
-              {locationInput && (
-                <button type="button" onClick={() => handleLocationChange('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-              {showSuggestions && (
-                <ul className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-                  {suggestions.map((s) => (
-                    <li key={s}>
-                      <button
-                        type="button"
-                        onMouseDown={() => handleSelectSuggestion(s)}
-                        className="w-full text-left px-4 py-2 hover:bg-teal-50 text-sm text-gray-700 flex items-center gap-2"
-                      >
-                        <Search className="w-3.5 h-3.5 text-teal-500 flex-shrink-0" />
-                        {s}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+        <form onSubmit={(e) => e.preventDefault()} className="flex flex-1 gap-2 items-center flex-wrap md:flex-nowrap">
+          {/* Ubicación */}
+          <div className="relative flex-1 min-w-[160px]" ref={locationRef}>
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+            <input
+              type="text"
+              placeholder="Ubicación o nombre..."
+              value={locationInput}
+              onChange={(e) => handleLocationChange(e.target.value)}
+              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+              className="w-full pl-9 pr-7 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              autoComplete="off"
+            />
+            {locationInput && (
+              <button type="button" onClick={() => handleLocationChange('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {showSuggestions && (
+              <ul className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                {suggestions.map((s) => (
+                  <li key={s}>
+                    <button
+                      type="button"
+                      onMouseDown={() => handleSelectSuggestion(s)}
+                      className="w-full text-left px-3 py-2 hover:bg-teal-50 text-sm text-gray-700 flex items-center gap-2"
+                    >
+                      <Search className="w-3.5 h-3.5 text-teal-500 flex-shrink-0" />
+                      {s}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
-          {/* Rango de precio */}
-          <div className="flex-1 w-full">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Rango de precio (apartado)
-            </label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="number"
-                  placeholder="Mínimo"
-                  value={minPrice}
-                  onChange={(e) => handleMinChange(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                />
-              </div>
-              <div className="relative flex-1">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="number"
-                  placeholder="Máximo"
-                  value={maxPrice}
-                  onChange={(e) => handleMaxChange(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                />
-              </div>
-            </div>
+          {/* Precio mínimo */}
+          <div className="relative w-32">
+            <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="number"
+              placeholder="Mín."
+              value={minPrice}
+              onChange={(e) => handleMinChange(e.target.value)}
+              className="w-full pl-8 pr-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Precio máximo */}
+          <div className="relative w-32">
+            <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="number"
+              placeholder="Máx."
+              value={maxPrice}
+              onChange={(e) => handleMaxChange(e.target.value)}
+              className="w-full pl-8 pr-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            />
           </div>
 
           {hasFilters && (
             <button
               type="button"
               onClick={handleReset}
-              className="w-full md:w-auto border border-gray-300 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors h-[42px] text-sm flex items-center gap-2 justify-center"
+              className="border border-gray-300 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm flex items-center gap-1 whitespace-nowrap"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
               Limpiar
             </button>
           )}
         </form>
       </div>
 
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-1">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-base font-semibold text-gray-700">
           Desarrollos disponibles
+          {!isLoading && <span className="ml-2 text-sm font-normal text-gray-400">({developments.length})</span>}
         </h2>
+      </div>
 
+      <div className="mb-6">
         {isLoading ? (
-          <div className="space-y-6 mt-6">
+          <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 bg-gray-100 rounded-lg animate-pulse" />
+              <div key={i} className="h-40 bg-gray-100 rounded-lg animate-pulse" />
             ))}
           </div>
         ) : (
           <>
-            <p className="text-gray-600 mb-6">
-              {developments.length} desarrollos con lotes disponibles
-            </p>
-            <div className="space-y-6">
+            <div className="space-y-4">
               {developments.map((development) => (
                 <DevelopmentCard key={development.id} development={development} />
               ))}
