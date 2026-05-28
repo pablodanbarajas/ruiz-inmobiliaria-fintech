@@ -112,6 +112,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── Asegurar que el cliente existe en Quentli (upsert) ──────
+    // Si el cliente ya existe Quentli puede devolver 400 o 409 — en ambos casos ignoramos
     const customerPayload: Record<string, any> = {
       username: String(row.clienteid),
       name: cliente?.nombre ?? `Cliente ${row.clienteid}`,
@@ -120,16 +121,12 @@ Deno.serve(async (req: Request) => {
     const e164 = toE164(cliente?.telefonocelular)
     if (e164) customerPayload.phoneNumber = e164
 
-    const custRes = await fetch(`${QUENTLI_API}/v1/customers`, {
+    await fetch(`${QUENTLI_API}/v1/customers`, {
       method: 'POST',
       headers: qHeaders,
       body: JSON.stringify({ input: customerPayload }),
     })
-    // 409 = ya existe → ignorar, cualquier otro error no-ok → lanzar
-    if (!custRes.ok && custRes.status !== 409) {
-      const errText = await custRes.text()
-      throw new Error(`Error al crear cliente en Quentli (${custRes.status}): ${errText}`)
-    }
+    // Ignoramos el resultado: si creó → bien; si ya existía (400/409) → también bien
 
     const body: Record<string, any> = {
       input: {
