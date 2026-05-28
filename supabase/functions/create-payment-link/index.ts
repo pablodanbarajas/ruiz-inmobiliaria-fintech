@@ -133,8 +133,6 @@ Deno.serve(async (req: Request) => {
         customer: {
           name: cliente?.nombre ?? `Cliente ${row.clienteid}`,
           username: String(row.clienteid),
-          ...(cliente?.email ? { email: cliente.email } : {}),
-          ...(e164 ? { phoneNumber: e164 } : {}),
         },
         dueDate,
         collectionMethod: 'SEND_REMINDER',
