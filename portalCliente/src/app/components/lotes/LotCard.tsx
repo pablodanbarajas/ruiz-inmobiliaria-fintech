@@ -1,4 +1,5 @@
-import { MapPin, Ruler, DollarSign, Clock, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { MapPin, Ruler, DollarSign, Clock, ChevronRight, ImageOff } from 'lucide-react';
 import type { ClientLot } from '../../types/lot.types';
 
 interface LotCardProps {
@@ -39,16 +40,26 @@ const statusConfig = {
 export function LotCard({ lote }: LotCardProps) {
   const config = statusConfig[lote.status];
   const progressPct = (lote.progress.currentStage / (lote.progress.stages.length - 1)) * 100;
+  const [imgError, setImgError] = useState(false);
+  const showPlaceholder = !lote.imageUrl || imgError;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
       <div className="flex flex-col lg:flex-row">
         <div className="w-full lg:w-80 h-64 flex-shrink-0">
-          <img
-            src={lote.imageUrl}
-            alt={`Lote ${lote.key}`}
-            className="w-full h-full object-cover"
-          />
+          {showPlaceholder ? (
+            <div className="w-full h-full bg-gradient-to-br from-teal-50 to-teal-100 flex flex-col items-center justify-center gap-2 text-teal-400">
+              <ImageOff className="w-10 h-10" />
+              <span className="text-sm font-medium text-teal-500">Sin imagen disponible</span>
+            </div>
+          ) : (
+            <img
+              src={lote.imageUrl}
+              alt={`Lote ${lote.key}`}
+              className="w-full h-full object-cover"
+              onError={() => setImgError(true)}
+            />
+          )}
         </div>
 
         <div className="flex-1 p-6 flex flex-col">
