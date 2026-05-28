@@ -163,6 +163,16 @@ SELECT
   END                             AS payment_type,
   cf.fecha                        AS due_date,
   cf.mensualidad                  AS scheduled_amount,
+  -- Cargos extra activos (no cancelados) cuya fecha de inicio <= fecha de esta cuota.
+  -- Solo aplica a mensualidades y enganche (nopago > 0), nunca al apartado (nopago = 0).
+  COALESCE((
+    SELECT SUM(ce.monto)
+    FROM public.cargos_extra ce
+    WHERE ce.loteid = l.loteid
+      AND ce.estatus IS DISTINCT FROM 'X'
+      AND ce.fecha <= cf.fecha
+      AND cf.nopago > 0
+  ), 0)                           AS cargo_extra_amount,
   COALESCE(agg.total_pagado,  0)  AS paid_amount,
   agg.ultima_fecha                AS last_paid_at,
   COALESCE(agg.total_recargo, 0)  AS recargo_pagado,
