@@ -136,7 +136,7 @@ Deno.serve(async (req: Request) => {
           description: `Mensualidades ${clavelote ?? ''} · Venta #${ventaid}`,
           firstCollectionDate: fechaISO,
           numberOfPayments: Number(plazo),
-          collectionMethod: 'AUTOMATIC',
+          collectionMethod: 'SEND_REMINDER',
           items: [
             {
               concept: {
