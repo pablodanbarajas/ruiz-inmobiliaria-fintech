@@ -184,6 +184,46 @@ export const LoteDetail = () => {
         await supabase.from('lote').update({ estatus: 'D' }).eq('loteid', data.loteid)
         throw new Error(corridaError.message)
       }
+
+      // ── Sincronizar con Quentli (no bloquea el flujo si falla) ──
+      try {
+        const { data: clienteData } = await supabase
+          .from('cliente')
+          .select('nombre, email, telefonocelular')
+          .eq('clienteid', data.clienteid)
+          .single()
+
+        const { data: sessionData } = await supabase.auth.getSession()
+        const accessToken = sessionData.session?.access_token
+
+        if (clienteData && accessToken) {
+          await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-quentli`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+                apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+              },
+              body: JSON.stringify({
+                clienteid: data.clienteid,
+                nombre: clienteData.nombre,
+                email: clienteData.email,
+                telefono: clienteData.telefonocelular,
+                ventaid,
+                clavelote: lote?.clavelote ?? '',
+                mensualidad: data.mensualidad,
+                plazo: data.plazo,
+                fechaprimeramensualidad: data.fechaprimeramensualidad,
+              }),
+            },
+          )
+        }
+      } catch (quentliErr) {
+        console.warn('Quentli sync omitida (no bloquea):', quentliErr)
+      }
+
       setShowVentaModal(false)
       navigate(`/admin/ventas/${ventaid}`, { state: { from: `/admin/lotes/${id}` } })
     } catch (err: any) {
