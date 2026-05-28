@@ -17,17 +17,15 @@ const colorConfig = {
 
 export function SummaryCard({ title, value, subtitle, icon: Icon, color = 'teal' }: SummaryCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 flex flex-col h-full">
-      <div className="flex items-start justify-between mb-4">
-        <div className={`p-3 rounded-lg ${colorConfig[color]}`}>
-          <Icon className="w-6 h-6" />
-        </div>
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-3 flex items-center gap-3">
+      <div className={`p-2 rounded-lg flex-shrink-0 ${colorConfig[color]}`}>
+        <Icon className="w-5 h-5" />
       </div>
-      <div>
-        <h3 className="text-sm text-gray-600 mb-1">{title}</h3>
-        <p className="text-3xl font-bold text-gray-800 mb-1">{value}</p>
+      <div className="min-w-0">
+        <h3 className="text-xs text-gray-500 leading-tight">{title}</h3>
+        <p className="text-xl font-bold text-gray-800 leading-tight">{value}</p>
         {subtitle && (
-          <p className="text-sm text-gray-500">{subtitle}</p>
+          <p className="text-xs text-gray-500 truncate">{subtitle}</p>
         )}
       </div>
     </div>

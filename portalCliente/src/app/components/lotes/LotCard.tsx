@@ -46,7 +46,7 @@ export function LotCard({ lote }: LotCardProps) {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
       <div className="flex flex-col lg:flex-row">
-        <div className="w-full lg:w-80 h-64 flex-shrink-0">
+        <div className="w-full lg:w-48 h-48 lg:h-auto flex-shrink-0">
           {showPlaceholder ? (
             <div className="w-full h-full bg-gradient-to-br from-teal-50 to-teal-100 flex flex-col items-center justify-center gap-2 text-teal-400">
               <ImageOff className="w-10 h-10" />
@@ -62,43 +62,41 @@ export function LotCard({ lote }: LotCardProps) {
           )}
         </div>
 
-        <div className="flex-1 p-6 flex flex-col">
+        <div className="flex-1 p-4 flex flex-col">
           <div className="flex-1">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 gap-2">
               <div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-1">Lote {lote.key}</h3>
-                <p className="text-lg text-gray-600">{lote.developmentName}</p>
+                <h3 className="text-lg font-bold text-gray-800 mb-0.5">Lote {lote.key}</h3>
+                <p className="text-sm text-gray-600">{lote.developmentName}</p>
               </div>
-              <div className={`px-4 py-2 rounded-lg border ${config.color}`}>
-                <p className="font-semibold text-sm">{config.label}</p>
-                <p className="text-xs">{config.sublabel}</p>
+              <div className={`px-3 py-1 rounded-lg border text-right flex-shrink-0 ${config.color}`}>
+                <p className="font-semibold text-xs">{config.label}</p>
+                <p className="text-xs opacity-75">{config.sublabel}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <div className="flex items-center gap-2 text-gray-600">
-                <MapPin className="w-4 h-4" />
-                <span className="text-sm">{lote.location}</span>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3">
+              <div className="flex items-center gap-1 text-gray-500">
+                <MapPin className="w-3.5 h-3.5" />
+                <span className="text-xs">{lote.location}</span>
               </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <Ruler className="w-4 h-4" />
-                <span className="text-sm">{lote.surface}</span>
+              <div className="flex items-center gap-1 text-gray-500">
+                <Ruler className="w-3.5 h-3.5" />
+                <span className="text-xs">{lote.surface}</span>
               </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <DollarSign className="w-4 h-4" />
-                <span className="text-sm font-semibold">
-                  ${lote.price.toLocaleString('es-MX')}
-                </span>
+              <div className="flex items-center gap-1 text-gray-500">
+                <DollarSign className="w-3.5 h-3.5" />
+                <span className="text-xs font-semibold">${lote.price.toLocaleString('es-MX')}</span>
               </div>
             </div>
 
             {/* Progreso de compra */}
-            <div className="mb-6 overflow-x-auto pb-4">
-              <div className="flex justify-between mb-2 min-w-[500px]">
+            <div className="mb-3 overflow-x-auto">
+              <div className="flex justify-between mb-1.5 min-w-[380px]">
                 {lote.progress.stages.map((etapa, index) => (
                   <div key={index} className="flex flex-col items-center flex-1">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
                         index <= lote.progress.currentStage
                           ? 'bg-teal-700 text-white'
                           : 'bg-gray-200 text-gray-400'
@@ -107,7 +105,7 @@ export function LotCard({ lote }: LotCardProps) {
                       {index + 1}
                     </div>
                     <span
-                      className={`text-xs mt-1 text-center ${
+                      className={`text-[10px] mt-0.5 text-center leading-tight ${
                         index <= lote.progress.currentStage
                           ? 'text-gray-700 font-medium'
                           : 'text-gray-400'
@@ -118,46 +116,42 @@ export function LotCard({ lote }: LotCardProps) {
                   </div>
                 ))}
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 min-w-[500px]">
+              <div className="w-full bg-gray-200 rounded-full h-1.5 min-w-[380px]">
                 <div
-                  className="bg-teal-700 h-2 rounded-full transition-all"
+                  className="bg-teal-700 h-1.5 rounded-full transition-all"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
             </div>
 
             {lote.nextPayment && (
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Próximo pago</p>
-                    <p className="text-2xl font-bold text-gray-800">
-                      ${lote.nextPayment.amount.toLocaleString('es-MX')}
-                    </p>
+              <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs text-gray-500">Próximo pago</p>
+                  <p className="text-base font-bold text-gray-800">${lote.nextPayment.amount.toLocaleString('es-MX')}</p>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-1 text-orange-600 justify-end">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span className="text-xs font-medium">
+                      Vence: {new Date(lote.nextPayment.dueDate + 'T12:00:00').toLocaleDateString('es-MX')}
+                    </span>
                   </div>
-                  <div className="sm:text-right">
-                    <div className="flex items-center gap-2 text-orange-600">
-                      <Clock className="w-4 h-4" />
-                      <span className="text-sm font-medium">
-                        Vence: {new Date(lote.nextPayment.dueDate + 'T12:00:00').toLocaleDateString('es-MX')}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">{lote.nextPayment.paymentType}</p>
-                  </div>
+                  <p className="text-xs text-gray-400">{lote.nextPayment.paymentType}</p>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-2">
             <button
-              className={`flex-1 ${config.buttonColor} text-white px-4 py-3 rounded-lg transition-colors font-medium`}
+              className={`flex-1 ${config.buttonColor} text-white px-3 py-2 rounded-lg transition-colors text-sm font-medium`}
             >
               {config.buttonLabel}
             </button>
-            <button className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+            <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-1 text-sm">
               Ver detalle
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
