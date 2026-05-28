@@ -16,6 +16,8 @@ type ClientPaymentRow = {
   due_date: string;
   scheduled_amount: number;
   cargo_extra_amount: number;
+  recargo_pendiente: number;
+  dias_tolerancia: number | null;
   paid_amount: number;
   last_paid_at: string | null;
   recargo_pagado: number;
@@ -40,7 +42,9 @@ function toPendingPayment(row: ClientPaymentRow): Payment {
     id: String(row.corridafinancieraid),
     date: row.due_date,
     reason: `${row.payment_type} · ${row.lot_key}`,
-    amount: Number(row.scheduled_amount ?? 0) + Number(row.cargo_extra_amount ?? 0),
+    amount: Number(row.scheduled_amount ?? 0)
+      + Number(row.cargo_extra_amount ?? 0)
+      + Number(row.recargo_pendiente ?? 0),
     status: mapStatus(row)
   };
 }

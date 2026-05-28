@@ -112,9 +112,16 @@ SELECT
     ORDER BY cf3.nopago ASC
     LIMIT 1
   ) AS next_due_date,
-  -- Monto del próximo pago pendiente
+  -- Monto del próximo pago pendiente (mensualidad + cargos extra aplicables)
   (
-    SELECT cf4.mensualidad
+    SELECT cf4.mensualidad + COALESCE((
+      SELECT SUM(ce.monto)
+      FROM public.cargos_extra ce
+      WHERE ce.loteid = l.loteid
+        AND ce.estatus IS DISTINCT FROM 'X'
+        AND ce.fecha <= cf4.fecha
+        AND cf4.nopago > 0
+    ), 0)
     FROM public.corridafinanciera cf4
     LEFT JOIN (
       SELECT corridafinancieraid, SUM(montopagado) AS total_pagado
@@ -173,6 +180,19 @@ SELECT
       AND ce.fecha <= cf.fecha
       AND cf.nopago > 0
   ), 0)                           AS cargo_extra_amount,
+  -- Recargo por mora pendiente: $150 por cada 6 días vencidos, respetando dias_tolerancia.
+  -- Solo aplica si la cuota está vencida y no pagada.
+  CASE
+    WHEN COALESCE(agg.total_pagado, 0) >= cf.mensualidad THEN 0
+    WHEN cf.fecha >= CURRENT_DATE THEN 0
+    ELSE GREATEST(0,
+      FLOOR(
+        (GREATEST(0, (CURRENT_DATE - cf.fecha::date) - COALESCE(v.dias_tolerancia, 0)))
+        / 6
+      ) * 150
+    )
+  END                             AS recargo_pendiente,
+  v.dias_tolerancia,
   COALESCE(agg.total_pagado,  0)  AS paid_amount,
   agg.ultima_fecha                AS last_paid_at,
   COALESCE(agg.total_recargo, 0)  AS recargo_pagado,

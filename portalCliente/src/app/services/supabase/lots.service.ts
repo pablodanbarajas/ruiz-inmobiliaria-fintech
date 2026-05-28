@@ -37,8 +37,8 @@ function mapProgressStage(portalStatus: string | null): number {
   const value = (portalStatus ?? '').toLowerCase();
 
   if (value === 'apartado') return 1;
-  if (value === 'en_pagos') return 4;
-  if (value === 'finalizado') return 5;
+  if (value === 'en_pagos') return 3;  // índice 3 = 'Mensualidades' (no llega a 'Liquidado')
+  if (value === 'finalizado') return 4; // índice 4 = 'Liquidado'
 
   return 1;
 }
