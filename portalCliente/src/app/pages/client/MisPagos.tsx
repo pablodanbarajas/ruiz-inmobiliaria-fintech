@@ -213,6 +213,7 @@ export function MisPagos() {
           </table>
         </div>
         <Pagination total={pendingPayments.length} page={pendingPage} onPage={setPendingPage} />
+      </div>
 
       {/* Historial */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -240,6 +241,7 @@ export function MisPagos() {
           </table>
         </div>
         <Pagination total={completedPayments.length} page={completedPage} onPage={setCompletedPage} />
+      </div>
     </div>
   );
 }
