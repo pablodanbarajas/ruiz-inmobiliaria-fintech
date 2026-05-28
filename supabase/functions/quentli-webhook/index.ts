@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
   // 2. Obtener corridas financieras pendientes de pago (nopago > 0)
   const { data: corridas, error: corridaError } = await supabase
     .from('corridafinanciera')
-    .select('corridafinancieraid, nopago, fecha, mensualidad, pago(pagoid)')
+    .select('corridafinancieraid, nopago, fecha, mensualidad')
     .eq('ventaid', venta.ventaid)
     .gt('nopago', 0)
     .order('nopago', { ascending: true })
@@ -82,10 +82,18 @@ Deno.serve(async (req: Request) => {
     )
   }
 
-  // 3. Encontrar la primera mensualidad sin pago registrado
-  const unpaid = corridas.find(
-    (c) => !c.pago || (Array.isArray(c.pago) && c.pago.length === 0),
-  )
+  // 3. Obtener IDs de corridas que ya tienen pago registrado
+  const corridaIds = corridas.map((c) => c.corridafinancieraid)
+  const { data: pagosExistentes } = await supabase
+    .from('pagos')
+    .select('corridafinancieraid')
+    .in('corridafinancieraid', corridaIds)
+    .eq('estatus', 'P')
+
+  const corridasConPago = new Set((pagosExistentes ?? []).map((p) => p.corridafinancieraid))
+
+  // 4. Encontrar la primera mensualidad sin pago registrado
+  const unpaid = corridas.find((c) => !corridasConPago.has(c.corridafinancieraid))
 
   if (!unpaid) {
     return new Response(
@@ -99,7 +107,7 @@ Deno.serve(async (req: Request) => {
   const formapago = paymentType === 'CARD' ? 4 : paymentType === 'TRANSFER' ? 2 : 1
 
   const { data: pago, error: pagoError } = await supabase
-    .from('pago')
+    .from('pagos')
     .insert({
       corridafinancieraid: unpaid.corridafinancieraid,
       fechapago: new Date().toISOString().split('T')[0],
