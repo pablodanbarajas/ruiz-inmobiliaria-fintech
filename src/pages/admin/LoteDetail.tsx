@@ -430,7 +430,7 @@ export const LoteDetail = () => {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200 flex items-center justify-between gap-4">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">Ventas Asociadas</h2>
-            {ventas.length === 0 && lote.estatus === 'D' && (
+            {!ventas.some(v => (v as any).estatus !== 'C') && lote.estatus === 'D' && (
               <Button
                 onClick={() => setShowVentaModal(true)}
                 className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold inline-flex items-center gap-2"
