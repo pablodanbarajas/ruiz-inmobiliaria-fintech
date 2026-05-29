@@ -406,7 +406,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
       {!needsVentaPicker && selectedCorrida && (
         <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
           <p className="text-sm font-medium text-gray-700 mb-3">Corrida Financiera</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className={`grid gap-4 text-sm ${totalCargosExtraCorrida > 0 ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'}`}>
             <div>
               <p className="text-gray-500">No. de Pago</p>
               <p className="font-semibold text-gray-900">{selectedCorrida.nopago}</p>
@@ -419,6 +419,22 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
               <p className="text-gray-500">Mensualidad</p>
               <p className="font-semibold text-gray-900">{formatCurrency(selectedCorrida.mensualidad)}</p>
             </div>
+            {totalCargosExtraCorrida > 0 && (
+              <div>
+                <p className="text-gray-500">Cargos Extra</p>
+                <div className="space-y-0.5">
+                  {cargosExtra
+                    .filter(c => c.estatus !== 'X' && c.fecha != null && selectedCorrida.fecha != null && c.fecha <= selectedCorrida.fecha)
+                    .map(c => (
+                      <p key={c.cargoid} className="font-semibold text-purple-700">
+                        +{formatCurrency(c.monto)}
+                        <span className="text-xs text-gray-400 ml-1 font-normal">({c.concepto})</span>
+                      </p>
+                    ))
+                  }
+                </div>
+              </div>
+            )}
             <div>
               <p className="text-gray-500">Pendiente</p>
               <p className="font-semibold text-orange-600">
