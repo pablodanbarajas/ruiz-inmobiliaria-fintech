@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
-import type { Pago, CorridaFinanciera, Cliente, Lote } from '@/types/database'
+import type { Pago, CorridaFinanciera, Cliente, Lote, CargoExtra } from '@/types/database'
 import {
   formatDate,
   formatCurrency,
@@ -33,6 +33,8 @@ interface PagoFormProps {
   pago?: Pago
   /** Days of tolerance before recargo applies (set per venta by admin) */
   diasTolerancia?: number
+  /** Cargos extra de la venta (para calcular el total correcto incluyendo extras) */
+  cargosExtra?: CargoExtra[]
   onSubmit: (data: PagoFormData) => Promise<void>
   isLoading?: boolean
 }
@@ -53,7 +55,7 @@ interface CorridaWithPagos extends CorridaFinanciera {
 const today = () => new Date().toISOString().split('T')[0]
 
 // ── PagoForm ───────────────────────────────────────────────────────
-export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, onSubmit, isLoading }: PagoFormProps) => {
+export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExtra = [], onSubmit, isLoading }: PagoFormProps) => {
   const isEditMode = !!pago
 
   // Venta search (only when no initialCorridaId and not edit mode)
@@ -80,6 +82,14 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, onSubmit,
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const needsVentaPicker = !isEditMode && !initialCorridaId
+
+  // ── Total cargos extra aplicables a la corrida seleccionada ───
+  const totalCargosExtraCorrida = useMemo(() => {
+    if (!selectedCorrida || selectedCorrida.nopago === 0 || !cargosExtra.length) return 0
+    return cargosExtra
+      .filter(c => c.estatus !== 'X' && c.fecha != null && selectedCorrida.fecha != null && c.fecha <= selectedCorrida.fecha)
+      .reduce((sum, c) => sum + (c.monto || 0), 0)
+  }, [selectedCorrida, cargosExtra])
 
   // ── Load ventas for picker ──────────────────────────────────────
   useEffect(() => {
@@ -194,16 +204,22 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, onSubmit,
           .neq('estatus', 'C')
 
         const total = (pagosData || []).reduce((s: number, p: Pago) => s + (p.montopagado || 0), 0)
+        // Cargos extra aplicables a esta corrida
+        const cargosAplicables = data.nopago !== 0
+          ? cargosExtra.filter(c => c.estatus !== 'X' && c.fecha != null && data.fecha != null && c.fecha <= data.fecha)
+          : []
+        const totalCargosExtra = cargosAplicables.reduce((s, c) => s + (c.monto || 0), 0)
+        const totalAPagar = (data.mensualidad || 0) + totalCargosExtra
         const corridaInfo: CorridaWithPagos = {
           ...data,
           pagos: pagosData || [],
           totalPagado: total,
-          isPaid: total >= (data.mensualidad || 0),
+          isPaid: total >= totalAPagar,
         }
         setSelectedCorrida(corridaInfo)
-        // Auto-fill monto with remaining balance
+        // Auto-fill monto with remaining balance (including cargos extra)
         if (!pago) {
-          const remaining = (data.mensualidad || 0) - total
+          const remaining = totalAPagar - total
           if (remaining > 0) setMontopagado(String(remaining))
         }
       }
@@ -406,7 +422,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, onSubmit,
             <div>
               <p className="text-gray-500">Pendiente</p>
               <p className="font-semibold text-orange-600">
-                {formatCurrency((selectedCorrida.mensualidad || 0) - (selectedCorrida.totalPagado || 0))}
+                {formatCurrency((selectedCorrida.mensualidad || 0) + totalCargosExtraCorrida - (selectedCorrida.totalPagado || 0))}
               </p>
             </div>
           </div>

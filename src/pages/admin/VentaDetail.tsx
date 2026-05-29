@@ -1094,6 +1094,7 @@ export const VentaDetail = () => {
           <PagoForm
             initialCorridaId={selectedCorridaId}
             diasTolerancia={venta?.dias_tolerancia ?? 0}
+            cargosExtra={cargosExtra}
             onSubmit={handleCreatePagoFromCorrida}
             isLoading={isSubmittingPago}
           />
