@@ -25,6 +25,7 @@ export interface VentaFormData {
   comentarios: string | null
   plazoenganche: number
   dias_tolerancia: number | null
+  vendedor: string | null
 }
 
 interface VentaFormProps {
@@ -56,6 +57,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId }:
     comentarios: venta?.comentarios ?? '',
     plazoenganche: venta?.plazoenganche?.toString() ?? '1',
     dias_tolerancia: venta?.dias_tolerancia?.toString() ?? '0',
+    vendedor: venta?.vendedor ?? '',
   })
 
   const [lotes, setLotes] = useState<LoteWithDesarrollo[]>([])
@@ -243,6 +245,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId }:
       comentarios: formData.comentarios || null,
       plazoenganche: parseInt(formData.plazoenganche) || 1,
       dias_tolerancia: parseInt(formData.dias_tolerancia) > 0 ? parseInt(formData.dias_tolerancia) : null,
+      vendedor: formData.vendedor?.trim() || null,
     }
     await onSubmit(data)
   }
@@ -458,6 +461,18 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId }:
             </div>
           </div>
         )}
+      </div>
+
+      {/* ── Vendedor ────────────────────────────────────────── */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Vendedor</label>
+        <Input
+          type="text"
+          value={formData.vendedor ?? ''}
+          onChange={(e) => setFormData({ ...formData, vendedor: e.target.value })}
+          disabled={isLoading}
+          placeholder="Nombre del vendedor (opcional)"
+        />
       </div>
 
       {/* ── Estatus y Comentarios ──────────────────────────── */}

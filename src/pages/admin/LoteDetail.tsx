@@ -168,6 +168,7 @@ export const LoteDetail = () => {
           fechaprimeramensualidad: data.fechaprimeramensualidad,
           mensualidad: data.mensualidad, estatus: 'A',
           comentarios: data.comentarios ?? null, plazoenganche: data.plazoenganche ?? 1,
+          vendedor: data.vendedor ?? null,
         }])
         .select().single()
       if (ventaError) throw new Error(ventaError.message)

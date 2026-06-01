@@ -96,6 +96,7 @@ export const PagoDetail = () => {
           referencia: data.referencia,
           comentario: data.comentario,
           recargo: data.recargo,
+          cobrador: data.cobrador,
         })
         .eq('pagoid', id)
 
@@ -201,8 +202,8 @@ export const PagoDetail = () => {
             </div>
           </div>
 
-          {/* Row 2: Referencia + Corrida ID */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 pt-6 border-t border-gray-100">
+          {/* Row 2: Referencia + Corrida ID + Cobrador */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 pt-6 border-t border-gray-100">
             <div>
               <p className="text-sm text-gray-500">Referencia / Folio</p>
               <p className="text-base font-semibold text-gray-900">{pago.referencia || '—'}</p>
@@ -211,6 +212,12 @@ export const PagoDetail = () => {
               <p className="text-sm text-gray-500">Corrida Financiera ID</p>
               <p className="text-base font-semibold text-gray-900">{pago.corridafinancieraid}</p>
             </div>
+            {pago.cobrador && (
+              <div>
+                <p className="text-sm text-gray-500">Cobrador (ruta)</p>
+                <p className="text-base font-semibold text-gray-900">{pago.cobrador}</p>
+              </div>
+            )}
           </div>
 
           {/* Comentario */}

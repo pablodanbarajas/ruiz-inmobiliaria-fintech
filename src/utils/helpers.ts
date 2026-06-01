@@ -154,6 +154,7 @@ export const FORMAS_PAGO = [
   { value: 3, label: 'Cheque' },
   { value: 4, label: 'Tarjeta de Débito/Crédito' },
   { value: 5, label: 'Depósito Bancario' },
+  { value: 6, label: 'Ruta de cobranza' },
 ] as const
 
 export const getPagoStatusLabel = (status: string | null | undefined): string => {

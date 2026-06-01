@@ -24,6 +24,7 @@ export interface PagoFormData {
   referencia: string | null
   comentario: string | null
   recargo: number
+  cobrador: string | null
 }
 
 interface PagoFormProps {
@@ -77,6 +78,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
   const [referencia, setReferencia] = useState(pago?.referencia ?? '')
   const [comentario, setComentario] = useState(pago?.comentario ?? '')
   const [recargo, setRecargo] = useState<number>(pago?.recargo ?? 0)
+  const [cobrador, setCobrador] = useState<string>(pago?.cobrador ?? '')
   const [activeConvenio, setActiveConvenio] = useState<{ recargo_acordado: number | null; meses_atraso: number | null } | null>(null)
   const [checkingConvenio, setCheckingConvenio] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -299,6 +301,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
       referencia: referencia.trim() || null,
       comentario: comentario.trim() || null,
       recargo,
+      cobrador: formapago === 6 ? cobrador.trim() || null : null,
     })
   }
 
@@ -578,6 +581,19 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
               placeholder="Número de folio, transferencia, cheque..."
             />
           </div>
+
+          {/* Cobrador — solo cuando Ruta de cobranza */}
+          {formapago === 6 && (
+            <div>
+              <label className="block text-sm font-medium text-black mb-1">Cobrador</label>
+              <Input
+                type="text"
+                value={cobrador}
+                onChange={(e) => setCobrador(e.target.value)}
+                placeholder="Nombre del cobrador que recibió el pago..."
+              />
+            </div>
+          )}
 
           {/* Recargo */}
           {!isEditMode && (

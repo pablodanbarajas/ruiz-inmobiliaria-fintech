@@ -106,6 +106,7 @@ export type Venta = {
   plazoenganche: number | null
   idempotencykey: string | null
   dias_tolerancia: number | null
+  vendedor: string | null
 }
 
 export type CorridaFinanciera = {
@@ -127,6 +128,7 @@ export type Pago = {
   referencia: string | null
   comentario: string | null
   recargo: number | null
+  cobrador: string | null
 }
 
 export type Convenio = {
@@ -172,6 +174,19 @@ export type DevolucionParcialidad = {
   estatus: string | null  // P: Pendiente | R: Realizada
   notas: string | null
   created_at: string | null
+}
+
+export type Traspaso = {
+  traspasoid: number
+  ventaid: number
+  clienteid_anterior: number
+  clienteid_nuevo: number
+  fecha: string
+  notas: string | null
+  usuarioid: string | null
+  created_at: string | null
+  cliente_anterior?: { nombre: string | null }
+  cliente_nuevo?: { nombre: string | null }
 }
 
 export type CargoExtra = {

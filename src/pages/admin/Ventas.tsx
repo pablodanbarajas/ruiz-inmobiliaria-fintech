@@ -203,6 +203,7 @@ export const Ventas = () => {
             estatus: 'A',
             comentarios: data.comentarios ?? null,
             plazoenganche: data.plazoenganche ?? 1,
+            vendedor: data.vendedor ?? null,
           },
         ])
         .select()

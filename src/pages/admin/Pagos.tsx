@@ -171,6 +171,7 @@ export const Pagos = () => {
           estatus: data.estatus,
           referencia: data.referencia,
           comentario: data.comentario,
+          cobrador: data.cobrador,
         })
         .select()
         .single()

@@ -11,8 +11,10 @@ import type { PagoFormData } from '@/components/forms/PagoForm'
 import { ConvenioForm } from '@/components/forms/ConvenioForm'
 import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
 import { AlertaCancelacion } from '@/components/AlertaCancelacion'
-import { ChevronLeft, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, CheckCircle2, Wrench } from 'lucide-react'
-import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Convenio, Devolucion, DevolucionParcialidad, CargoExtra } from '@/types/database'
+import { ChevronLeft, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, CheckCircle2, Wrench, ArrowLeftRight } from 'lucide-react'
+import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Convenio, Devolucion, DevolucionParcialidad, CargoExtra, Traspaso } from '@/types/database'
+import { SearchCombobox } from '@/components/ui/SearchCombobox'
+import type { ComboOption } from '@/components/ui/SearchCombobox'
 import {
   formatDate,
   formatCurrency,
@@ -54,6 +56,13 @@ export const VentaDetail = () => {
   const [numParcialidades, setNumParcialidades] = useState(3)
   const [devolucion, setDevolucion] = useState<(Devolucion & { parcialidades?: DevolucionParcialidad[] }) | null>(null)
   const [cargosExtra, setCargosExtra] = useState<CargoExtra[]>([])
+  const [traspasos, setTraspasos] = useState<(Traspaso & { cliente_anterior?: { nombre: string | null }; cliente_nuevo?: { nombre: string | null } })[]>([])
+  const [showTraspasoModal, setShowTraspasoModal] = useState(false)
+  const [isSubmittingTraspaso, setIsSubmittingTraspaso] = useState(false)
+  const [traspasoNuevoClienteId, setTraspasoNuevoClienteId] = useState('')
+  const [traspasoFecha, setTraspasoFecha] = useState('')
+  const [traspasoNotas, setTraspasoNotas] = useState('')
+  const [traspasoClientes, setTraspasoClientes] = useState<ComboOption[]>([])
 
   useEffect(() => {
     const fetchVentaDetail = async () => {
@@ -123,6 +132,14 @@ export const VentaDetail = () => {
           .eq('loteid', ventaData.loteid)
           .order('fecha', { ascending: true })
         setCargosExtra((cargosData || []) as CargoExtra[])
+
+        // Fetch traspasos for this venta
+        const { data: traspasosData } = await supabase
+          .from('traspasos')
+          .select('*, cliente_anterior:cliente!clienteid_anterior(nombre), cliente_nuevo:cliente!clienteid_nuevo(nombre)')
+          .eq('ventaid', id)
+          .order('fecha', { ascending: true })
+        setTraspasos((traspasosData || []) as any[])
       } catch (error) {
         console.error('Error fetching venta detail:', error)
       } finally {
@@ -147,6 +164,7 @@ export const VentaDetail = () => {
           estatus: data.estatus,
           comentarios: data.comentarios ?? null,
           dias_tolerancia: data.dias_tolerancia ?? null,
+          vendedor: data.vendedor ?? null,
         })
         .eq('ventaid', id)
 
@@ -165,6 +183,88 @@ export const VentaDetail = () => {
       alert(`Error al actualizar la venta: ${err.message}`)
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  // ── Traspaso handler ─────────────────────────────────────────────
+  const loadTraspasoClientes = async () => {
+    let all: Cliente[] = []
+    let page = 0
+    const pageSize = 1000
+    let hasMore = true
+    while (hasMore) {
+      const { data } = await supabase
+        .from('cliente')
+        .select('clienteid, nombre, email')
+        .order('nombre')
+        .range(page * pageSize, page * pageSize + pageSize - 1)
+      all = all.concat(data || [])
+      hasMore = (data?.length ?? 0) === pageSize
+      page++
+    }
+    setTraspasoClientes(
+      all.map((c) => ({
+        value: c.clienteid.toString(),
+        label: c.nombre ?? `Cliente #${c.clienteid}`,
+        sublabel: c.email ?? undefined,
+      }))
+    )
+  }
+
+  const handleOpenTraspasoModal = async () => {
+    setTraspasoNuevoClienteId('')
+    setTraspasoFecha(new Date().toISOString().split('T')[0])
+    setTraspasoNotas('')
+    setShowTraspasoModal(true)
+    if (traspasoClientes.length === 0) {
+      await loadTraspasoClientes()
+    }
+  }
+
+  const handleTraspaso = async () => {
+    if (!venta || !traspasoNuevoClienteId) return
+    try {
+      setIsSubmittingTraspaso(true)
+      const { data: authData } = await supabase.auth.getUser()
+      const usuarioid = authData.user?.id ?? null
+
+      const { error: insertError } = await supabase.from('traspasos').insert({
+        ventaid: venta.ventaid,
+        clienteid_anterior: venta.clienteid,
+        clienteid_nuevo: parseInt(traspasoNuevoClienteId),
+        fecha: traspasoFecha,
+        notas: traspasoNotas.trim() || null,
+        usuarioid,
+      })
+      if (insertError) throw insertError
+
+      const { error: updateError } = await supabase
+        .from('venta')
+        .update({ clienteid: parseInt(traspasoNuevoClienteId) })
+        .eq('ventaid', venta.ventaid)
+      if (updateError) throw updateError
+
+      // Refetch venta and traspasos
+      const { data: ventaData } = await supabase
+        .from('venta')
+        .select('*, cliente:cliente(*), lote:lote(*, desarrollo:desarrollo(*))')
+        .eq('ventaid', id)
+        .single()
+      setVenta(ventaData as VentaWithDetails)
+
+      const { data: traspasosData } = await supabase
+        .from('traspasos')
+        .select('*, cliente_anterior:cliente!clienteid_anterior(nombre), cliente_nuevo:cliente!clienteid_nuevo(nombre)')
+        .eq('ventaid', id)
+        .order('fecha', { ascending: true })
+      setTraspasos((traspasosData || []) as any[])
+
+      setShowTraspasoModal(false)
+    } catch (err: any) {
+      console.error('Error al registrar traspaso:', err)
+      alert(`Error al registrar el traspaso: ${err.message}`)
+    } finally {
+      setIsSubmittingTraspaso(false)
     }
   }
 
@@ -270,6 +370,7 @@ export const VentaDetail = () => {
           referencia: data.referencia,
           comentario: data.comentario,
           recargo: data.recargo,
+          cobrador: data.cobrador,
         })
 
       if (error) throw error
@@ -409,6 +510,16 @@ export const VentaDetail = () => {
             </Button>
             {venta.estatus === 'A' && (
               <Button
+                variant="outline"
+                onClick={handleOpenTraspasoModal}
+                className="inline-flex items-center gap-2"
+              >
+                <ArrowLeftRight size={16} />
+                Traspaso
+              </Button>
+            )}
+            {venta.estatus === 'A' && (
+              <Button
                 variant="destructive"
                 onClick={() => setShowCancelModal(true)}
                 className="inline-flex items-center gap-2"
@@ -501,8 +612,8 @@ export const VentaDetail = () => {
             </div>
           </div>
 
-          {/* Row 4: Estatus + Comentarios */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-100">
+          {/* Row 4: Estatus + Vendedor + Comentarios */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-100">
             <div>
               <p className="text-sm text-gray-500 mb-1">Estado</p>
               <div className="flex items-center gap-3 flex-wrap">
@@ -520,6 +631,10 @@ export const VentaDetail = () => {
                   </span>
                 )}
               </div>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Vendedor</p>
+              <p className="text-base font-semibold text-gray-900">{venta.vendedor || '—'}</p>
             </div>
             {venta.comentarios && (
               <div>
@@ -958,6 +1073,43 @@ export const VentaDetail = () => {
         </div>
       )}
 
+      {/* ── Historial de Traspasos ─────────────────────── */}
+      {traspasos.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md border border-gray-200 mb-6 overflow-hidden">
+          <div className="px-8 py-4 flex items-center gap-3 border-b border-gray-100">
+            <ArrowLeftRight size={20} className="text-indigo-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Historial de Traspasos</h2>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {traspasos.map((t) => (
+              <div key={t.traspasoid} className="px-8 py-4 flex flex-wrap items-start gap-4">
+                <div className="flex-none">
+                  <p className="text-xs text-gray-500">Fecha</p>
+                  <p className="text-sm font-semibold text-gray-800">{formatDate(t.fecha)}</p>
+                </div>
+                <div className="flex-1 min-w-40">
+                  <p className="text-xs text-gray-500">Titular anterior</p>
+                  <p className="text-sm font-semibold text-gray-800">{(t as any).cliente_anterior?.nombre ?? `Cliente #${t.clienteid_anterior}`}</p>
+                </div>
+                <div className="flex items-center text-gray-400 pt-4">
+                  <ArrowLeftRight size={16} />
+                </div>
+                <div className="flex-1 min-w-40">
+                  <p className="text-xs text-gray-500">Nuevo titular</p>
+                  <p className="text-sm font-semibold text-indigo-700">{(t as any).cliente_nuevo?.nombre ?? `Cliente #${t.clienteid_nuevo}`}</p>
+                </div>
+                {t.notas && (
+                  <div className="w-full">
+                    <p className="text-xs text-gray-500">Notas</p>
+                    <p className="text-sm text-gray-700">{t.notas}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Modal: Editar Venta ────────────────────── */}
       <Modal
         isOpen={showEditModal}
@@ -1115,6 +1267,73 @@ export const VentaDetail = () => {
           onSubmit={handleCreateConvenio}
           isLoading={isSubmittingConvenio}
         />
+      </Modal>
+
+      {/* ── Modal: Registrar Traspaso ────────────────────── */}
+      <Modal
+        isOpen={showTraspasoModal}
+        title="Registrar Traspaso"
+        onClose={() => !isSubmittingTraspaso && setShowTraspasoModal(false)}
+        size="lg"
+      >
+        <div className="space-y-5">
+          <p className="text-sm text-gray-600">
+            El traspaso cambia el titular de la venta. El historial de pagos permanece sin cambios.
+          </p>
+
+          {/* Nuevo titular */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nuevo titular <span className="text-red-500">*</span>
+            </label>
+            <SearchCombobox
+              options={traspasoClientes}
+              value={traspasoNuevoClienteId}
+              onChange={setTraspasoNuevoClienteId}
+              placeholder="Buscar cliente..."
+            />
+          </div>
+
+          {/* Fecha */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha del traspaso</label>
+            <input
+              type="date"
+              value={traspasoFecha}
+              onChange={(e) => setTraspasoFecha(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+            />
+          </div>
+
+          {/* Notas */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notas (opcional)</label>
+            <textarea
+              value={traspasoNotas}
+              onChange={(e) => setTraspasoNotas(e.target.value)}
+              rows={3}
+              placeholder="Motivo del traspaso..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2 border-t border-gray-200">
+            <Button
+              variant="outline"
+              onClick={() => setShowTraspasoModal(false)}
+              disabled={isSubmittingTraspaso}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleTraspaso}
+              disabled={isSubmittingTraspaso || !traspasoNuevoClienteId}
+              style={{ backgroundColor: '#eaae4c', color: '#000' }}
+            >
+              {isSubmittingTraspaso ? 'Registrando…' : 'Confirmar Traspaso'}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </AdminLayout>
   )
