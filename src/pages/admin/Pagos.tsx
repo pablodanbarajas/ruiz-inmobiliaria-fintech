@@ -108,7 +108,7 @@ export const Pagos = () => {
               // Step 3: Get pagos for those corridafinanciera
               const { data: pagosFull } = await supabase
                 .from('pagos')
-                .select('pagoid, fechapago, montopagado, estatus, corridafinanciera(venta(ventaid, clienteid, cliente(nombre)))')
+                .select('pagoid, fechapago, montopagado, estatus, corridafinanciera(venta(ventaid, clienteid, cliente(nombre), lote:lote(desarrolloid)))')
                 .in('corridafinancieraid', corridaIds)
                 .order('fechapago', { ascending: false })
 
