@@ -191,6 +191,7 @@ export const Desarrollos = () => {
 
         {/* Table */}
         <DataTable<DesarrolloWithTipo>
+          emptyMessage="No se encontraron desarrollos con los filtros aplicados"
           columns={[
             {
               key: 'clavedesarrollo',

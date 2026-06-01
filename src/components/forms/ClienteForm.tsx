@@ -89,14 +89,14 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       newErrors.email = 'Email inválido'
     }
 
-    // Validación de RFC (formato básico: 12-13 caracteres, sin espacios)
-    if (formData.rfc && !/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/.test(formData.rfc.toUpperCase().trim())) {
-      newErrors.rfc = 'RFC inválido (formato: XXX000000XXX)'
+    // Validación de RFC (12–13 caracteres alfanuméricos)
+    if (formData.rfc && !/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{2,3}$/.test(formData.rfc.toUpperCase().trim())) {
+      newErrors.rfc = 'RFC inválido (ej: XAXX000101000)'
     }
 
-    // Validación de CURP (formato: 18 caracteres)
-    if (formData.curp && !/^[A-Z]{4}\d{6}[HM][A-Z]{5}[0-9A-Z]\d$/.test(formData.curp.toUpperCase().trim())) {
-      newErrors.curp = 'CURP inválido (formato: XXXX000000HXXXXX00X)'
+    // Validación de CURP (18 caracteres: 4 letras + 6 dígitos + H/M + 5 letras + 2 alfanum.)
+    if (formData.curp && !/^[A-Z]{4}\d{6}[HM][A-Z]{5}[0-9A-Z]{2}$/.test(formData.curp.toUpperCase().trim())) {
+      newErrors.curp = 'CURP inválido (18 caracteres, ej: XAXX000101HXXXXX01)'
     }
 
     // Validación de unicidad si es creación o cambio de RFC/CURP/Email

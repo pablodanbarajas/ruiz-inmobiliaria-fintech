@@ -258,6 +258,7 @@ export const Pagos = () => {
 
         {/* Table */}
         <DataTable<PagoWithDetails>
+          emptyMessage="No se encontraron pagos con los filtros aplicados"
           columns={[
             {
               key: 'pagoid',

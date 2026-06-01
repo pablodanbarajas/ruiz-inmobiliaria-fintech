@@ -365,7 +365,11 @@ export const CargosExtra = () => {
                                 variant="ghost"
                                 className="p-1 text-red-500 hover:bg-red-50"
                                 title="Cancelar cargo"
-                                onClick={() => handleSetEstatus(cargo.cargoid, 'X')}
+                                onClick={() => {
+                                  if (window.confirm(`¿Cancelar el cargo "${cargo.concepto}"? Esta acción no se puede deshacer.`)) {
+                                    handleSetEstatus(cargo.cargoid, 'X')
+                                  }
+                                }}
                               >
                                 <XCircle size={15} />
                               </Button>

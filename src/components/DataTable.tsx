@@ -13,6 +13,7 @@ interface DataTableProps<T> {
   columns: Column<T>[]
   data: T[]
   loading?: boolean
+  emptyMessage?: string
   onRowClick?: (row: T) => void
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
@@ -23,6 +24,7 @@ export const DataTable = <T extends Record<string, any>>({
   columns,
   data,
   loading = false,
+  emptyMessage = 'No hay datos disponibles',
   onRowClick,
   sortBy,
   sortOrder,
@@ -44,7 +46,7 @@ export const DataTable = <T extends Record<string, any>>({
   if (data.length === 0) {
     return (
       <div className="text-center py-12 bg-white rounded-lg border border-[#504840]">
-        <p className="text-[#9e9f92]">No hay datos disponibles</p>
+        <p className="text-[#9e9f92]">{emptyMessage}</p>
       </div>
     )
   }

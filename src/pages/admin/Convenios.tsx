@@ -157,6 +157,7 @@ export const Convenios = () => {
 
         {/* Table */}
         <DataTable<ConvenioWithDetails>
+          emptyMessage="No se encontraron convenios con los filtros aplicados"
           columns={[
             {
               key: 'convenioid',

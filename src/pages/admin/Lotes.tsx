@@ -320,6 +320,7 @@ export const Lotes = () => {
 
         {/* Table */}
         <DataTable<Lote & { desarrollo?: Desarrollo }>
+          emptyMessage="No se encontraron lotes con los filtros aplicados"
           columns={[
             {
               key: 'clavedesarrollo',

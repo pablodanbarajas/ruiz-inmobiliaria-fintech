@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -83,6 +83,9 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
   const [activeConvenio, setActiveConvenio] = useState<{ recargo_acordado: number | null; meses_atraso: number | null } | null>(null)
   const [checkingConvenio, setCheckingConvenio] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Track whether montopagado was auto-filled (so recargo updates can also update it)
+  const autoFilledMonto = useRef(false)
 
   const needsVentaPicker = !isEditMode && !initialCorridaId
 
@@ -228,10 +231,13 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
           isPaid: total >= totalAPagar,
         }
         setSelectedCorrida(corridaInfo)
-        // Auto-fill monto with remaining balance (including cargos extra)
+        // Auto-fill monto with remaining balance (including cargos extra); recargo effect will update it further
         if (!pago) {
           const remaining = totalAPagar - total
-          if (remaining > 0) setMontopagado(String(remaining))
+          if (remaining > 0) {
+            autoFilledMonto.current = true
+            setMontopagado(String(remaining))
+          }
         }
       }
     }
@@ -265,23 +271,32 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
   useEffect(() => {
     if (isEditMode || !selectedCorrida?.fecha || checkingConvenio) return
     const effectiveDiasTolerancia = diasTolerancia > 0 ? diasTolerancia : fetchedDiasTolerancia
+    let newRecargo: number
     if (activeConvenio) {
       const meses = activeConvenio.meses_atraso ?? 1
       const rAcordado = activeConvenio.recargo_acordado ?? 0
-      setRecargo(meses > 0 ? Math.round((rAcordado / meses) * 100) / 100 : 0)
+      newRecargo = meses > 0 ? Math.round((rAcordado / meses) * 100) / 100 : 0
     } else {
-      const calculated = calcularRecargo(selectedCorrida.fecha, fechapago, effectiveDiasTolerancia)
-      setRecargo(calculated)
+      newRecargo = calcularRecargo(selectedCorrida.fecha, fechapago, effectiveDiasTolerancia)
     }
-  }, [selectedCorrida, fechapago, isEditMode, activeConvenio, checkingConvenio, diasTolerancia, fetchedDiasTolerancia])
+    setRecargo(newRecargo)
+    // If monto was auto-filled, update it to reflect the new recargo
+    if (autoFilledMonto.current) {
+      const base = (selectedCorrida.mensualidad || 0) + totalCargosExtraCorrida - (selectedCorrida.totalPagado || 0)
+      const total = Math.max(0, base + newRecargo)
+      setMontopagado(parseFloat(total.toFixed(2)).toString())
+    }
+  }, [selectedCorrida, fechapago, isEditMode, activeConvenio, checkingConvenio, diasTolerancia, fetchedDiasTolerancia, totalCargosExtraCorrida])
 
   // ── Select corrida from table ──────────────────────────────────
   const handleSelectCorrida = (corrida: CorridaWithPagos) => {
     if (corrida.isPaid) return
     setSelectedCorrida(corrida)
     setCorridaId(corrida.corridafinancieraid)
-    const remaining = (corrida.mensualidad || 0) - (corrida.totalPagado || 0)
-    setMontopagado(String(remaining > 0 ? remaining : corrida.mensualidad || 0))
+    // Auto-fill with remaining balance (recargo will be added by the recargo effect)
+    const remaining = (corrida.mensualidad || 0) + totalCargosExtraCorrida - (corrida.totalPagado || 0)
+    autoFilledMonto.current = true
+    setMontopagado(String(Math.max(0, remaining)))
     setErrors((prev) => ({ ...prev, corridafinancieraid: '' }))
   }
 
@@ -540,7 +555,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
               min="0.01"
               step="0.01"
               value={montopagado}
-              onChange={(e) => setMontopagado(e.target.value)}
+              onChange={(e) => { autoFilledMonto.current = false; setMontopagado(e.target.value) }}
               placeholder="0.00"
               className={errors.montopagado ? 'border-red-500' : ''}
             />

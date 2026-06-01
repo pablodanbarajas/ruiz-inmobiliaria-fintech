@@ -309,6 +309,7 @@ export const Ventas = () => {
 
         {/* Table */}
         <DataTable<VentaWithDetails>
+          emptyMessage="No se encontraron ventas con los filtros aplicados"
           columns={[
             {
               key: 'ventaid',

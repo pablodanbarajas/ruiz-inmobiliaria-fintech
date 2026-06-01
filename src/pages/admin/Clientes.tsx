@@ -303,6 +303,7 @@ export const Clientes = () => {
 
         {/* Table */}
         <DataTable<Cliente>
+          emptyMessage="No se encontraron clientes con los filtros aplicados"
           columns={[
             {
               key: 'nombre',
