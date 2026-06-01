@@ -188,7 +188,7 @@ export const VentaDetail = () => {
 
   // ── Traspaso handler ─────────────────────────────────────────────
   const loadTraspasoClientes = async () => {
-    let all: Cliente[] = []
+    let all: { clienteid: number; nombre: string | null; email: string | null }[] = []
     let page = 0
     const pageSize = 1000
     let hasMore = true
