@@ -9,6 +9,8 @@ import { Modal } from '@/components/ui/Modal'
 import { PagoForm } from '@/components/forms/PagoForm'
 import type { PagoFormData } from '@/components/forms/PagoForm'
 import { Eye, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { SearchCombobox } from '@/components/ui/SearchCombobox'
+import type { ComboOption } from '@/components/ui/SearchCombobox'
 import type { Pago, CorridaFinanciera, Venta, Cliente } from '@/types/database'
 import { getPagoStatusLabel, getPagoStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
@@ -179,7 +181,7 @@ export const Pagos = () => {
       <div className="w-full">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Pagos</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Tesorería</h1>
             <p className="text-[#9e9f92] mt-2">Registro de pagos realizados</p>
           </div>
           <Button
@@ -199,18 +201,16 @@ export const Pagos = () => {
               <label className="block text-sm font-medium text-black mb-1">
                 Cliente
               </label>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              <SearchCombobox
+                options={clientes.map((c): ComboOption => ({
+                  value: String(c.clienteid),
+                  label: c.nombre || 'Sin nombre',
+                  sublabel: c.telefonocelular || c.telefono2 || undefined,
+                }))}
                 value={filters.clienteId}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilters({ ...filters, clienteId: e.target.value })}
-              >
-                <option value="">Todos</option>
-                {clientes.map((c) => (
-                  <option key={c.clienteid} value={c.clienteid}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setFilters({ ...filters, clienteId: v })}
+                placeholder="Buscar por nombre o teléfono..."
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-black mb-1">

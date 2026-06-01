@@ -47,7 +47,7 @@ const MENU_ITEMS = [
     roles: ['admin', 'vendedor'],
   },
   {
-    label: 'Pagos',
+    label: 'Tesorería',
     path: '/admin/pagos',
     icon: DollarSign,
     roles: ['admin', 'vendedor'],
