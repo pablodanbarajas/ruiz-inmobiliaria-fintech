@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, MapPin, ShoppingCart, DollarSign, AlertTriangle, Eye, CheckCircle2 } from 'lucide-react'
+import {
+  Users, MapPin, ShoppingCart, DollarSign, AlertTriangle, Eye, CheckCircle2,
+  Home, Plus, CreditCard, UserPlus, ArrowLeftRight, TrendingUp,
+} from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { formatCurrency, formatDate } from '@/utils/helpers'
@@ -20,6 +23,26 @@ interface Stats {
   totalDesarrollos: number
   totalVentas: number
   totalPagado: number
+  pagosDelMes: number
+  lotesDisponibles: number
+  ventasActivas: number
+}
+
+interface PagoReciente {
+  pagoid: number
+  montopagado: number
+  fecha: string
+  clienteNombre: string
+  loteLabel: string
+  ventaid: number
+}
+
+interface VentaReciente {
+  ventaid: number
+  precio: number | null
+  estatus: string
+  clienteNombre: string
+  loteLabel: string
 }
 
 export const Dashboard = () => {
@@ -29,33 +52,39 @@ export const Dashboard = () => {
     totalDesarrollos: 0,
     totalVentas: 0,
     totalPagado: 0,
+    pagosDelMes: 0,
+    lotesDisponibles: 0,
+    ventasActivas: 0,
   })
   const [loading, setLoading] = useState(true)
   const [ventasEnRiesgo, setVentasEnRiesgo] = useState<VentaEnRiesgo[]>([])
   const [loadingRiesgo, setLoadingRiesgo] = useState(true)
+  const [pagosRecientes, setPagosRecientes] = useState<PagoReciente[]>([])
+  const [ventasRecientes, setVentasRecientes] = useState<VentaReciente[]>([])
+  const [loadingRecent, setLoadingRecent] = useState(true)
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        if (DEMO_DESARROLLOIDS.length > 0) {
-          // Scoped stats: only data related to the demo desarrollos
+        const now = new Date()
+        const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 
-          // 1. Lotes of these desarrollos
+        if (DEMO_DESARROLLOIDS.length > 0) {
           const { data: lotesDemo } = await supabase
             .from('lote')
-            .select('loteid')
+            .select('loteid, estatus')
             .in('desarrolloid', DEMO_DESARROLLOIDS)
           const loteIds = (lotesDemo || []).map((l: any) => l.loteid)
+          const lotesDisponibles = (lotesDemo || []).filter((l: any) => l.estatus === 'D').length
 
-          // 2. Ventas of those lotes
           const { data: ventasDemo } = await supabase
             .from('venta')
-            .select('ventaid, clienteid')
+            .select('ventaid, clienteid, estatus')
             .in('loteid', loteIds.length ? loteIds : [-1])
           const ventaIds = (ventasDemo || []).map((v: any) => v.ventaid)
           const clienteIds = [...new Set((ventasDemo || []).map((v: any) => v.clienteid).filter(Boolean))]
+          const ventasActivas = (ventasDemo || []).filter((v: any) => v.estatus === 'A').length
 
-          // 3. Corridas of those ventas → pagos
           const { data: corridasDemo } = await supabase
             .from('corridafinanciera')
             .select('corridafinancieraid')
@@ -63,39 +92,45 @@ export const Dashboard = () => {
           const corridaIds = (corridasDemo || []).map((c: any) => c.corridafinancieraid)
 
           const { data: pagosDemo } = corridaIds.length
-            ? await supabase
-                .from('pagos')
-                .select('montopagado')
-                .in('corridafinancieraid', corridaIds)
+            ? await supabase.from('pagos').select('montopagado, fecha').in('corridafinancieraid', corridaIds)
             : { data: [] }
 
-          const totalPagado = (pagosDemo || []).reduce(
-            (sum: number, p: any) => sum + (p.montopagado || 0), 0
-          )
+          const totalPagado = (pagosDemo || []).reduce((sum: number, p: any) => sum + (p.montopagado || 0), 0)
+          const pagosDelMes = (pagosDemo || [])
+            .filter((p: any) => p.fecha >= firstOfMonth)
+            .reduce((sum: number, p: any) => sum + (p.montopagado || 0), 0)
 
           setStats({
             totalClientes: clienteIds.length,
-            totalDesarrollos: 1,
+            totalDesarrollos: DEMO_DESARROLLOIDS.length,
             totalVentas: ventaIds.length,
             totalPagado,
+            pagosDelMes,
+            lotesDisponibles,
+            ventasActivas,
           })
         } else {
-          const [clientesRes, desarrollosRes, ventasRes, pagosRes] = await Promise.all([
+          const [clientesRes, desarrollosRes, ventasRes, pagosRes, lotesDisponiblesRes, ventasActivasRes, pagosDelMesRes] = await Promise.all([
             supabase.from('cliente').select('*', { count: 'exact', head: true }),
             supabase.from('desarrollo').select('*', { count: 'exact', head: true }),
             supabase.from('venta').select('*', { count: 'exact', head: true }),
             supabase.from('pagos').select('montopagado'),
+            supabase.from('lote').select('*', { count: 'exact', head: true }).eq('estatus', 'D'),
+            supabase.from('venta').select('*', { count: 'exact', head: true }).eq('estatus', 'A'),
+            supabase.from('pagos').select('montopagado').gte('fecha', firstOfMonth),
           ])
 
-          const totalPagado = pagosRes.data?.reduce(
-            (sum, pago) => sum + (pago.montopagado || 0), 0
-          ) || 0
+          const totalPagado = pagosRes.data?.reduce((sum, p) => sum + (p.montopagado || 0), 0) || 0
+          const pagosDelMes = pagosDelMesRes.data?.reduce((sum, p) => sum + (p.montopagado || 0), 0) || 0
 
           setStats({
             totalClientes: clientesRes.count || 0,
             totalDesarrollos: desarrollosRes.count || 0,
             totalVentas: ventasRes.count || 0,
             totalPagado,
+            pagosDelMes,
+            lotesDisponibles: lotesDisponiblesRes.count || 0,
+            ventasActivas: ventasActivasRes.count || 0,
           })
         }
       } catch (error) {
@@ -221,18 +256,108 @@ export const Dashboard = () => {
     fetchRiesgo()
   }, [])
 
+  // ── Actividad reciente ──────────────────────────────────────────
+  useEffect(() => {
+    const fetchRecent = async () => {
+      try {
+        setLoadingRecent(true)
+
+        // Últimas ventas
+        const { data: vData } = await supabase
+          .from('venta')
+          .select('ventaid, precio, estatus, cliente:clienteid(nombre), lote:loteid(manzana, nolote, clavelote, desarrolloid)')
+          .order('ventaid', { ascending: false })
+          .limit(30)
+
+        const ventasFiltradas = DEMO_DESARROLLOIDS.length > 0
+          ? (vData || []).filter((v: any) => {
+              const lote = Array.isArray(v.lote) ? v.lote[0] : v.lote
+              return DEMO_DESARROLLOIDS.includes(lote?.desarrolloid)
+            })
+          : (vData || [])
+
+        setVentasRecientes(
+          ventasFiltradas.slice(0, 6).map((v: any) => {
+            const lote = Array.isArray(v.lote) ? v.lote[0] : v.lote
+            const cliente = Array.isArray(v.cliente) ? v.cliente[0] : v.cliente
+            return {
+              ventaid: v.ventaid,
+              precio: v.precio,
+              estatus: v.estatus,
+              clienteNombre: cliente?.nombre ?? `Cliente #${v.clienteid}`,
+              loteLabel: lote ? `Mza ${lote.manzana} – L${lote.nolote}${lote.clavelote ? ` (${lote.clavelote})` : ''}` : '—',
+            }
+          })
+        )
+
+        // Últimos pagos — fetch pagos + corrida → ventaid, then join venta
+        const { data: pData } = await supabase
+          .from('pagos')
+          .select('pagoid, montopagado, fecha, corridafinancieraid, corridafinanciera:corridafinancieraid(ventaid)')
+          .order('pagoid', { ascending: false })
+          .limit(50)
+
+        const pagosConVenta = (pData || []).filter((p: any) => p.corridafinanciera?.ventaid)
+        const ventaIds = [...new Set(pagosConVenta.map((p: any) => p.corridafinanciera.ventaid))]
+
+        if (ventaIds.length > 0) {
+          const { data: ventasData } = await supabase
+            .from('venta')
+            .select('ventaid, clienteid, cliente:clienteid(nombre), lote:loteid(manzana, nolote, desarrolloid)')
+            .in('ventaid', ventaIds as number[])
+
+          const ventaMap = new Map<number, any>()
+          for (const v of ventasData || []) ventaMap.set((v as any).ventaid, v)
+
+          const pagosList: PagoReciente[] = []
+          for (const p of pagosConVenta) {
+            const ventaid = p.corridafinanciera.ventaid
+            const venta = ventaMap.get(ventaid)
+            if (!venta) continue
+            const lote = Array.isArray(venta.lote) ? venta.lote[0] : venta.lote
+            if (DEMO_DESARROLLOIDS.length > 0 && !DEMO_DESARROLLOIDS.includes(lote?.desarrolloid)) continue
+            const cliente = Array.isArray(venta.cliente) ? venta.cliente[0] : venta.cliente
+            pagosList.push({
+              pagoid: p.pagoid,
+              montopagado: p.montopagado,
+              fecha: p.fecha,
+              clienteNombre: cliente?.nombre ?? `Cliente #${venta.clienteid}`,
+              loteLabel: lote ? `Mza ${lote.manzana} – L${lote.nolote}` : '—',
+              ventaid,
+            })
+            if (pagosList.length >= 6) break
+          }
+          setPagosRecientes(pagosList)
+        }
+      } catch (err) {
+        console.error('Error fetching recent activity:', err)
+      } finally {
+        setLoadingRecent(false)
+      }
+    }
+    fetchRecent()
+  }, [])
+
+  const monthName = new Date().toLocaleString('es-MX', { month: 'long', year: 'numeric' })
+
   const StatCard = ({
     title,
     value,
     icon: Icon,
     color,
+    onClick,
   }: {
     title: string
     value: string | number
     icon: React.ReactNode
     color: string
+    onClick?: () => void
   }) => (
-    <div className="bg-white rounded-lg shadow-md border-l-4 p-6 hover:shadow-lg transition-shadow" style={{ borderColor: color }}>
+    <div
+      onClick={onClick}
+      className={`bg-white rounded-lg shadow-md border-l-4 p-6 transition-shadow ${onClick ? 'cursor-pointer hover:shadow-lg' : 'hover:shadow-lg'}`}
+      style={{ borderColor: color }}
+    >
       <div className="flex items-center justify-between">
         <div>
           <p className="text-[#9e9f92] text-sm font-medium">{title}</p>
@@ -248,52 +373,211 @@ export const Dashboard = () => {
   return (
     <AdminLayout>
       <div className="w-full">
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Dashboard</h1>
-          <p className="text-[#9e9f92] mt-2">Bienvenido al sistema de administración</p>
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Dashboard</h1>
+            <p className="text-[#9e9f92] mt-1 capitalize">{monthName}</p>
+          </div>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="inline-block animate-spin">
-                <div className="h-8 w-8 border-4 border-[#eaae4c] border-t-transparent rounded-full"></div>
-              </div>
-              <p className="mt-4 text-[#9e9f92]">Cargando estadísticas...</p>
-            </div>
+          <div className="flex items-center justify-center h-48">
+            <div className="inline-block h-8 w-8 border-4 border-[#eaae4c] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard
-              title="Total de Clientes"
-              value={stats.totalClientes}
-              icon={<Users className="w-8 h-8 text-white" />}
-              color="#9e9f92"
-            />
-            <StatCard
-              title="Total de Desarrollos"
-              value={stats.totalDesarrollos}
-              icon={<MapPin className="w-8 h-8 text-white" />}
-              color="#504840"
-            />
-            <StatCard
-              title="Total de Ventas"
-              value={stats.totalVentas}
-              icon={<ShoppingCart className="w-8 h-8 text-black" />}
-              color="#eaae4c"
-            />
-            <StatCard
-              title="Total Pagado"
-              value={formatCurrency(stats.totalPagado)}
-              icon={<DollarSign className="w-8 h-8 text-white" />}
-              color="#000000"
-            />
-          </div>
+          <>
+            {/* ── Row 1: KPIs principales ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <StatCard
+                title="Clientes"
+                value={stats.totalClientes}
+                icon={<Users className="w-8 h-8 text-white" />}
+                color="#9e9f92"
+                onClick={() => navigate('/admin/clientes')}
+              />
+              <StatCard
+                title="Ventas activas"
+                value={stats.ventasActivas}
+                icon={<ShoppingCart className="w-8 h-8 text-black" />}
+                color="#eaae4c"
+                onClick={() => navigate('/admin/ventas')}
+              />
+              <StatCard
+                title="Total cobrado"
+                value={formatCurrency(stats.totalPagado)}
+                icon={<DollarSign className="w-8 h-8 text-white" />}
+                color="#000000"
+              />
+              <StatCard
+                title={`Cobrado en ${new Date().toLocaleString('es-MX', { month: 'long' })}`}
+                value={formatCurrency(stats.pagosDelMes)}
+                icon={<TrendingUp className="w-8 h-8 text-white" />}
+                color="#504840"
+                onClick={() => navigate('/admin/tesoreria')}
+              />
+            </div>
+
+            {/* ── Row 2: KPIs secundarios ── */}
+            <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-5">
+              <StatCard
+                title="Lotes disponibles"
+                value={stats.lotesDisponibles}
+                icon={<Home className="w-8 h-8 text-white" />}
+                color="#9e9f92"
+                onClick={() => navigate('/admin/lotes')}
+              />
+              <StatCard
+                title="Desarrollos"
+                value={stats.totalDesarrollos}
+                icon={<MapPin className="w-8 h-8 text-white" />}
+                color="#504840"
+                onClick={() => navigate('/admin/desarrollos')}
+              />
+              <div
+                onClick={() => document.getElementById('riesgo-section')?.scrollIntoView({ behavior: 'smooth' })}
+                className={`bg-white rounded-lg shadow-md border-l-4 p-6 cursor-pointer hover:shadow-lg transition-shadow ${loadingRiesgo ? 'border-gray-300' : ventasEnRiesgo.length > 0 ? 'border-red-500' : 'border-green-500'}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[#9e9f92] text-sm font-medium">En riesgo de cancelación</p>
+                    <p className="text-3xl font-bold text-black mt-2">
+                      {loadingRiesgo ? '…' : ventasEnRiesgo.length}
+                    </p>
+                  </div>
+                  <div className={`w-14 h-14 rounded-lg flex items-center justify-center ${loadingRiesgo ? 'bg-gray-300' : ventasEnRiesgo.length > 0 ? 'bg-red-500' : 'bg-green-500'}`}>
+                    <AlertTriangle className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
-        {/* Ventas en riesgo de cancelación */}
-        <div className="mt-10 bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="px-8 py-5 border-b border-gray-200 flex items-center gap-3 bg-red-50">
+        {/* ── Accesos rápidos ── */}
+        <div className="mt-8">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Accesos rápidos</h2>
+          <div className="flex flex-wrap gap-3">
+            {[
+              { label: 'Nueva Venta', icon: <Plus size={16} />, path: '/admin/ventas' },
+              { label: 'Nuevo Pago', icon: <CreditCard size={16} />, path: '/admin/tesoreria' },
+              { label: 'Nuevo Cliente', icon: <UserPlus size={16} />, path: '/admin/clientes' },
+              { label: 'Traspasos', icon: <ArrowLeftRight size={16} />, path: '/admin/traspasos' },
+              { label: 'Ver Mapa', icon: <MapPin size={16} />, path: '/admin/mapa' },
+            ].map((item) => (
+              <button
+                key={item.path}
+                type="button"
+                onClick={() => navigate(item.path)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:border-[#eaae4c] hover:text-[#504840] hover:shadow-sm transition-all"
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Actividad reciente ── */}
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Últimos pagos */}
+          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard size={18} className="text-[#eaae4c]" />
+                <h3 className="font-semibold text-gray-800">Últimos pagos registrados</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/admin/tesoreria')}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                Ver todos
+              </button>
+            </div>
+            {loadingRecent ? (
+              <div className="flex justify-center py-8">
+                <div className="h-5 w-5 border-4 border-[#eaae4c] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : pagosRecientes.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-8">Sin pagos recientes</p>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {pagosRecientes.map((p) => (
+                  <li
+                    key={p.pagoid}
+                    onClick={() => navigate(`/admin/ventas/${p.ventaid}`)}
+                    className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{p.clienteNombre}</p>
+                      <p className="text-xs text-gray-400">{p.loteLabel} · {formatDate(p.fecha)}</p>
+                    </div>
+                    <span className="ml-4 text-sm font-semibold text-green-700 whitespace-nowrap">
+                      {formatCurrency(p.montopagado)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Últimas ventas */}
+          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShoppingCart size={18} className="text-[#eaae4c]" />
+                <h3 className="font-semibold text-gray-800">Últimas ventas registradas</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/admin/ventas')}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                Ver todas
+              </button>
+            </div>
+            {loadingRecent ? (
+              <div className="flex justify-center py-8">
+                <div className="h-5 w-5 border-4 border-[#eaae4c] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : ventasRecientes.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-8">Sin ventas recientes</p>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {ventasRecientes.map((v) => (
+                  <li
+                    key={v.ventaid}
+                    onClick={() => navigate(`/admin/ventas/${v.ventaid}`)}
+                    className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{v.clienteNombre}</p>
+                      <p className="text-xs text-gray-400">{v.loteLabel}</p>
+                    </div>
+                    <div className="ml-4 flex flex-col items-end gap-1">
+                      {v.precio != null && (
+                        <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+                          {formatCurrency(v.precio)}
+                        </span>
+                      )}
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        v.estatus === 'A' ? 'bg-green-100 text-green-700' :
+                        v.estatus === 'C' ? 'bg-red-100 text-red-600' :
+                        'bg-gray-100 text-gray-500'
+                      }`}>
+                        {v.estatus === 'A' ? 'Activa' : v.estatus === 'C' ? 'Cancelada' : v.estatus}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        {/* ── Ventas en riesgo de cancelación ── */}
+        <div id="riesgo-section" className="mt-8 bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="px-6 py-5 border-b border-gray-200 flex items-center gap-3 bg-red-50">
             <AlertTriangle size={22} className="text-red-600" />
             <h2 className="text-xl font-bold text-red-800">Ventas en riesgo de cancelación</h2>
             {!loadingRiesgo && ventasEnRiesgo.length > 0 && (
@@ -368,36 +652,6 @@ export const Dashboard = () => {
               </table>
             </div>
           )}
-        </div>
-
-        {/* Quick description section */}
-        <div className="mt-10 bg-white rounded-lg shadow-md border-t-4 border-[#504840] p-8">
-          <h2 className="text-2xl font-bold text-black mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>Sistema de Administración</h2>
-          <p className="text-[#9e9f92] mb-4">
-            Este panel le permite consultar la información de:
-          </p>
-          <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[#504840]">
-            <li className="flex items-start gap-2">
-              <span className="text-[#eaae4c] font-bold mt-1">•</span>
-              <span><strong>Desarrollos:</strong> Listado de proyectos inmobiliarios</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-[#eaae4c] font-bold mt-1">•</span>
-              <span><strong>Lotes:</strong> Terrenos disponibles y vendidos</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-[#eaae4c] font-bold mt-1">•</span>
-              <span><strong>Clientes:</strong> Información de compradores</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-[#eaae4c] font-bold mt-1">•</span>
-              <span><strong>Ventas:</strong> Histórico de transacciones</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-[#eaae4c] font-bold mt-1">•</span>
-              <span><strong>Pagos:</strong> Registro de pagos realizados</span>
-            </li>
-          </ul>
         </div>
       </div>
     </AdminLayout>
