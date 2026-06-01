@@ -42,11 +42,22 @@ export const Pagos = () => {
 
   useEffect(() => {
     const fetchClientes = async () => {
-      const { data } = await supabase
-        .from('cliente')
-        .select('*')
-        .order('nombre', { ascending: true })
-      if (data) setClientes(data)
+      const all: Cliente[] = []
+      const pageSize = 1000
+      let page = 0
+      let hasMore = true
+      while (hasMore) {
+        const { data } = await supabase
+          .from('cliente')
+          .select('clienteid, nombre, telefonocelular, telefono2')
+          .order('nombre', { ascending: true })
+          .range(page * pageSize, (page + 1) * pageSize - 1)
+        const rows = (data || []) as Cliente[]
+        all.push(...rows)
+        hasMore = rows.length === pageSize
+        page++
+      }
+      setClientes(all)
     }
     fetchClientes()
   }, [])
