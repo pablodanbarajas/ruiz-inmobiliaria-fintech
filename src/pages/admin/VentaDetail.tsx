@@ -1082,31 +1082,49 @@ export const VentaDetail = () => {
           <div className="px-8 py-4 flex items-center gap-3 border-b border-gray-100">
             <ArrowLeftRight size={20} className="text-indigo-600" />
             <h2 className="text-xl font-semibold text-gray-900">Historial de Traspasos</h2>
+            <span className="ml-auto text-sm text-gray-400">{traspasos.length} registro{traspasos.length !== 1 ? 's' : ''}</span>
           </div>
           <div className="divide-y divide-gray-100">
-            {traspasos.map((t) => (
-              <div key={t.traspasoid} className="px-8 py-4 flex flex-wrap items-start gap-4">
-                <div className="flex-none">
-                  <p className="text-xs text-gray-500">Fecha</p>
-                  <p className="text-sm font-semibold text-gray-800">{formatDate(t.fecha)}</p>
+            {traspasos.map((t, idx) => (
+              <div key={t.traspasoid} className="px-8 py-5">
+                {/* Header: badge + timestamps */}
+                <div className="flex flex-wrap items-center gap-3 mb-3">
+                  <span className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                    <ArrowLeftRight size={11} />
+                    Traspaso #{idx + 1}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    Fecha del traspaso: <span className="font-medium text-gray-600">{formatDate(t.fecha)}</span>
+                  </span>
+                  <span className="text-xs text-gray-400 ml-auto">
+                    Registrado el: <span className="font-medium text-gray-600">{formatDateTime(t.created_at)}</span>
+                  </span>
                 </div>
-                <div className="flex-1 min-w-40">
-                  <p className="text-xs text-gray-500">Titular anterior</p>
-                  <p className="text-sm font-semibold text-gray-800">{(t as any).cliente_anterior?.nombre ?? `Cliente #${t.clienteid_anterior}`}</p>
-                </div>
-                <div className="flex items-center text-gray-400 pt-4">
-                  <ArrowLeftRight size={16} />
-                </div>
-                <div className="flex-1 min-w-40">
-                  <p className="text-xs text-gray-500">Nuevo titular</p>
-                  <p className="text-sm font-semibold text-indigo-700">{(t as any).cliente_nuevo?.nombre ?? `Cliente #${t.clienteid_nuevo}`}</p>
-                </div>
-                {t.notas && (
-                  <div className="w-full">
-                    <p className="text-xs text-gray-500">Notas</p>
-                    <p className="text-sm text-gray-700">{t.notas}</p>
+
+                {/* Titular change */}
+                <div className="flex flex-wrap items-center gap-3 mb-3">
+                  <div className="flex-1 min-w-36 bg-gray-50 rounded p-3">
+                    <p className="text-xs text-gray-500 mb-0.5">Titular anterior</p>
+                    <p className="text-sm font-semibold text-gray-800">{(t as any).cliente_anterior?.nombre ?? `Cliente #${t.clienteid_anterior}`}</p>
                   </div>
-                )}
+                  <div className="flex items-center text-gray-400">
+                    <ArrowLeftRight size={18} />
+                  </div>
+                  <div className="flex-1 min-w-36 bg-indigo-50 rounded p-3">
+                    <p className="text-xs text-indigo-500 mb-0.5">Nuevo titular</p>
+                    <p className="text-sm font-semibold text-indigo-700">{(t as any).cliente_nuevo?.nombre ?? `Cliente #${t.clienteid_nuevo}`}</p>
+                  </div>
+                </div>
+
+                {/* Meta */}
+                <div className="flex flex-wrap gap-6 text-xs text-gray-500">
+                  {(t as any).registrado_por && (
+                    <span>Registrado por: <span className="font-medium text-gray-700">{(t as any).registrado_por}</span></span>
+                  )}
+                  {t.notas && (
+                    <span>Notas: <span className="font-medium text-gray-700">{t.notas}</span></span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
