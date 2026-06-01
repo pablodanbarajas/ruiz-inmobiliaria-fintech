@@ -221,6 +221,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId }:
       errs.fechaprimeramensualidad =
         'La fecha de primera mensualidad debe ser posterior al contrato'
     }
+    if (!formData.vendedor?.trim()) errs.vendedor = 'El nombre del vendedor es requerido'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -465,14 +466,16 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId }:
 
       {/* ── Vendedor ────────────────────────────────────────── */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Vendedor</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Vendedor <span className="text-red-500">*</span></label>
         <Input
           type="text"
           value={formData.vendedor ?? ''}
           onChange={(e) => setFormData({ ...formData, vendedor: e.target.value })}
           disabled={isLoading}
-          placeholder="Nombre del vendedor (opcional)"
+          placeholder="Nombre del vendedor"
+          className={errors.vendedor ? 'border-red-500' : ''}
         />
+        {errors.vendedor && <p className="text-xs text-red-500 mt-1">{errors.vendedor}</p>}
       </div>
 
       {/* ── Estatus y Comentarios ──────────────────────────── */}

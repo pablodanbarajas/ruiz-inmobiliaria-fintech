@@ -283,6 +283,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
     const monto = parseFloat(montopagado)
     if (!montopagado || isNaN(monto) || monto <= 0) newErrors.montopagado = 'Ingresa un monto válido mayor a 0'
     if (!formapago) newErrors.formapago = 'Selecciona la forma de pago'
+    if (formapago === 6 && !cobrador.trim()) newErrors.cobrador = 'El nombre del cobrador es requerido'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -585,13 +586,15 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
           {/* Cobrador — solo cuando Ruta de cobranza */}
           {formapago === 6 && (
             <div>
-              <label className="block text-sm font-medium text-black mb-1">Cobrador</label>
+              <label className="block text-sm font-medium text-black mb-1">Cobrador <span className="text-red-500">*</span></label>
               <Input
                 type="text"
                 value={cobrador}
                 onChange={(e) => setCobrador(e.target.value)}
                 placeholder="Nombre del cobrador que recibió el pago..."
+                className={errors.cobrador ? 'border-red-500' : ''}
               />
+              {errors.cobrador && <p className="text-xs text-red-500 mt-1">{errors.cobrador}</p>}
             </div>
           )}
 
