@@ -16,6 +16,7 @@ import { PagoDetail } from '@/pages/admin/PagoDetail'
 import { Convenios } from '@/pages/admin/Convenios'
 import { ConvenioDetail } from '@/pages/admin/ConvenioDetail'
 import { CargosExtra } from '@/pages/admin/CargosExtra'
+import { Traspasos } from '@/pages/admin/Traspasos'
 import { Mapa } from '@/pages/admin/Mapa'
 import { InvitarClientes } from '@/pages/admin/InvitarClientes'
 
@@ -151,6 +152,16 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <CargosExtra />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Traspasos */}
+        <Route
+          path="/admin/traspasos"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Traspasos />
             </ProtectedRoute>
           }
         />
