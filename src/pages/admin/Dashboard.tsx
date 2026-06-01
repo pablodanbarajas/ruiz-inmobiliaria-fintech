@@ -297,8 +297,14 @@ export const Dashboard = () => {
           .order('pagoid', { ascending: false })
           .limit(50)
 
-        const pagosConVenta = (pData || []).filter((p: any) => p.corridafinanciera?.ventaid)
-        const ventaIds = [...new Set(pagosConVenta.map((p: any) => p.corridafinanciera.ventaid))]
+        const pagosConVenta = (pData || []).filter((p: any) => {
+          const cf = Array.isArray(p.corridafinanciera) ? p.corridafinanciera[0] : p.corridafinanciera
+          return cf?.ventaid != null
+        })
+        const ventaIds = [...new Set(pagosConVenta.map((p: any) => {
+          const cf = Array.isArray(p.corridafinanciera) ? p.corridafinanciera[0] : p.corridafinanciera
+          return cf?.ventaid as number
+        }))]
 
         if (ventaIds.length > 0) {
           const { data: ventasData } = await supabase
@@ -311,7 +317,8 @@ export const Dashboard = () => {
 
           const pagosList: PagoReciente[] = []
           for (const p of pagosConVenta) {
-            const ventaid = p.corridafinanciera.ventaid
+            const cf = Array.isArray(p.corridafinanciera) ? p.corridafinanciera[0] : p.corridafinanciera
+            const ventaid = cf?.ventaid as number
             const venta = ventaMap.get(ventaid)
             if (!venta) continue
             const lote = Array.isArray(venta.lote) ? venta.lote[0] : venta.lote
