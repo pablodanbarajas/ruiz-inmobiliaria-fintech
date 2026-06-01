@@ -420,7 +420,7 @@ export const Dashboard = () => {
                 value={formatCurrency(stats.pagosDelMes)}
                 icon={<TrendingUp className="w-8 h-8 text-white" />}
                 color="#504840"
-                onClick={() => navigate('/admin/tesoreria')}
+                onClick={() => navigate('/admin/pagos')}
               />
             </div>
 
@@ -466,7 +466,7 @@ export const Dashboard = () => {
           <div className="flex flex-wrap gap-3">
             {[
               { label: 'Nueva Venta', icon: <Plus size={16} />, path: '/admin/ventas' },
-              { label: 'Nuevo Pago', icon: <CreditCard size={16} />, path: '/admin/tesoreria' },
+              { label: 'Nuevo Pago', icon: <CreditCard size={16} />, path: '/admin/pagos' },
               { label: 'Nuevo Cliente', icon: <UserPlus size={16} />, path: '/admin/clientes' },
               { label: 'Traspasos', icon: <ArrowLeftRight size={16} />, path: '/admin/traspasos' },
               { label: 'Ver Mapa', icon: <MapPin size={16} />, path: '/admin/mapa' },
@@ -495,7 +495,7 @@ export const Dashboard = () => {
               </div>
               <button
                 type="button"
-                onClick={() => navigate('/admin/tesoreria')}
+                onClick={() => navigate('/admin/pagos')}
                 className="text-xs text-blue-600 hover:underline"
               >
                 Ver todos
