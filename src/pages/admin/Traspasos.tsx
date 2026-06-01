@@ -10,8 +10,8 @@ import { formatDate, formatDateTime } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 interface TraspasoWithDetails extends Traspaso {
-  cliente_anterior: { nombre: string | null } | null
-  cliente_nuevo: { nombre: string | null } | null
+  cliente_anterior?: { nombre: string | null }
+  cliente_nuevo?: { nombre: string | null }
   venta?: {
     ventaid: number
     lote?: { manzana: string | null; nolote: string | null; clavelote: string | null; desarrolloid: number | null }
