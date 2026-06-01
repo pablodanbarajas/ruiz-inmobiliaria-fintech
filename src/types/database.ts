@@ -184,6 +184,7 @@ export type Traspaso = {
   fecha: string
   notas: string | null
   usuarioid: string | null
+  registrado_por: string | null
   created_at: string | null
   cliente_anterior?: { nombre: string | null }
   cliente_nuevo?: { nombre: string | null }

@@ -31,6 +31,22 @@ export const formatDate = (dateString: string | null | undefined): string => {
 }
 
 /**
+ * Format full datetime with time (e.g. "1 de junio de 2026, 10:21 a. m.")
+ */
+export const formatDateTime = (isoString: string | null | undefined): string => {
+  if (!isoString) return '-'
+  const date = new Date(isoString)
+  return new Intl.DateTimeFormat('es-MX', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Mexico_City',
+  }).format(date)
+}
+
+/**
  * Format short date (DD/MM/YYYY)
  */
 export const formatDateShort = (dateString: string | null | undefined): string => {

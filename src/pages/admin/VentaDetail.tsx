@@ -17,6 +17,7 @@ import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import {
   formatDate,
+  formatDateTime,
   formatCurrency,
   getVentaStatusLabel,
   getVentaStatusColor,
@@ -227,6 +228,7 @@ export const VentaDetail = () => {
       setIsSubmittingTraspaso(true)
       const { data: authData } = await supabase.auth.getUser()
       const usuarioid = authData.user?.id ?? null
+      const registrado_por = authData.user?.email ?? null
 
       const { error: insertError } = await supabase.from('traspasos').insert({
         ventaid: venta.ventaid,
@@ -235,6 +237,7 @@ export const VentaDetail = () => {
         fecha: traspasoFecha,
         notas: traspasoNotas.trim() || null,
         usuarioid,
+        registrado_por,
       })
       if (insertError) throw insertError
 
