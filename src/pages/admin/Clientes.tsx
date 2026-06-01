@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import { AdminLayout } from '@/components/layout/AdminLayout'
@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext'
 
 export const Clientes = () => {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { role } = useAuth()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [allClientsCache, setAllClientsCache] = useState<Cliente[]>([])
@@ -29,8 +30,15 @@ export const Clientes = () => {
     rfc: '',
   })
   const [prevFilters, setPrevFilters] = useState(filters)
-  const [showModal, setShowModal] = useState(false)
+  const [showModal, setShowModal] = useState(() => searchParams.get('new') === 'true')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (searchParams.get('new') === 'true') {
+      setShowModal(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [clienteToDelete, setClienteToDelete] = useState<Cliente | null>(null)
   const [clienteToEdit, setClienteToEdit] = useState<Cliente | null>(null)

@@ -465,10 +465,10 @@ export const Dashboard = () => {
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Accesos rápidos</h2>
           <div className="flex flex-wrap gap-3">
             {[
-              { label: 'Nueva Venta', icon: <Plus size={16} />, path: '/admin/ventas' },
-              { label: 'Nuevo Pago', icon: <CreditCard size={16} />, path: '/admin/pagos' },
-              { label: 'Nuevo Cliente', icon: <UserPlus size={16} />, path: '/admin/clientes' },
-              { label: 'Traspasos', icon: <ArrowLeftRight size={16} />, path: '/admin/traspasos' },
+              { label: 'Nueva Venta', icon: <Plus size={16} />, path: '/admin/ventas?new=true' },
+              { label: 'Nuevo Pago', icon: <CreditCard size={16} />, path: '/admin/pagos?new=true' },
+              { label: 'Nuevo Cliente', icon: <UserPlus size={16} />, path: '/admin/clientes?new=true' },
+              { label: 'Nuevo Traspaso', icon: <ArrowLeftRight size={16} />, path: '/admin/traspasos?new=true' },
               { label: 'Ver Mapa', icon: <MapPin size={16} />, path: '/admin/mapa' },
             ].map((item) => (
               <button

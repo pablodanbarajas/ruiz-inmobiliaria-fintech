@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
@@ -23,6 +23,7 @@ interface VentaWithDetails extends Venta {
 
 export const Ventas = () => {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [ventas, setVentas] = useState<VentaWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = usePersistedFilters('ventasFilters', {
@@ -35,8 +36,15 @@ export const Ventas = () => {
   const itemsPerPage = 10
   const [prevFilters, setPrevFilters] = useState(filters)
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(() => searchParams.get('new') === 'true')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (searchParams.get('new') === 'true') {
+      setShowCreateModal(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     const fetchClientes = async () => {

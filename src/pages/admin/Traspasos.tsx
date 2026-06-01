@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import { AdminLayout } from '@/components/layout/AdminLayout'
@@ -23,6 +23,7 @@ const PAGE_SIZE = 15
 
 export const Traspasos = () => {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [traspasos, setTraspasos] = useState<TraspasoWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
@@ -37,6 +38,15 @@ export const Traspasos = () => {
   // ── Nuevo Traspaso modal state ──────────────────────────────────
   const [showModal, setShowModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Auto-open modal when navigated with ?new=true
+  useEffect(() => {
+    if (searchParams.get('new') === 'true') {
+      setSearchParams({}, { replace: true })
+      openNuevoTraspaso()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [ventaOptions, setVentaOptions] = useState<ComboOption[]>([])
   const [clienteOptions, setClienteOptions] = useState<ComboOption[]>([])
   const [selectedVentaId, setSelectedVentaId] = useState('')
