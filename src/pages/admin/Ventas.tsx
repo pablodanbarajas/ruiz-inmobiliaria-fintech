@@ -9,6 +9,8 @@ import { Modal } from '@/components/ui/Modal'
 import { VentaForm } from '@/components/forms/VentaForm'
 import type { VentaFormData } from '@/components/forms/VentaForm'
 import { Eye, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { SearchCombobox } from '@/components/ui/SearchCombobox'
+import type { ComboOption } from '@/components/ui/SearchCombobox'
 import type { Venta, Cliente, Lote, Desarrollo } from '@/types/database'
 import { formatCurrency, formatDate, getVentaStatusLabel, getVentaStatusColor } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
@@ -37,11 +39,22 @@ export const Ventas = () => {
 
   useEffect(() => {
     const fetchClientes = async () => {
-      const { data } = await supabase
-        .from('cliente')
-        .select('*')
-        .order('nombre', { ascending: true })
-      if (data) setClientes(data)
+      const all: Cliente[] = []
+      const pageSize = 1000
+      let page = 0
+      let hasMore = true
+      while (hasMore) {
+        const { data } = await supabase
+          .from('cliente')
+          .select('clienteid, nombre, telefonocelular, telefono2')
+          .order('nombre', { ascending: true })
+          .range(page * pageSize, (page + 1) * pageSize - 1)
+        const rows = (data || []) as Cliente[]
+        all.push(...rows)
+        hasMore = rows.length === pageSize
+        page++
+      }
+      setClientes(all)
     }
     fetchClientes()
   }, [])
@@ -256,18 +269,16 @@ export const Ventas = () => {
               <label className="block text-sm font-medium text-black mb-1">
                 Cliente
               </label>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              <SearchCombobox
+                options={clientes.map((c): ComboOption => ({
+                  value: String(c.clienteid),
+                  label: c.nombre || 'Sin nombre',
+                  sublabel: c.telefonocelular || c.telefono2 || undefined,
+                }))}
                 value={filters.clienteId}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilters({ ...filters, clienteId: e.target.value })}
-              >
-                <option value="">Todos</option>
-                {clientes.map((c) => (
-                  <option key={c.clienteid} value={c.clienteid}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setFilters({ ...filters, clienteId: v })}
+                placeholder="Buscar por nombre o teléfono..."
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-black mb-1">
