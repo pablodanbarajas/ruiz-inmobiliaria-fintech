@@ -151,13 +151,25 @@ export const LoteDetail = () => {
   const handleCreateVenta = async (data: VentaFormData) => {
     try {
       setIsSubmitting(true)
-      const { data: loteCheck } = await supabase.from('lote').select('loteid, estatus').eq('loteid', data.loteid).single()
-      if (!loteCheck || loteCheck.estatus !== 'D') {
-        alert('El lote ya no está disponible.')
-        return
-      }
+
+      // Atomic lock: update lote D→V only if still disponible.
+      // A single conditional UPDATE avoids race conditions between concurrent users.
       const { data: authData } = await supabase.auth.getUser()
       const usuarioid = authData.user?.id ?? null
+
+      const { data: lockedLote, error: lockError } = await supabase
+        .from('lote')
+        .update({ estatus: 'V' })
+        .eq('loteid', data.loteid)
+        .eq('estatus', 'D')   // Only succeeds if still available
+        .select()
+
+      if (lockError) throw new Error(lockError.message)
+      if (!lockedLote || lockedLote.length === 0) {
+        alert('El lote ya no está disponible. Fue reservado por otro usuario.')
+        return
+      }
+
       const { data: ventaData, error: ventaError } = await supabase
         .from('venta')
         .insert([{
@@ -171,13 +183,13 @@ export const LoteDetail = () => {
           vendedor: data.vendedor ?? null,
         }])
         .select().single()
-      if (ventaError) throw new Error(ventaError.message)
-      const ventaid: number = ventaData.ventaid
-      const { error: loteUpdateError } = await supabase.from('lote').update({ estatus: 'V' }).eq('loteid', data.loteid)
-      if (loteUpdateError) {
-        await supabase.from('venta').delete().eq('ventaid', ventaid)
-        throw new Error(loteUpdateError.message)
+      if (ventaError) {
+        // Rollback lote to disponible since venta failed
+        await supabase.from('lote').update({ estatus: 'D' }).eq('loteid', data.loteid)
+        throw new Error(ventaError.message)
       }
+      const ventaid: number = ventaData.ventaid
+      // Lote is already 'V' from atomic lock — skip separate update
       const corridaRecords = generateCorridaFinanciera(ventaid, data)
       const { error: corridaError } = await supabase.from('corridafinanciera').insert(corridaRecords)
       if (corridaError) {

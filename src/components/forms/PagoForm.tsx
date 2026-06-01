@@ -68,6 +68,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
   const [corridas, setCorridas] = useState<CorridaWithPagos[]>([])
   const [selectedCorrida, setSelectedCorrida] = useState<CorridaWithPagos | null>(null)
   const [loadingCorridas, setLoadingCorridas] = useState(false)
+  const [fetchedDiasTolerancia, setFetchedDiasTolerancia] = useState(0)
 
   // Form fields
   const [corridaId, setCorridaId] = useState<number | null>(initialCorridaId ?? pago?.corridafinancieraid ?? null)
@@ -157,6 +158,14 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
           .order('nopago', { ascending: true })
 
         if (error) throw error
+
+        // Fetch dias_tolerancia from the venta (used for recargo calculation)
+        const { data: ventaInfo } = await supabase
+          .from('venta')
+          .select('dias_tolerancia')
+          .eq('ventaid', selectedVentaId)
+          .single()
+        setFetchedDiasTolerancia((ventaInfo as any)?.dias_tolerancia ?? 0)
 
         const corridasConPagos = await Promise.all(
           (corridaData || []).map(async (c) => {
@@ -255,15 +264,16 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
   // ── Auto-calculate recargo when corrida, fechapago or convenio changes ──
   useEffect(() => {
     if (isEditMode || !selectedCorrida?.fecha || checkingConvenio) return
+    const effectiveDiasTolerancia = diasTolerancia > 0 ? diasTolerancia : fetchedDiasTolerancia
     if (activeConvenio) {
       const meses = activeConvenio.meses_atraso ?? 1
       const rAcordado = activeConvenio.recargo_acordado ?? 0
       setRecargo(meses > 0 ? Math.round((rAcordado / meses) * 100) / 100 : 0)
     } else {
-      const calculated = calcularRecargo(selectedCorrida.fecha, fechapago, diasTolerancia)
+      const calculated = calcularRecargo(selectedCorrida.fecha, fechapago, effectiveDiasTolerancia)
       setRecargo(calculated)
     }
-  }, [selectedCorrida, fechapago, isEditMode, activeConvenio, checkingConvenio])
+  }, [selectedCorrida, fechapago, isEditMode, activeConvenio, checkingConvenio, diasTolerancia, fetchedDiasTolerancia])
 
   // ── Select corrida from table ──────────────────────────────────
   const handleSelectCorrida = (corrida: CorridaWithPagos) => {

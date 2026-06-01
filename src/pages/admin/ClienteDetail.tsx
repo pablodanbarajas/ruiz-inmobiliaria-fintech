@@ -10,6 +10,7 @@ import { ChevronLeft, Edit2, Trash2 } from 'lucide-react'
 import type { Cliente, Venta, Lote, Pago, CorridaFinanciera, Desarrollo } from '@/types/database'
 import { useAuth } from '@/context/AuthContext'
 import { formatDate, formatCurrency, getStatusLabel, getPagoStatusLabel, getPagoStatusColor } from '@/utils/helpers'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 interface VentaWithDetails extends Venta {
   lote?: Lote & { desarrollo?: Desarrollo }
@@ -60,7 +61,17 @@ export const ClienteDetail = () => {
           .order('fecha', { ascending: false })
 
         if (ventasError) throw ventasError
-        setVentas((ventasData || []) as any)
+
+        // Filter ventas to DEMO desarrollos in demo mode
+        let filteredVentas = (ventasData || []) as any[]
+        if (DEMO_DESARROLLOIDS.length > 0) {
+          filteredVentas = filteredVentas.filter((v: any) => {
+            const lote = Array.isArray(v.lote) ? v.lote[0] : v.lote
+            const desarrollo = Array.isArray(lote?.desarrollo) ? lote.desarrollo[0] : lote?.desarrollo
+            return DEMO_DESARROLLOIDS.includes(desarrollo?.desarrolloid)
+          })
+        }
+        setVentas(filteredVentas as any)
 
         // Fetch pagos with corrida financiera
         const { data: pagosData, error: pagosError } = await supabase
@@ -68,13 +79,13 @@ export const ClienteDetail = () => {
           .select('*, corridafinanciera:corridafinanciera(*, venta:venta(*, lote:lote(*, desarrollo:desarrollo(*))))')
           .in(
             'corridafinancieraid',
-            (ventasData || []).length > 0
+            filteredVentas.length > 0
               ? await supabase
                   .from('corridafinanciera')
                   .select('corridafinancieraid')
                   .in(
                     'ventaid',
-                    (ventasData || []).map((v) => v.ventaid)
+                    filteredVentas.map((v: any) => v.ventaid)
                   )
                   .then((res) => res.data?.map((cf) => cf.corridafinancieraid) || [])
               : []

@@ -175,23 +175,25 @@ export const Ventas = () => {
     try {
       setIsSubmitting(true)
 
-      // 1. Guard against race condition — confirm lote is still 'D'
-      const { data: loteCheck, error: loteCheckError } = await supabase
-        .from('lote')
-        .select('loteid, estatus')
-        .eq('loteid', data.loteid)
-        .single()
-
-      if (loteCheckError || !loteCheck || loteCheck.estatus !== 'D') {
-        alert('El lote seleccionado ya no está disponible. Por favor selecciona otro.')
-        return
-      }
-
-      // 2. Obtain current user id for usuarioid
+      // 1. Atomic lock: update lote D→V only if still available.
+      //    This is a single DB operation — avoids race condition between two users.
       const { data: authData } = await supabase.auth.getUser()
       const usuarioid = authData.user?.id ?? null
 
-      // 3. Insert venta
+      const { data: lockedLote, error: lockError } = await supabase
+        .from('lote')
+        .update({ estatus: 'V' })
+        .eq('loteid', data.loteid)
+        .eq('estatus', 'D')   // Only succeeds if the lote is still available
+        .select()
+
+      if (lockError) throw new Error(lockError.message)
+      if (!lockedLote || lockedLote.length === 0) {
+        alert('El lote seleccionado ya no está disponible. Fue reservado por otro usuario.')
+        return
+      }
+
+      // 2. Insert venta
       const { data: ventaData, error: ventaError } = await supabase
         .from('venta')
         .insert([
@@ -217,22 +219,14 @@ export const Ventas = () => {
         .select()
         .single()
 
-      if (ventaError) throw new Error(`Error al insertar venta: ${ventaError.message}`)
+      if (ventaError) {
+        // Rollback lote to disponible since venta failed
+        await supabase.from('lote').update({ estatus: 'D' }).eq('loteid', data.loteid)
+        throw new Error(`Error al insertar venta: ${ventaError.message}`)
+      }
       const ventaid: number = ventaData.ventaid
 
-      // 4. Mark lote as Vendido
-      const { error: loteUpdateError } = await supabase
-        .from('lote')
-        .update({ estatus: 'V' })
-        .eq('loteid', data.loteid)
-
-      if (loteUpdateError) {
-        // Rollback venta
-        await supabase.from('venta').delete().eq('ventaid', ventaid)
-        throw new Error(`Error al actualizar lote: ${loteUpdateError.message}`)
-      }
-
-      // 5. Generate and insert corrida financiera
+      // Lote is already 'V' from the atomic lock step — skip the separate update
       const corridaRecords = generateCorridaFinanciera(ventaid, data)
       const { error: corridaError } = await supabase
         .from('corridafinanciera')
