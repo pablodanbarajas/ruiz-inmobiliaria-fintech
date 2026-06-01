@@ -10,6 +10,7 @@ import { VentaForm } from '@/components/forms/VentaForm'
 import type { VentaFormData } from '@/components/forms/VentaForm'
 import { Eye, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
+import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import type { Venta, Cliente, Lote, Desarrollo } from '@/types/database'
 import { formatCurrency, formatDate, getVentaStatusLabel, getVentaStatusColor } from '@/utils/helpers'
@@ -24,7 +25,7 @@ export const Ventas = () => {
   const navigate = useNavigate()
   const [ventas, setVentas] = useState<VentaWithDetails[]>([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = usePersistedFilters('ventasFilters', {
     clienteId: '',
     fechaDesde: '',
     fechaHasta: '',

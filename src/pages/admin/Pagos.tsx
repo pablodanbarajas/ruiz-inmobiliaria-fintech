@@ -10,6 +10,7 @@ import { PagoForm } from '@/components/forms/PagoForm'
 import type { PagoFormData } from '@/components/forms/PagoForm'
 import { Eye, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
+import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import type { Pago, CorridaFinanciera, Venta, Cliente } from '@/types/database'
 import { getPagoStatusLabel, getPagoStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
@@ -27,7 +28,7 @@ export const Pagos = () => {
   const navigate = useNavigate()
   const [pagos, setPagos] = useState<PagoWithDetails[]>([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = usePersistedFilters('pagosFilters', {
     clienteId: '',
     fechaDesde: '',
     fechaHasta: '',

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
 import { Input } from '@/components/ui/Input'
@@ -22,7 +23,7 @@ export const Clientes = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
   const itemsPerPage = 10
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = usePersistedFilters('clientesFilters', {
     nombre: '',
     email: '',
     rfc: '',

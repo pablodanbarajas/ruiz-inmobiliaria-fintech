@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -60,7 +61,7 @@ export const CargosExtra = () => {
   const [totalItems, setTotalItems] = useState(0)
   const itemsPerPage = 15
 
-  const [filters, setFilters] = useState({ estatus: '', concepto: '', desarrolloNombre: '' })
+  const [filters, setFilters] = usePersistedFilters('cargosExtraFilters', { estatus: '', concepto: '', desarrolloNombre: '' })
 
   // ── Apply-to-desarrollo modal state ──────────────────────────
   const [showAplicarModal, setShowAplicarModal] = useState(false)

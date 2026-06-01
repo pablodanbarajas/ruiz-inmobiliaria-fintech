@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
 import { Input } from '@/components/ui/Input'
@@ -21,22 +22,11 @@ export const Lotes = () => {
   const [totalItems, setTotalItems] = useState(0)
   const itemsPerPage = 10
 
-  // Initialize filters from localStorage
-  const [filters, setFilters] = useState(() => {
-    const saved = localStorage.getItem('lotesFilters')
-    if (saved) {
-      try {
-        return JSON.parse(saved)
-      } catch (error) {
-        console.error('Error parsing saved filters:', error)
-      }
-    }
-    return {
-      desarrolloId: '',
-      status: '',
-      minPrice: '',
-      maxPrice: '',
-    }
+  const [filters, setFilters] = usePersistedFilters('lotesFilters', {
+    desarrolloId: '',
+    status: '',
+    minPrice: '',
+    maxPrice: '',
   })
 
   const [prevFilters, setPrevFilters] = useState(filters)
@@ -45,11 +35,6 @@ export const Lotes = () => {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [loteEnEdicion, setLoteEnEdicion] = useState<Lote | null>(null)
-
-  // Save filters to localStorage when they change
-  useEffect(() => {
-    localStorage.setItem('lotesFilters', JSON.stringify(filters))
-  }, [filters])
 
   // Load desarrollos on mount
   useEffect(() => {
