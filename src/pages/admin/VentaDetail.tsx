@@ -43,6 +43,8 @@ export const VentaDetail = () => {
   const location = useLocation()
   const [venta, setVenta] = useState<VentaWithDetails | null>(null)
   const [corridas, setCorridas] = useState<CorridaWithPagos[]>([])
+  const [corridaPage, setCorridaPage] = useState(0)
+  const CORRIDA_PAGE_SIZE = 10
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
@@ -106,6 +108,13 @@ export const VentaDetail = () => {
         )
 
         setCorridas(corridasConPagos)
+
+        // Auto-jump to the page of the last corrida that has a payment
+        const lastPaidIdx = corridasConPagos.reduce((found, c, i) => {
+          const hasPago = (c.pagos?.length ?? 0) > 0
+          return hasPago ? i : found
+        }, 0)
+        setCorridaPage(Math.floor(lastPaidIdx / 10))
 
         // Fetch convenios for this venta
         const { data: conveniosData } = await supabase
@@ -838,6 +847,7 @@ export const VentaDetail = () => {
               No hay corrida financiera registrada
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
@@ -854,7 +864,7 @@ export const VentaDetail = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {corridas.map((corrida) => {
+                  {corridas.slice(corridaPage * CORRIDA_PAGE_SIZE, (corridaPage + 1) * CORRIDA_PAGE_SIZE).map((corrida) => {
                     const totalPagadoCorrida = corrida.pagos
                       ?.filter((p) => p.estatus !== 'C')
                       .reduce((s, p) => s + (p.montopagado || 0), 0) ?? 0
@@ -968,6 +978,59 @@ export const VentaDetail = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Paginación de corrida */}
+            {corridas.length > CORRIDA_PAGE_SIZE && (
+              <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-4">
+                <span className="text-sm text-gray-500">
+                  Mostrando pagos {corridaPage * CORRIDA_PAGE_SIZE + 1}–{Math.min((corridaPage + 1) * CORRIDA_PAGE_SIZE, corridas.length)} de {corridas.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCorridaPage(0)}
+                    disabled={corridaPage === 0}
+                    className="px-2 py-1 text-xs rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50 disabled:cursor-not-allowed"
+                  >
+                    «
+                  </button>
+                  <button
+                    onClick={() => setCorridaPage((p) => p - 1)}
+                    disabled={corridaPage === 0}
+                    className="px-3 py-1 text-xs rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50 disabled:cursor-not-allowed"
+                  >
+                    Anterior
+                  </button>
+                  {Array.from({ length: Math.ceil(corridas.length / CORRIDA_PAGE_SIZE) }, (_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCorridaPage(i)}
+                      className={`px-3 py-1 text-xs rounded border ${
+                        i === corridaPage
+                          ? 'bg-[#eaae4c] border-[#eaae4c] font-bold'
+                          : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCorridaPage((p) => p + 1)}
+                    disabled={corridaPage >= Math.ceil(corridas.length / CORRIDA_PAGE_SIZE) - 1}
+                    className="px-3 py-1 text-xs rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50 disabled:cursor-not-allowed"
+                  >
+                    Siguiente
+                  </button>
+                  <button
+                    onClick={() => setCorridaPage(Math.ceil(corridas.length / CORRIDA_PAGE_SIZE) - 1)}
+                    disabled={corridaPage >= Math.ceil(corridas.length / CORRIDA_PAGE_SIZE) - 1}
+                    className="px-2 py-1 text-xs rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50 disabled:cursor-not-allowed"
+                  >
+                    »
+                  </button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </div>
       </div>
