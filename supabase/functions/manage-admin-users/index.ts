@@ -1,0 +1,182 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+}
+
+const ASSIGNABLE_ADMIN_ROLES = [
+  'admin',
+  'finanzas',
+  'vendedor',
+  'contratos',
+  'cobranza_caja',
+] as const
+
+type AssignableAdminRole = (typeof ASSIGNABLE_ADMIN_ROLES)[number]
+
+const isAssignableRole = (value: unknown): value is AssignableAdminRole =>
+  typeof value === 'string' && ASSIGNABLE_ADMIN_ROLES.includes(value as AssignableAdminRole)
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  if (!['GET', 'POST'].includes(req.method)) {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
+  try {
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'No autorizado' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseAdmin.auth.getUser(token)
+
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Token invalido' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const { data: callerRoleData, error: callerRoleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (callerRoleError || !callerRoleData || callerRoleData.role !== 'admin') {
+      return new Response(JSON.stringify({ error: 'Solo administradores pueden gestionar usuarios' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (req.method === 'GET') {
+      const allUsers: Array<{
+        id: string
+        email: string | null
+        created_at?: string | null
+        last_sign_in_at?: string | null
+      }> = []
+
+      let page = 1
+      const perPage = 200
+      let keepGoing = true
+
+      while (keepGoing) {
+        const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage })
+        if (error) throw error
+
+        const batch = data.users ?? []
+        for (const u of batch) {
+          allUsers.push({
+            id: u.id,
+            email: u.email ?? null,
+            created_at: u.created_at ?? null,
+            last_sign_in_at: u.last_sign_in_at ?? null,
+          })
+        }
+
+        keepGoing = batch.length === perPage
+        page += 1
+      }
+
+      const userIds = allUsers.map((u) => u.id)
+
+      const { data: roleRows, error: roleRowsError } = await supabaseAdmin
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', userIds.length ? userIds : ['00000000-0000-0000-0000-000000000000'])
+
+      if (roleRowsError) throw roleRowsError
+
+      const roleMap = new Map<string, string>()
+      for (const r of roleRows || []) roleMap.set(r.user_id, r.role)
+
+      // Excluir cuentas del portal cliente
+      const { data: clientRows, error: clientRowsError } = await supabaseAdmin
+        .from('cliente')
+        .select('user_id')
+        .not('user_id', 'is', null)
+
+      if (clientRowsError) throw clientRowsError
+
+      const clientUserIds = new Set((clientRows || []).map((c: any) => c.user_id))
+
+      const users = allUsers
+        .filter((u) => !clientUserIds.has(u.id))
+        .map((u) => {
+          const rawRole = roleMap.get(u.id)
+          const role = isAssignableRole(rawRole) ? rawRole : null
+          return {
+            user_id: u.id,
+            email: u.email,
+            role,
+            created_at: u.created_at ?? null,
+            last_sign_in_at: u.last_sign_in_at ?? null,
+          }
+        })
+        .sort((a, b) => (a.email ?? '').localeCompare(b.email ?? ''))
+
+      return new Response(JSON.stringify({ users }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const body = await req.json().catch(() => null)
+    const userId = body?.userId
+    const role = body?.role
+
+    if (!userId || typeof userId !== 'string') {
+      return new Response(JSON.stringify({ error: 'userId es requerido' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (!isAssignableRole(role)) {
+      return new Response(JSON.stringify({ error: 'Rol invalido' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const { error: upsertError } = await supabaseAdmin
+      .from('user_roles')
+      .upsert({ user_id: userId, role }, { onConflict: 'user_id' })
+
+    if (upsertError) throw upsertError
+
+    return new Response(JSON.stringify({ ok: true, userId, role }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  } catch (err) {
+    console.error('manage-admin-users error:', err)
+    return new Response(JSON.stringify({ error: 'Error interno del servidor' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+})

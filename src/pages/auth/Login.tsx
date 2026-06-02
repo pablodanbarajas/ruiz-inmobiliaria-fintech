@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/context/AuthContext'
+import { ADMIN_PANEL_ROLES } from '@/config/roles'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -17,7 +18,7 @@ export const Login = () => {
 
   // Only handles the case where user is already authenticated when visiting /login (e.g. page refresh)
   useEffect(() => {
-    if (!authLoading && isAuthenticated && (role === 'admin' || role === 'vendedor')) {
+    if (!authLoading && isAuthenticated && role && ADMIN_PANEL_ROLES.includes(role as any)) {
       navigate('/admin/dashboard', { replace: true })
     }
   }, [authLoading, isAuthenticated, role, navigate])
@@ -51,7 +52,7 @@ export const Login = () => {
         .maybeSingle()
 
       const userRole = roleData?.role as string | null
-      if (userRole === 'admin' || userRole === 'vendedor') {
+      if (userRole && ADMIN_PANEL_ROLES.includes(userRole as any)) {
         navigate('/admin/dashboard', { replace: true })
       } else {
         await supabase.auth.signOut()

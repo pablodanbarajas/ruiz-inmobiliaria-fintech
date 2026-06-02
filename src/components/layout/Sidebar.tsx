@@ -13,51 +13,53 @@ import {
   User,
   Send,
   ArrowLeftRight,
+  ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { ROLE_LABELS } from '@/config/roles'
 
 const MENU_ITEMS = [
   {
     label: 'Dashboard',
     path: '/admin/dashboard',
     icon: BarChart3,
-    roles: ['admin', 'vendedor'],
+    roles: ['admin', 'finanzas', 'vendedor', 'contratos', 'cobranza_caja'],
   },
   {
     label: 'Desarrollos',
     path: '/admin/desarrollos',
     icon: MapPin,
-    roles: ['admin'],
+    roles: ['admin', 'finanzas'],
   },
   {
     label: 'Lotes',
     path: '/admin/lotes',
     icon: TrendingUp,
-    roles: ['admin'],
+    roles: ['admin', 'finanzas', 'vendedor', 'contratos', 'cobranza_caja'],
   },
   {
     label: 'Clientes',
     path: '/admin/clientes',
     icon: Users,
-    roles: ['admin', 'vendedor'],
+    roles: ['admin', 'contratos'],
   },
   {
     label: 'Ventas',
     path: '/admin/ventas',
     icon: ShoppingCart,
-    roles: ['admin', 'vendedor'],
+    roles: ['admin', 'contratos', 'cobranza_caja'],
   },
   {
     label: 'Tesorería',
     path: '/admin/pagos',
     icon: DollarSign,
-    roles: ['admin', 'vendedor'],
+    roles: ['admin', 'finanzas', 'contratos', 'cobranza_caja'],
   },
   {
     label: 'Convenios',
     path: '/admin/convenios',
     icon: FileText,
-    roles: ['admin'],
+    roles: ['admin', 'finanzas', 'contratos', 'cobranza_caja'],
   },
   {
     label: 'Cargos Extra',
@@ -75,6 +77,12 @@ const MENU_ITEMS = [
     label: 'Portal — Invitar',
     path: '/admin/invitar-clientes',
     icon: Send,
+    roles: ['admin'],
+  },
+  {
+    label: 'Usuarios',
+    path: '/admin/usuarios',
+    icon: ShieldCheck,
     roles: ['admin'],
   },
 ]
@@ -132,7 +140,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                       ? 'bg-[#eaae4c] text-black'
                       : 'bg-[#504840] text-white'
                   }`}>
-                    {role === 'admin' ? 'Administrador' : 'Vendedor'}
+                    {ROLE_LABELS[role] ?? role}
                   </span>
                 )}
               </div>

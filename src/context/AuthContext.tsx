@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import type { UserRole } from '@/config/roles'
 
-export type UserRole = 'admin' | 'vendedor' | 'cliente'
+export type { UserRole } from '@/config/roles'
 
 interface AuthUser {
   id: string

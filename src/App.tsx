@@ -19,6 +19,13 @@ import { CargosExtra } from '@/pages/admin/CargosExtra'
 import { Traspasos } from '@/pages/admin/Traspasos'
 import { Mapa } from '@/pages/admin/Mapa'
 import { InvitarClientes } from '@/pages/admin/InvitarClientes'
+import { UsuariosAdmin } from '@/pages/admin/UsuariosAdmin'
+import { ADMIN_PANEL_ROLES } from '@/config/roles'
+
+const ROLES_VER_DESARROLLOS = ['admin', 'finanzas'] as const
+const ROLES_EDITAR_CLIENTES = ['admin', 'contratos'] as const
+const ROLES_EDITAR_VENTAS = ['admin', 'contratos', 'cobranza_caja'] as const
+const ROLES_PAGOS = ['admin', 'finanzas', 'contratos', 'cobranza_caja'] as const
 
 function App() {
   return (
@@ -32,7 +39,7 @@ function App() {
         <Route
           path="/admin/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={[...ADMIN_PANEL_ROLES]}>
               <Dashboard />
             </ProtectedRoute>
           }
@@ -42,7 +49,7 @@ function App() {
         <Route
           path="/admin/desarrollos"
           element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={[...ROLES_VER_DESARROLLOS]}>
               <Desarrollos />
             </ProtectedRoute>
           }
@@ -50,7 +57,7 @@ function App() {
         <Route
           path="/admin/desarrollos/:id"
           element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={[...ROLES_VER_DESARROLLOS]}>
               <DesarrolloDetail />
             </ProtectedRoute>
           }
@@ -60,7 +67,7 @@ function App() {
         <Route
           path="/admin/lotes"
           element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={[...ADMIN_PANEL_ROLES]}>
               <Lotes />
             </ProtectedRoute>
           }
@@ -68,7 +75,7 @@ function App() {
         <Route
           path="/admin/lotes/:id"
           element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={[...ADMIN_PANEL_ROLES]}>
               <LoteDetail />
             </ProtectedRoute>
           }
@@ -78,7 +85,7 @@ function App() {
         <Route
           path="/admin/clientes"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={[...ROLES_EDITAR_CLIENTES]}>
               <Clientes />
             </ProtectedRoute>
           }
@@ -86,7 +93,7 @@ function App() {
         <Route
           path="/admin/clientes/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={[...ROLES_EDITAR_CLIENTES]}>
               <ClienteDetail />
             </ProtectedRoute>
           }
@@ -96,7 +103,7 @@ function App() {
         <Route
           path="/admin/ventas"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={[...ROLES_EDITAR_VENTAS]}>
               <Ventas />
             </ProtectedRoute>
           }
@@ -104,7 +111,7 @@ function App() {
         <Route
           path="/admin/ventas/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={[...ROLES_EDITAR_VENTAS]}>
               <VentaDetail />
             </ProtectedRoute>
           }
@@ -114,7 +121,7 @@ function App() {
         <Route
           path="/admin/pagos"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={[...ROLES_PAGOS]}>
               <Pagos />
             </ProtectedRoute>
           }
@@ -122,7 +129,7 @@ function App() {
         <Route
           path="/admin/pagos/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={[...ROLES_PAGOS]}>
               <PagoDetail />
             </ProtectedRoute>
           }
@@ -132,7 +139,7 @@ function App() {
         <Route
           path="/admin/convenios"
           element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={[...ROLES_PAGOS]}>
               <Convenios />
             </ProtectedRoute>
           }
@@ -140,7 +147,7 @@ function App() {
         <Route
           path="/admin/convenios/:id"
           element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={[...ROLES_PAGOS]}>
               <ConvenioDetail />
             </ProtectedRoute>
           }
@@ -182,6 +189,16 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <InvitarClientes />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Administracion de usuarios */}
+        <Route
+          path="/admin/usuarios"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <UsuariosAdmin />
             </ProtectedRoute>
           }
         />
