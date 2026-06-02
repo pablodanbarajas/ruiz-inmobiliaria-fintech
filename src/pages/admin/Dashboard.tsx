@@ -387,6 +387,13 @@ export const Dashboard = () => {
           </div>
         </div>
 
+        {!loading && (loadingRiesgo || loadingRecent) && (
+          <div className="mb-4 inline-flex items-center gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs text-amber-800">
+            <span className="h-3 w-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+            Actualizando indicadores del panel...
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center h-48">
             <div className="inline-block h-8 w-8 border-4 border-[#eaae4c] border-t-transparent rounded-full animate-spin" />

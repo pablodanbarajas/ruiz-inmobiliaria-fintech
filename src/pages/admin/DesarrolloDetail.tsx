@@ -291,6 +291,7 @@ export const DesarrolloDetail = () => {
         isOpen={isEditModalOpen}
         title="Editar Desarrollo"
         onClose={() => setIsEditModalOpen(false)}
+        size="xl"
       >
         <DesarrolloForm
           desarrollo={desarrollo}

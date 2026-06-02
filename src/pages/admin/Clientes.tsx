@@ -86,7 +86,7 @@ export const Clientes = () => {
           }
         }
 
-        setAllClientsCache(allData)
+        let finalCache = allData
 
         // In demo mode, restrict to clients that have ventas in the demo desarrollo
         if (DEMO_DESARROLLOIDS.length > 0 && allData.length > 0) {
@@ -103,11 +103,13 @@ export const Clientes = () => {
             const demoClienteIds = new Set(
               (ventasDemo || []).map((v: any) => v.clienteid).filter(Boolean)
             )
-            setAllClientsCache(allData.filter((c) => demoClienteIds.has(c.clienteid)))
+            finalCache = allData.filter((c) => demoClienteIds.has(c.clienteid))
           } else {
-            setAllClientsCache([])
+            finalCache = []
           }
         }
+
+        setAllClientsCache(finalCache)
       } catch (error) {
         console.error('Error fetching clientes:', error)
         setAllClientsCache([])

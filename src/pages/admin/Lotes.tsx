@@ -20,6 +20,7 @@ export const Lotes = () => {
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
+  const [reloadKey, setReloadKey] = useState(0)
   const itemsPerPage = 10
 
   const [filters, setFilters] = usePersistedFilters('lotesFilters', {
@@ -100,7 +101,7 @@ export const Lotes = () => {
         }
 
         setTotalItems(filteredData.length)
-        
+
         // Apply pagination
         const startIndex = (currentPage - 1) * itemsPerPage
         const endIndex = startIndex + itemsPerPage
@@ -115,7 +116,7 @@ export const Lotes = () => {
     }
 
     fetchLotes()
-  }, [filters, currentPage])
+  }, [filters, currentPage, reloadKey])
 
   const handleCreateLote = async (formData: any) => {
     try {
@@ -129,19 +130,7 @@ export const Lotes = () => {
 
       setShowModal(false)
       setCurrentPage(1)
-      
-      // Refetch data
-      let refetchData1 = ((await supabase
-        .from('lote')
-        .select('*, desarrollo:desarrollo(*)')
-        .order('manzana', { ascending: true })
-        .order('nolote', { ascending: true })
-        .then(({ data }) => data)) || []) as any[]
-      if (DEMO_DESARROLLOIDS.length > 0) {
-        refetchData1 = refetchData1.filter((l: any) => DEMO_DESARROLLOIDS.includes(l.desarrolloid))
-      }
-      setLotes(refetchData1)
-      setTotalItems(refetchData1.length)
+      setReloadKey((k) => k + 1)
     } catch (err) {
       console.error('Error creating lote:', err)
       alert('Error al crear el lote')
@@ -170,19 +159,7 @@ export const Lotes = () => {
 
       setShowEditModal(false)
       setLoteEnEdicion(null)
-
-      // Refetch data
-      let refetchData2 = ((await supabase
-        .from('lote')
-        .select('*, desarrollo:desarrollo(*)')
-        .order('manzana', { ascending: true })
-        .order('nolote', { ascending: true })
-        .then(({ data }) => data)) || []) as any[]
-      if (DEMO_DESARROLLOIDS.length > 0) {
-        refetchData2 = refetchData2.filter((l: any) => DEMO_DESARROLLOIDS.includes(l.desarrolloid))
-      }
-      setLotes(refetchData2)
-      setTotalItems(refetchData2.length)
+      setReloadKey((k) => k + 1)
     } catch (err) {
       console.error('Error updating lote:', err)
       alert('Error al actualizar el lote')
@@ -220,19 +197,8 @@ export const Lotes = () => {
 
       setShowDeleteConfirm(false)
       setLoteEnEdicion(null)
-
-      // Refetch data
-      let refetchData3 = ((await supabase
-        .from('lote')
-        .select('*, desarrollo:desarrollo(*)')
-        .order('manzana', { ascending: true })
-        .order('nolote', { ascending: true })
-        .then(({ data }) => data)) || []) as any[]
-      if (DEMO_DESARROLLOIDS.length > 0) {
-        refetchData3 = refetchData3.filter((l: any) => DEMO_DESARROLLOIDS.includes(l.desarrolloid))
-      }
-      setLotes(refetchData3)
-      setTotalItems(refetchData3.length)
+      setCurrentPage(1)
+      setReloadKey((k) => k + 1)
     } catch (err) {
       console.error('Error deleting lote:', err)
       alert('Error al eliminar el lote')
