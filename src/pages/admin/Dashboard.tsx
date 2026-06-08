@@ -8,6 +8,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { formatCurrency, formatDate } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { useAuth } from '@/context/AuthContext'
+import { ROLE_CAPABILITIES, ROLE_LABELS, type AdminPanelRole } from '@/config/roles'
 
 interface VentaEnRiesgo {
   ventaid: number
@@ -47,6 +49,7 @@ interface VentaReciente {
 
 export const Dashboard = () => {
   const navigate = useNavigate()
+  const { role } = useAuth()
   const [stats, setStats] = useState<Stats>({
     totalClientes: 0,
     totalDesarrollos: 0,
@@ -62,6 +65,21 @@ export const Dashboard = () => {
   const [pagosRecientes, setPagosRecientes] = useState<PagoReciente[]>([])
   const [ventasRecientes, setVentasRecientes] = useState<VentaReciente[]>([])
   const [loadingRecent, setLoadingRecent] = useState(true)
+
+  const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
+  const capabilities = currentRole ? ROLE_CAPABILITIES[currentRole] : null
+
+  const canViewClientes = !!capabilities?.editar_clientes
+  const canViewDesarrollos = !!capabilities?.ver_desarrollos
+  const canViewLotes = !!capabilities?.ver_lotes
+  const canViewVentas = !!capabilities?.editar_ventas
+  const canViewPagos = !!capabilities?.consultar_pagos || !!capabilities?.registrar_pagos
+  const canViewRiesgo = canViewVentas
+  const canUseMapa = currentRole === 'admin'
+  const canUseTraspasos = currentRole === 'admin'
+  const canCreateCliente = !!capabilities?.editar_clientes
+  const canCreateVenta = !!capabilities?.editar_ventas
+  const canCreatePago = !!capabilities?.registrar_pagos
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -145,6 +163,12 @@ export const Dashboard = () => {
 
   // ── Ventas en riesgo de cancelación ────────────────────────────
   useEffect(() => {
+    if (!canViewRiesgo) {
+      setVentasEnRiesgo([])
+      setLoadingRiesgo(false)
+      return
+    }
+
     const fetchRiesgo = async () => {
       try {
         setLoadingRiesgo(true)
@@ -254,87 +278,104 @@ export const Dashboard = () => {
     }
 
     fetchRiesgo()
-  }, [])
+  }, [canViewRiesgo])
 
   // ── Actividad reciente ──────────────────────────────────────────
   useEffect(() => {
+    if (!canViewPagos && !canViewVentas) {
+      setPagosRecientes([])
+      setVentasRecientes([])
+      setLoadingRecent(false)
+      return
+    }
+
     const fetchRecent = async () => {
       try {
         setLoadingRecent(true)
 
-        // Últimas ventas
-        const { data: vData } = await supabase
-          .from('venta')
-          .select('ventaid, precio, estatus, cliente:clienteid(nombre), lote:loteid(manzana, nolote, clavelote, desarrolloid)')
-          .order('ventaid', { ascending: false })
-          .limit(30)
-
-        const ventasFiltradas = DEMO_DESARROLLOIDS.length > 0
-          ? (vData || []).filter((v: any) => {
-              const lote = Array.isArray(v.lote) ? v.lote[0] : v.lote
-              return DEMO_DESARROLLOIDS.includes(lote?.desarrolloid)
-            })
-          : (vData || [])
-
-        setVentasRecientes(
-          ventasFiltradas.slice(0, 6).map((v: any) => {
-            const lote = Array.isArray(v.lote) ? v.lote[0] : v.lote
-            const cliente = Array.isArray(v.cliente) ? v.cliente[0] : v.cliente
-            return {
-              ventaid: v.ventaid,
-              precio: v.precio,
-              estatus: v.estatus,
-              clienteNombre: cliente?.nombre ?? `Cliente #${v.clienteid}`,
-              loteLabel: lote ? `Mza ${lote.manzana} – L${lote.nolote}${lote.clavelote ? ` (${lote.clavelote})` : ''}` : '—',
-            }
-          })
-        )
-
-        // Últimos pagos — fetch pagos + corrida → ventaid, then join venta
-        const { data: pData } = await supabase
-          .from('pagos')
-          .select('pagoid, montopagado, fecha, corridafinancieraid, corridafinanciera:corridafinancieraid(ventaid)')
-          .order('pagoid', { ascending: false })
-          .limit(50)
-
-        const pagosConVenta = (pData || []).filter((p: any) => {
-          const cf = Array.isArray(p.corridafinanciera) ? p.corridafinanciera[0] : p.corridafinanciera
-          return cf?.ventaid != null
-        })
-        const ventaIds = [...new Set(pagosConVenta.map((p: any) => {
-          const cf = Array.isArray(p.corridafinanciera) ? p.corridafinanciera[0] : p.corridafinanciera
-          return cf?.ventaid as number
-        }))]
-
-        if (ventaIds.length > 0) {
-          const { data: ventasData } = await supabase
+        if (canViewVentas) {
+          // Ultimas ventas
+          const { data: vData } = await supabase
             .from('venta')
-            .select('ventaid, clienteid, cliente:clienteid(nombre), lote:loteid(manzana, nolote, desarrolloid)')
-            .in('ventaid', ventaIds as number[])
+            .select('ventaid, precio, estatus, cliente:clienteid(nombre), lote:loteid(manzana, nolote, clavelote, desarrolloid)')
+            .order('ventaid', { ascending: false })
+            .limit(30)
 
-          const ventaMap = new Map<number, any>()
-          for (const v of ventasData || []) ventaMap.set((v as any).ventaid, v)
+          const ventasFiltradas = DEMO_DESARROLLOIDS.length > 0
+            ? (vData || []).filter((v: any) => {
+                const lote = Array.isArray(v.lote) ? v.lote[0] : v.lote
+                return DEMO_DESARROLLOIDS.includes(lote?.desarrolloid)
+              })
+            : (vData || [])
 
-          const pagosList: PagoReciente[] = []
-          for (const p of pagosConVenta) {
-            const cf = Array.isArray(p.corridafinanciera) ? p.corridafinanciera[0] : p.corridafinanciera
-            const ventaid = cf?.ventaid as number
-            const venta = ventaMap.get(ventaid)
-            if (!venta) continue
-            const lote = Array.isArray(venta.lote) ? venta.lote[0] : venta.lote
-            if (DEMO_DESARROLLOIDS.length > 0 && !DEMO_DESARROLLOIDS.includes(lote?.desarrolloid)) continue
-            const cliente = Array.isArray(venta.cliente) ? venta.cliente[0] : venta.cliente
-            pagosList.push({
-              pagoid: p.pagoid,
-              montopagado: p.montopagado,
-              fecha: p.fecha,
-              clienteNombre: cliente?.nombre ?? `Cliente #${venta.clienteid}`,
-              loteLabel: lote ? `Mza ${lote.manzana} – L${lote.nolote}` : '—',
-              ventaid,
+          setVentasRecientes(
+            ventasFiltradas.slice(0, 6).map((v: any) => {
+              const lote = Array.isArray(v.lote) ? v.lote[0] : v.lote
+              const cliente = Array.isArray(v.cliente) ? v.cliente[0] : v.cliente
+              return {
+                ventaid: v.ventaid,
+                precio: v.precio,
+                estatus: v.estatus,
+                clienteNombre: cliente?.nombre ?? `Cliente #${v.clienteid}`,
+                loteLabel: lote ? `Mza ${lote.manzana} – L${lote.nolote}${lote.clavelote ? ` (${lote.clavelote})` : ''}` : '—',
+              }
             })
-            if (pagosList.length >= 6) break
+          )
+        } else {
+          setVentasRecientes([])
+        }
+
+        if (canViewPagos) {
+          // Ultimos pagos
+          const { data: pData } = await supabase
+            .from('pagos')
+            .select('pagoid, montopagado, fecha, corridafinancieraid, corridafinanciera:corridafinancieraid(ventaid)')
+            .order('pagoid', { ascending: false })
+            .limit(50)
+
+          const pagosConVenta = (pData || []).filter((p: any) => {
+            const cf = Array.isArray(p.corridafinanciera) ? p.corridafinanciera[0] : p.corridafinanciera
+            return cf?.ventaid != null
+          })
+          const ventaIds = [...new Set(pagosConVenta.map((p: any) => {
+            const cf = Array.isArray(p.corridafinanciera) ? p.corridafinanciera[0] : p.corridafinanciera
+            return cf?.ventaid as number
+          }))]
+
+          if (ventaIds.length > 0) {
+            const { data: ventasData } = await supabase
+              .from('venta')
+              .select('ventaid, clienteid, cliente:clienteid(nombre), lote:loteid(manzana, nolote, desarrolloid)')
+              .in('ventaid', ventaIds as number[])
+
+            const ventaMap = new Map<number, any>()
+            for (const v of ventasData || []) ventaMap.set((v as any).ventaid, v)
+
+            const pagosList: PagoReciente[] = []
+            for (const p of pagosConVenta) {
+              const cf = Array.isArray(p.corridafinanciera) ? p.corridafinanciera[0] : p.corridafinanciera
+              const ventaid = cf?.ventaid as number
+              const venta = ventaMap.get(ventaid)
+              if (!venta) continue
+              const lote = Array.isArray(venta.lote) ? venta.lote[0] : venta.lote
+              if (DEMO_DESARROLLOIDS.length > 0 && !DEMO_DESARROLLOIDS.includes(lote?.desarrolloid)) continue
+              const cliente = Array.isArray(venta.cliente) ? venta.cliente[0] : venta.cliente
+              pagosList.push({
+                pagoid: p.pagoid,
+                montopagado: p.montopagado,
+                fecha: p.fecha,
+                clienteNombre: cliente?.nombre ?? `Cliente #${venta.clienteid}`,
+                loteLabel: lote ? `Mza ${lote.manzana} – L${lote.nolote}` : '—',
+                ventaid,
+              })
+              if (pagosList.length >= 6) break
+            }
+            setPagosRecientes(pagosList)
+          } else {
+            setPagosRecientes([])
           }
-          setPagosRecientes(pagosList)
+        } else {
+          setPagosRecientes([])
         }
       } catch (err) {
         console.error('Error fetching recent activity:', err)
@@ -343,7 +384,7 @@ export const Dashboard = () => {
       }
     }
     fetchRecent()
-  }, [])
+  }, [canViewPagos, canViewVentas])
 
   const monthName = new Date().toLocaleString('es-MX', { month: 'long', year: 'numeric' })
 
@@ -384,6 +425,9 @@ export const Dashboard = () => {
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Dashboard</h1>
             <p className="text-[#9e9f92] mt-1 capitalize">{monthName}</p>
+            {currentRole && (
+              <p className="text-xs text-gray-500 mt-1">Vista de rol: {ROLE_LABELS[currentRole]}</p>
+            )}
           </div>
         </div>
 
@@ -400,69 +444,79 @@ export const Dashboard = () => {
           </div>
         ) : (
           <>
-            {/* ── Row 1: KPIs principales ── */}
+            {/* ── KPIs por rol ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-              <StatCard
-                title="Clientes"
-                value={stats.totalClientes}
-                icon={<Users className="w-8 h-8 text-white" />}
-                color="#9e9f92"
-                onClick={() => navigate('/admin/clientes')}
-              />
-              <StatCard
-                title="Ventas activas"
-                value={stats.ventasActivas}
-                icon={<ShoppingCart className="w-8 h-8 text-black" />}
-                color="#eaae4c"
-                onClick={() => navigate('/admin/ventas')}
-              />
-              <StatCard
-                title="Total cobrado"
-                value={formatCurrency(stats.totalPagado)}
-                icon={<DollarSign className="w-8 h-8 text-white" />}
-                color="#000000"
-              />
-              <StatCard
-                title={`Cobrado en ${new Date().toLocaleString('es-MX', { month: 'long' })}`}
-                value={formatCurrency(stats.pagosDelMes)}
-                icon={<TrendingUp className="w-8 h-8 text-white" />}
-                color="#504840"
-                onClick={() => navigate('/admin/pagos')}
-              />
-            </div>
-
-            {/* ── Row 2: KPIs secundarios ── */}
-            <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-5">
-              <StatCard
-                title="Lotes disponibles"
-                value={stats.lotesDisponibles}
-                icon={<Home className="w-8 h-8 text-white" />}
-                color="#9e9f92"
-                onClick={() => navigate('/admin/lotes')}
-              />
-              <StatCard
-                title="Desarrollos"
-                value={stats.totalDesarrollos}
-                icon={<MapPin className="w-8 h-8 text-white" />}
-                color="#504840"
-                onClick={() => navigate('/admin/desarrollos')}
-              />
-              <div
-                onClick={() => document.getElementById('riesgo-section')?.scrollIntoView({ behavior: 'smooth' })}
-                className={`bg-white rounded-lg shadow-md border-l-4 p-6 cursor-pointer hover:shadow-lg transition-shadow ${loadingRiesgo ? 'border-gray-300' : ventasEnRiesgo.length > 0 ? 'border-red-500' : 'border-green-500'}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[#9e9f92] text-sm font-medium">En riesgo de cancelación</p>
-                    <p className="text-3xl font-bold text-black mt-2">
-                      {loadingRiesgo ? '…' : ventasEnRiesgo.length}
-                    </p>
-                  </div>
-                  <div className={`w-14 h-14 rounded-lg flex items-center justify-center ${loadingRiesgo ? 'bg-gray-300' : ventasEnRiesgo.length > 0 ? 'bg-red-500' : 'bg-green-500'}`}>
-                    <AlertTriangle className="w-8 h-8 text-white" />
+              {canViewClientes && (
+                <StatCard
+                  title="Clientes"
+                  value={stats.totalClientes}
+                  icon={<Users className="w-8 h-8 text-white" />}
+                  color="#9e9f92"
+                  onClick={() => navigate('/admin/clientes')}
+                />
+              )}
+              {canViewVentas && (
+                <StatCard
+                  title="Ventas activas"
+                  value={stats.ventasActivas}
+                  icon={<ShoppingCart className="w-8 h-8 text-black" />}
+                  color="#eaae4c"
+                  onClick={() => navigate('/admin/ventas')}
+                />
+              )}
+              {canViewPagos && (
+                <StatCard
+                  title="Total cobrado"
+                  value={formatCurrency(stats.totalPagado)}
+                  icon={<DollarSign className="w-8 h-8 text-white" />}
+                  color="#000000"
+                />
+              )}
+              {canViewPagos && (
+                <StatCard
+                  title={`Cobrado en ${new Date().toLocaleString('es-MX', { month: 'long' })}`}
+                  value={formatCurrency(stats.pagosDelMes)}
+                  icon={<TrendingUp className="w-8 h-8 text-white" />}
+                  color="#504840"
+                  onClick={() => navigate('/admin/pagos')}
+                />
+              )}
+              {canViewLotes && (
+                <StatCard
+                  title="Lotes disponibles"
+                  value={stats.lotesDisponibles}
+                  icon={<Home className="w-8 h-8 text-white" />}
+                  color="#9e9f92"
+                  onClick={() => navigate('/admin/lotes')}
+                />
+              )}
+              {canViewDesarrollos && (
+                <StatCard
+                  title="Desarrollos"
+                  value={stats.totalDesarrollos}
+                  icon={<MapPin className="w-8 h-8 text-white" />}
+                  color="#504840"
+                  onClick={() => navigate('/admin/desarrollos')}
+                />
+              )}
+              {canViewRiesgo && (
+                <div
+                  onClick={() => document.getElementById('riesgo-section')?.scrollIntoView({ behavior: 'smooth' })}
+                  className={`bg-white rounded-lg shadow-md border-l-4 p-6 cursor-pointer hover:shadow-lg transition-shadow ${loadingRiesgo ? 'border-gray-300' : ventasEnRiesgo.length > 0 ? 'border-red-500' : 'border-green-500'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[#9e9f92] text-sm font-medium">En riesgo de cancelación</p>
+                      <p className="text-3xl font-bold text-black mt-2">
+                        {loadingRiesgo ? '…' : ventasEnRiesgo.length}
+                      </p>
+                    </div>
+                    <div className={`w-14 h-14 rounded-lg flex items-center justify-center ${loadingRiesgo ? 'bg-gray-300' : ventasEnRiesgo.length > 0 ? 'bg-red-500' : 'bg-green-500'}`}>
+                      <AlertTriangle className="w-8 h-8 text-white" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </>
         )}
@@ -472,20 +526,20 @@ export const Dashboard = () => {
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Accesos rápidos</h2>
           <div className="flex flex-wrap gap-3">
             {[
-              { label: 'Nueva Venta', icon: <Plus size={16} />, path: '/admin/ventas?new=true' },
-              { label: 'Nuevo Pago', icon: <CreditCard size={16} />, path: '/admin/pagos?new=true' },
-              { label: 'Nuevo Cliente', icon: <UserPlus size={16} />, path: '/admin/clientes?new=true' },
-              { label: 'Nuevo Traspaso', icon: <ArrowLeftRight size={16} />, path: '/admin/traspasos?new=true' },
-              { label: 'Ver Mapa', icon: <MapPin size={16} />, path: '/admin/mapa' },
-            ].map((item) => (
+              canCreateVenta ? { label: 'Nueva Venta', icon: <Plus size={16} />, path: '/admin/ventas?new=true' } : null,
+              canCreatePago ? { label: 'Nuevo Pago', icon: <CreditCard size={16} />, path: '/admin/pagos?new=true' } : null,
+              canCreateCliente ? { label: 'Nuevo Cliente', icon: <UserPlus size={16} />, path: '/admin/clientes?new=true' } : null,
+              canUseTraspasos ? { label: 'Nuevo Traspaso', icon: <ArrowLeftRight size={16} />, path: '/admin/traspasos?new=true' } : null,
+              canUseMapa ? { label: 'Ver Mapa', icon: <MapPin size={16} />, path: '/admin/mapa' } : null,
+            ].filter(Boolean).map((item) => (
               <button
-                key={item.path}
+                key={(item as { path: string }).path}
                 type="button"
-                onClick={() => navigate(item.path)}
+                onClick={() => navigate((item as { path: string }).path)}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:border-[#eaae4c] hover:text-[#504840] hover:shadow-sm transition-all"
               >
-                {item.icon}
-                {item.label}
+                {(item as { icon: React.ReactNode }).icon}
+                {(item as { label: string }).label}
               </button>
             ))}
           </div>
@@ -494,6 +548,7 @@ export const Dashboard = () => {
         {/* ── Actividad reciente ── */}
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Últimos pagos */}
+          {canViewPagos && (
           <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -519,7 +574,7 @@ export const Dashboard = () => {
                 {pagosRecientes.map((p) => (
                   <li
                     key={p.pagoid}
-                    onClick={() => navigate(`/admin/ventas/${p.ventaid}`)}
+                    onClick={() => navigate(canViewVentas ? `/admin/ventas/${p.ventaid}` : `/admin/pagos/${p.pagoid}`)}
                     className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <div className="min-w-0">
@@ -534,8 +589,10 @@ export const Dashboard = () => {
               </ul>
             )}
           </div>
+          )}
 
           {/* Últimas ventas */}
+          {canViewVentas && (
           <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -587,9 +644,11 @@ export const Dashboard = () => {
               </ul>
             )}
           </div>
+          )}
         </div>
 
         {/* ── Ventas en riesgo de cancelación ── */}
+        {canViewRiesgo && (
         <div id="riesgo-section" className="mt-8 bg-white rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-5 border-b border-gray-200 flex items-center gap-3 bg-red-50">
             <AlertTriangle size={22} className="text-red-600" />
@@ -667,6 +726,7 @@ export const Dashboard = () => {
             </div>
           )}
         </div>
+        )}
       </div>
     </AdminLayout>
   )
