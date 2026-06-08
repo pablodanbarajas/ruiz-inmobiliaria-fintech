@@ -64,7 +64,7 @@ export const formatDateShort = (dateString: string | null | undefined): string =
 
 /**
  * Get lote status label
- * D: Disponible | V: Vendido | B: Bloqueado | A: Apartado
+ * D: Disponible | V: Vendido | B: Bloqueado | A: Apartado | N: No disponible
  */
 export const getLoteStatusLabel = (status: string | null | undefined): string => {
   switch (status?.toUpperCase()) {
@@ -76,6 +76,8 @@ export const getLoteStatusLabel = (status: string | null | undefined): string =>
       return 'Bloqueado'
     case 'A':
       return 'Apartado'
+    case 'N':
+      return 'No disponible'
     default:
       return status || '-'
   }
@@ -94,6 +96,8 @@ export const getLoteStatusColor = (status: string | null | undefined): string =>
       return 'bg-red-600 text-white'
     case 'A': // Apartado
       return 'bg-[#9e9f92] text-white'
+    case 'N': // No disponible
+      return 'bg-slate-700 text-white'
     default:
       return 'bg-gray-100 text-gray-800'
   }

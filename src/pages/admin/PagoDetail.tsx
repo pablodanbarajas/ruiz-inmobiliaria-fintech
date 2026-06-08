@@ -86,21 +86,47 @@ export const PagoDetail = () => {
   const handleUpdatePago = async (data: PagoFormData) => {
     try {
       setIsSubmitting(true)
-      const { error } = await supabase
+      const payload = {
+        fechapago: data.fechapago,
+        montopagado: data.montopagado,
+        servicios_extra: data.servicios_extra,
+        formapago: data.formapago,
+        cuenta_bancaria_id: data.cuenta_bancaria_id,
+        estatus: data.estatus,
+        referencia: data.referencia,
+        comentario: data.comentario,
+        recargo: data.recargo,
+        cobrador: data.cobrador,
+      }
+
+      let updateResult = await supabase
         .from('pagos')
-        .update({
-          fechapago: data.fechapago,
-          montopagado: data.montopagado,
-          formapago: data.formapago,
-          estatus: data.estatus,
-          referencia: data.referencia,
-          comentario: data.comentario,
-          recargo: data.recargo,
-          cobrador: data.cobrador,
-        })
+        .update(payload)
         .eq('pagoid', id)
 
-      if (error) throw error
+      if (updateResult.error && /servicios_extra|cuenta_bancaria_id/i.test(updateResult.error.message || '')) {
+        const fallbackComentario = [
+          data.comentario,
+          data.servicios_extra > 0 ? `[Servicios/Extra: ${data.servicios_extra}]` : null,
+          data.formapago === 2 && data.cuenta_bancaria_id ? `[Cuenta bancaria ID: ${data.cuenta_bancaria_id}]` : null,
+        ].filter(Boolean).join(' | ')
+
+        updateResult = await supabase
+          .from('pagos')
+          .update({
+            fechapago: data.fechapago,
+            montopagado: data.montopagado,
+            formapago: data.formapago,
+            estatus: data.estatus,
+            referencia: data.referencia,
+            comentario: fallbackComentario || null,
+            recargo: data.recargo,
+            cobrador: data.cobrador,
+          })
+          .eq('pagoid', id)
+      }
+
+      if (updateResult.error) throw updateResult.error
 
       setShowEditModal(false)
       await fetchPagoDetail()
@@ -185,6 +211,9 @@ export const PagoDetail = () => {
               {pago.recargo != null && pago.recargo > 0 && (
                 <p className="text-sm text-orange-600 mt-1">+ {formatCurrency(pago.recargo)} recargo</p>
               )}
+              {pago.servicios_extra != null && pago.servicios_extra > 0 && (
+                <p className="text-sm text-indigo-600 mt-1">+ {formatCurrency(pago.servicios_extra)} servicios/extra</p>
+              )}
             </div>
             <div>
               <p className="text-sm text-gray-500">Fecha de Pago</p>
@@ -216,6 +245,12 @@ export const PagoDetail = () => {
               <div>
                 <p className="text-sm text-gray-500">Cobrador (ruta)</p>
                 <p className="text-base font-semibold text-gray-900">{pago.cobrador}</p>
+              </div>
+            )}
+            {pago.formapago === 2 && pago.cuenta_bancaria_id != null && (
+              <div>
+                <p className="text-sm text-gray-500">Cuenta bancaria destino</p>
+                <p className="text-base font-semibold text-gray-900">ID #{pago.cuenta_bancaria_id}</p>
               </div>
             )}
           </div>

@@ -139,7 +139,7 @@ function App() {
         <Route
           path="/admin/convenios"
           element={
-            <ProtectedRoute allowedRoles={[...ROLES_PAGOS]}>
+            <ProtectedRoute allowedRoles={['admin']}>
               <Convenios />
             </ProtectedRoute>
           }
@@ -147,7 +147,7 @@ function App() {
         <Route
           path="/admin/convenios/:id"
           element={
-            <ProtectedRoute allowedRoles={[...ROLES_PAGOS]}>
+            <ProtectedRoute allowedRoles={['admin']}>
               <ConvenioDetail />
             </ProtectedRoute>
           }

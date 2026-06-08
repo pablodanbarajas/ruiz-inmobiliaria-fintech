@@ -169,25 +169,49 @@ export const Pagos = () => {
   const handleCreatePago = async (data: PagoFormData) => {
     try {
       setIsSubmitting(true)
-      const { data: newPago, error } = await supabase
-        .from('pagos')
-        .insert({
-          corridafinancieraid: data.corridafinancieraid,
-          fechapago: data.fechapago,
-          montopagado: data.montopagado,
-          formapago: data.formapago,
-          estatus: data.estatus,
-          referencia: data.referencia,
-          comentario: data.comentario,
-          cobrador: data.cobrador,
-        })
-        .select()
-        .single()
+      const payload = {
+        corridafinancieraid: data.corridafinancieraid,
+        fechapago: data.fechapago,
+        montopagado: data.montopagado,
+        servicios_extra: data.servicios_extra,
+        formapago: data.formapago,
+        cuenta_bancaria_id: data.cuenta_bancaria_id,
+        estatus: data.estatus,
+        referencia: data.referencia,
+        comentario: data.comentario,
+        cobrador: data.cobrador,
+      }
 
-      if (error) throw error
+      let insertResult = await supabase.from('pagos').insert(payload).select().single()
+
+      // Compatibility path: if DB migration is pending, retry without new columns.
+      if (insertResult.error && /servicios_extra|cuenta_bancaria_id/i.test(insertResult.error.message || '')) {
+        const fallbackComentario = [
+          data.comentario,
+          data.servicios_extra > 0 ? `[Servicios/Extra: ${data.servicios_extra}]` : null,
+          data.formapago === 2 && data.cuenta_bancaria_id ? `[Cuenta bancaria ID: ${data.cuenta_bancaria_id}]` : null,
+        ].filter(Boolean).join(' | ')
+
+        insertResult = await supabase
+          .from('pagos')
+          .insert({
+            corridafinancieraid: data.corridafinancieraid,
+            fechapago: data.fechapago,
+            montopagado: data.montopagado,
+            formapago: data.formapago,
+            estatus: data.estatus,
+            referencia: data.referencia,
+            comentario: fallbackComentario || null,
+            cobrador: data.cobrador,
+          })
+          .select()
+          .single()
+      }
+
+      if (insertResult.error) throw insertResult.error
 
       setShowCreateModal(false)
-      navigate(`/admin/pagos/${newPago.pagoid}`)
+      navigate(`/admin/pagos/${insertResult.data.pagoid}`)
     } catch (err: any) {
       console.error('Error creating pago:', err)
       alert(`Error al registrar el pago: ${err.message}`)

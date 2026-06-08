@@ -123,12 +123,24 @@ export type Pago = {
   corridafinancieraid: number | null
   fechapago: string | null
   montopagado: number | null
+  servicios_extra: number | null
   formapago: number | null
+  cuenta_bancaria_id: number | null
   estatus: string | null
   referencia: string | null
   comentario: string | null
   recargo: number | null
   cobrador: string | null
+}
+
+export type CuentaBancaria = {
+  cuenta_bancaria_id: number
+  nombre: string
+  banco: string | null
+  numero_cuenta: string | null
+  clabe: string | null
+  desarrolloid: number | null
+  activa: boolean | null
 }
 
 export type Convenio = {

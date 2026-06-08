@@ -59,7 +59,7 @@ const MENU_ITEMS = [
     label: 'Convenios',
     path: '/admin/convenios',
     icon: FileText,
-    roles: ['admin', 'finanzas', 'contratos', 'cobranza_caja'],
+    roles: ['admin'],
   },
   {
     label: 'Cargos Extra',

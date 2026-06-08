@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
-import type { Pago, CorridaFinanciera, Cliente, Lote, CargoExtra } from '@/types/database'
+import type { Pago, CorridaFinanciera, Cliente, Lote, CargoExtra, CuentaBancaria } from '@/types/database'
 import {
   formatDate,
   formatCurrency,
@@ -19,7 +19,9 @@ export interface PagoFormData {
   corridafinancieraid: number | null
   fechapago: string
   montopagado: number
+  servicios_extra: number
   formapago: number
+  cuenta_bancaria_id: number | null
   estatus: string
   referencia: string | null
   comentario: string | null
@@ -74,7 +76,9 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
   const [corridaId, setCorridaId] = useState<number | null>(initialCorridaId ?? pago?.corridafinancieraid ?? null)
   const [fechapago, setFechapago] = useState(pago?.fechapago ?? today())
   const [montopagado, setMontopagado] = useState<string>(pago?.montopagado != null ? String(pago.montopagado) : '')
+  const [serviciosExtra, setServiciosExtra] = useState<string>(pago?.servicios_extra != null ? String(pago.servicios_extra) : '0')
   const [formapago, setFormapago] = useState<number>(pago?.formapago ?? 1)
+  const [cuentaBancariaId, setCuentaBancariaId] = useState<string>(pago?.cuenta_bancaria_id != null ? String(pago.cuenta_bancaria_id) : '')
   const [estatus, setEstatus] = useState(pago?.estatus ?? 'P')
   const [referencia, setReferencia] = useState(pago?.referencia ?? '')
   const [comentario, setComentario] = useState(pago?.comentario ?? '')
@@ -83,6 +87,8 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
   const [activeConvenio, setActiveConvenio] = useState<{ recargo_acordado: number | null; meses_atraso: number | null } | null>(null)
   const [checkingConvenio, setCheckingConvenio] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [cuentasBancarias, setCuentasBancarias] = useState<CuentaBancaria[]>([])
+  const [loadingCuentas, setLoadingCuentas] = useState(false)
 
   // Track whether montopagado was auto-filled (so recargo updates can also update it)
   const autoFilledMonto = useRef(false)
@@ -143,6 +149,38 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
 
     loadVentas()
   }, [needsVentaPicker])
+
+  // Load transfer accounts when needed
+  useEffect(() => {
+    if (formapago !== 2) return
+
+    const loadCuentas = async () => {
+      setLoadingCuentas(true)
+      try {
+        const { data, error } = await supabase
+          .from('cuentas_bancarias')
+          .select('cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe, desarrolloid, activa')
+          .eq('activa', true)
+          .order('nombre', { ascending: true })
+
+        if (error) {
+          // If migration is not applied yet, keep form working without hard failure.
+          console.warn('No se pudo cargar el catálogo de cuentas bancarias:', error.message)
+          setCuentasBancarias([])
+          return
+        }
+
+        setCuentasBancarias((data || []) as CuentaBancaria[])
+      } catch (err) {
+        console.warn('No se pudo cargar el catálogo de cuentas bancarias:', err)
+        setCuentasBancarias([])
+      } finally {
+        setLoadingCuentas(false)
+      }
+    }
+
+    loadCuentas()
+  }, [formapago])
 
   // ── Load corridas when venta is selected ───────────────────────
   useEffect(() => {
@@ -307,7 +345,12 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
     if (!fechapago) newErrors.fechapago = 'La fecha es requerida'
     const monto = parseFloat(montopagado)
     if (!montopagado || isNaN(monto) || monto <= 0) newErrors.montopagado = 'Ingresa un monto válido mayor a 0'
+    const extra = parseFloat(serviciosExtra)
+    if (serviciosExtra && (isNaN(extra) || extra < 0)) newErrors.servicios_extra = 'Servicios/Extra debe ser 0 o mayor'
     if (!formapago) newErrors.formapago = 'Selecciona la forma de pago'
+    if (formapago === 2 && cuentasBancarias.length > 0 && !cuentaBancariaId) {
+      newErrors.cuenta_bancaria_id = 'Selecciona la cuenta bancaria de destino'
+    }
     if (formapago === 6 && !cobrador.trim()) newErrors.cobrador = 'El nombre del cobrador es requerido'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -322,7 +365,9 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
       corridafinancieraid: corridaId,
       fechapago,
       montopagado: parseFloat(montopagado),
+      servicios_extra: parseFloat(serviciosExtra) || 0,
       formapago,
+      cuenta_bancaria_id: cuentaBancariaId ? Number(cuentaBancariaId) : null,
       estatus,
       referencia: referencia.trim() || null,
       comentario: comentario.trim() || null,
@@ -607,6 +652,61 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
               placeholder="Número de folio, transferencia, cheque..."
             />
           </div>
+
+          {/* Servicios / Extra */}
+          <div>
+            <label className="block text-sm font-medium text-black mb-1">Servicios / Extra</label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={serviciosExtra}
+              onChange={(e) => setServiciosExtra(e.target.value)}
+              placeholder="0.00"
+              className={errors.servicios_extra ? 'border-red-500' : ''}
+            />
+            {errors.servicios_extra ? (
+              <p className="text-xs text-red-500 mt-1">{errors.servicios_extra}</p>
+            ) : (
+              <p className="text-xs text-gray-500 mt-1">Monto adicional pagado para servicios o saldo a favor.</p>
+            )}
+          </div>
+
+          {/* Cuenta bancaria para transferencia */}
+          {formapago === 2 && (
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-black mb-1">
+                Cuenta bancaria de destino {cuentasBancarias.length > 0 && <span className="text-red-500">*</span>}
+              </label>
+              {loadingCuentas ? (
+                <p className="text-sm text-gray-500">Cargando catálogo de cuentas...</p>
+              ) : cuentasBancarias.length === 0 ? (
+                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  No hay catálogo de cuentas disponible. Aplica la migración de cuentas bancarias para habilitar la selección.
+                </p>
+              ) : (
+                <>
+                  <select
+                    value={cuentaBancariaId}
+                    onChange={(e) => setCuentaBancariaId(e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] ${
+                      errors.cuenta_bancaria_id ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Selecciona una cuenta...</option>
+                    {cuentasBancarias.map((c) => (
+                      <option key={c.cuenta_bancaria_id} value={c.cuenta_bancaria_id}>
+                        {c.nombre}
+                        {c.banco ? ` - ${c.banco}` : ''}
+                        {c.numero_cuenta ? ` - ****${c.numero_cuenta.slice(-4)}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.cuenta_bancaria_id && <p className="text-xs text-red-500 mt-1">{errors.cuenta_bancaria_id}</p>}
+                </>
+              )}
+            </div>
+          )}
 
           {/* Cobrador — solo cuando Ruta de cobranza */}
           {formapago === 6 && (

@@ -282,6 +282,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             <option value="A">Apartado</option>
             <option value="V">Vendido</option>
             <option value="B">Bloqueado</option>
+            <option value="N">No disponible</option>
           </select>
         </div>
       </div>

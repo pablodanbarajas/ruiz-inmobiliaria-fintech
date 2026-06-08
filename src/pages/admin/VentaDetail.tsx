@@ -15,6 +15,7 @@ import { ChevronLeft, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, CheckCirc
 import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Convenio, Devolucion, DevolucionParcialidad, CargoExtra, Traspaso } from '@/types/database'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
+import { useAuth } from '@/context/AuthContext'
 import {
   formatDate,
   formatDateTime,
@@ -41,6 +42,7 @@ export const VentaDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const { role } = useAuth()
   const [venta, setVenta] = useState<VentaWithDetails | null>(null)
   const [corridas, setCorridas] = useState<CorridaWithPagos[]>([])
   const [corridaPage, setCorridaPage] = useState(0)
@@ -66,6 +68,7 @@ export const VentaDetail = () => {
   const [traspasoFecha, setTraspasoFecha] = useState('')
   const [traspasoNotas, setTraspasoNotas] = useState('')
   const [traspasoClientes, setTraspasoClientes] = useState<ComboOption[]>([])
+  const canManageConvenios = role === 'admin'
 
   useEffect(() => {
     const fetchVentaDetail = async () => {
@@ -371,21 +374,43 @@ export const VentaDetail = () => {
   const handleCreatePagoFromCorrida = async (data: PagoFormData) => {
     try {
       setIsSubmittingPago(true)
-      const { error } = await supabase
-        .from('pagos')
-        .insert({
+      const payload = {
+        corridafinancieraid: data.corridafinancieraid,
+        fechapago: data.fechapago,
+        montopagado: data.montopagado,
+        servicios_extra: data.servicios_extra,
+        formapago: data.formapago,
+        cuenta_bancaria_id: data.cuenta_bancaria_id,
+        estatus: data.estatus,
+        referencia: data.referencia,
+        comentario: data.comentario,
+        recargo: data.recargo,
+        cobrador: data.cobrador,
+      }
+
+      let insertResult = await supabase.from('pagos').insert(payload)
+
+      if (insertResult.error && /servicios_extra|cuenta_bancaria_id/i.test(insertResult.error.message || '')) {
+        const fallbackComentario = [
+          data.comentario,
+          data.servicios_extra > 0 ? `[Servicios/Extra: ${data.servicios_extra}]` : null,
+          data.formapago === 2 && data.cuenta_bancaria_id ? `[Cuenta bancaria ID: ${data.cuenta_bancaria_id}]` : null,
+        ].filter(Boolean).join(' | ')
+
+        insertResult = await supabase.from('pagos').insert({
           corridafinancieraid: data.corridafinancieraid,
           fechapago: data.fechapago,
           montopagado: data.montopagado,
           formapago: data.formapago,
           estatus: data.estatus,
           referencia: data.referencia,
-          comentario: data.comentario,
+          comentario: fallbackComentario || null,
           recargo: data.recargo,
           cobrador: data.cobrador,
         })
+      }
 
-      if (error) throw error
+      if (insertResult.error) throw insertResult.error
 
       setShowPagoModal(false)
       setSelectedCorridaId(null)
@@ -418,6 +443,11 @@ export const VentaDetail = () => {
 
   // ── Create convenio ────────────────────────────────────────────────
   const handleCreateConvenio = async (data: ConvenioFormData) => {
+    if (!canManageConvenios) {
+      alert('Solo un administrador puede registrar convenios.')
+      return
+    }
+
     try {
       setIsSubmittingConvenio(true)
       const { error } = await supabase.from('convenios').insert({
@@ -769,7 +799,7 @@ export const VentaDetail = () => {
                 {conveniosEsteAnio}/3 este año
               </span>
             </div>
-            {venta.estatus !== 'C' && (
+            {venta.estatus !== 'C' && canManageConvenios && (
               <Button
                 onClick={() => setShowConvenioModal(true)}
                 className="inline-flex items-center gap-2"

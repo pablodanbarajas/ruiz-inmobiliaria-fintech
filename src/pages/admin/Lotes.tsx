@@ -257,6 +257,7 @@ export const Lotes = () => {
                 <option value="V">Vendido</option>
                 <option value="B">Bloqueado</option>
                 <option value="A">Apartado</option>
+                <option value="N">No disponible</option>
               </select>
             </div>
             <div>
