@@ -154,6 +154,13 @@ export type Convenio = {
   estatus: string | null  // V: Vigente | C: Cumplido | X: Cancelado
   recargo_original: number | null
   recargo_acordado: number | null
+  deuda_mensualidades: number | null
+  deuda_total_convenio: number | null
+  meses_convenio: number | null
+  monto_convenio_mensual: number | null
+  mensualidad_corriente: number | null
+  pago_total_mensual_objetivo: number | null
+  fecha_fin_estimada: string | null
   comentarios: string | null
   created_at: string | null
 }

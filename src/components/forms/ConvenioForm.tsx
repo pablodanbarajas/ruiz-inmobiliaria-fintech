@@ -13,8 +13,15 @@ export interface ConvenioFormData {
   motivo: string
   descripcion: string
   meses_atraso: number
+  meses_convenio: number
   recargo_original: number
   recargo_acordado: number
+  deuda_mensualidades: number
+  deuda_total_convenio: number
+  monto_convenio_mensual: number
+  mensualidad_corriente: number
+  pago_total_mensual_objetivo: number
+  fecha_fin_estimada: string | null
   estatus: string
   comentarios: string | null
 }
@@ -37,6 +44,7 @@ interface VentaOption {
   ventaid: number
   label: string
   clienteid: number | null
+  mensualidad: number | null
 }
 
 export const ConvenioForm = ({
@@ -62,6 +70,13 @@ export const ConvenioForm = ({
   // Atrasos en corridas for selected venta
   const [corridasEnAtraso, setCorridasEnAtraso] = useState<number>(0)
   const [loadingAtrasos, setLoadingAtrasos] = useState(false)
+  const [ventaMensualidad, setVentaMensualidad] = useState<number>(0)
+  const [deudaMensualidades, setDeudaMensualidades] = useState<number>(convenio?.deuda_mensualidades ?? 0)
+  const [deudaTotalConvenio, setDeudaTotalConvenio] = useState<number>(convenio?.deuda_total_convenio ?? 0)
+  const [mesesConvenio, setMesesConvenio] = useState<number>(Math.max(1, convenio?.meses_convenio ?? convenio?.meses_atraso ?? 1))
+  const [montoConvenioMensual, setMontoConvenioMensual] = useState<number>(convenio?.monto_convenio_mensual ?? 0)
+  const [pagoTotalMensualObjetivo, setPagoTotalMensualObjetivo] = useState<number>(convenio?.pago_total_mensual_objetivo ?? 0)
+  const [fechaFinEstimada, setFechaFinEstimada] = useState<string | null>(convenio?.fecha_fin_estimada ?? null)
 
   // Form fields
   const [fecha, setFecha] = useState(convenio?.fecha ?? today())
@@ -80,7 +95,7 @@ export const ConvenioForm = ({
     setVentaLoading(true)
     supabase
       .from('venta')
-      .select('ventaid, clienteid, estatus, cliente:cliente(nombre), lote:lote(manzana, nolote)')
+      .select('ventaid, clienteid, estatus, mensualidad, cliente:cliente(nombre), lote:lote(manzana, nolote)')
       .neq('estatus', 'C')
       .order('ventaid', { ascending: false })
       .then(({ data }) => {
@@ -88,12 +103,25 @@ export const ConvenioForm = ({
           (data || []).map((v: any) => ({
             ventaid: v.ventaid,
             clienteid: v.clienteid,
+            mensualidad: v.mensualidad,
             label: `#${v.ventaid} — ${v.cliente?.nombre ?? 'Sin cliente'} | Mza ${v.lote?.manzana ?? '-'} Lote ${v.lote?.nolote ?? '-'}`,
           }))
         )
         setVentaLoading(false)
       })
   }, [needsVentaPicker])
+
+  useEffect(() => {
+    if (!selectedVentaId) return
+    supabase
+      .from('venta')
+      .select('mensualidad')
+      .eq('ventaid', selectedVentaId)
+      .single()
+      .then(({ data }) => {
+        setVentaMensualidad(Number((data as any)?.mensualidad || 0))
+      })
+  }, [selectedVentaId])
 
   // Detect overdue corridas for selected venta
   useEffect(() => {
@@ -113,32 +141,62 @@ export const ConvenioForm = ({
         if (!corridas?.length) {
           setCorridasEnAtraso(0)
           setMesesAtraso(0)
+          setDeudaMensualidades(0)
+          setDeudaTotalConvenio(0)
+          setMontoConvenioMensual(0)
+          setPagoTotalMensualObjetivo(ventaMensualidad)
           setLoadingAtrasos(false)
           return
         }
-        // Check which ones have no active payment
+        // Sum overdue debt based on remaining amount per overdue corrida.
         let count = 0
         let totalRecargo = 0
+        let totalDeudaMensualidades = 0
         for (const c of corridas) {
           const { data: pagos } = await supabase
             .from('pagos')
-            .select('pagoid')
+            .select('montopagado')
             .eq('corridafinancieraid', c.corridafinancieraid)
             .neq('estatus', 'C')
-          if (!pagos || pagos.length === 0) {
+
+          const totalPagado = (pagos || []).reduce((acc: number, p: any) => acc + Number(p.montopagado || 0), 0)
+          const pendiente = Math.max(0, Number(c.mensualidad || 0) - totalPagado)
+
+          if (pendiente > 0) {
             count++
+            totalDeudaMensualidades += pendiente
             totalRecargo += calcularRecargo(c.fecha ?? '', undefined, diasTolerancia)
           }
         }
         setCorridasEnAtraso(count)
         if (!isEditMode) {
           setMesesAtraso(count)
+          setDeudaMensualidades(totalDeudaMensualidades)
           setRecargoOriginal(totalRecargo)
           setRecargoAcordado(totalRecargo)
         }
         setLoadingAtrasos(false)
       })
-  }, [selectedVentaId, isEditMode])
+  }, [selectedVentaId, isEditMode, diasTolerancia, ventaMensualidad])
+
+  useEffect(() => {
+    const meses = Math.max(1, mesesConvenio || 1)
+    const deudaTotal = Math.max(0, deudaMensualidades + recargoAcordado)
+    const pagoConvenio = deudaTotal > 0 ? Math.round((deudaTotal / meses) * 100) / 100 : 0
+    const pagoTotal = Math.round((ventaMensualidad + pagoConvenio) * 100) / 100
+
+    setDeudaTotalConvenio(deudaTotal)
+    setMontoConvenioMensual(pagoConvenio)
+    setPagoTotalMensualObjetivo(pagoTotal)
+
+    if (fecha) {
+      const base = new Date(fecha + 'T12:00:00')
+      base.setMonth(base.getMonth() + meses - 1)
+      setFechaFinEstimada(base.toISOString().split('T')[0])
+    } else {
+      setFechaFinEstimada(null)
+    }
+  }, [deudaMensualidades, recargoAcordado, mesesConvenio, ventaMensualidad, fecha])
 
   const validate = (): boolean => {
     const e: Record<string, string> = {}
@@ -160,8 +218,15 @@ export const ConvenioForm = ({
       motivo,
       descripcion: descripcion.trim(),
       meses_atraso: mesesAtraso,
+      meses_convenio: Math.max(1, mesesConvenio),
       recargo_original: recargoOriginal,
       recargo_acordado: recargoAcordado,
+      deuda_mensualidades: deudaMensualidades,
+      deuda_total_convenio: deudaTotalConvenio,
+      monto_convenio_mensual: montoConvenioMensual,
+      mensualidad_corriente: ventaMensualidad,
+      pago_total_mensual_objetivo: pagoTotalMensualObjetivo,
+      fecha_fin_estimada: fechaFinEstimada,
       estatus,
       comentarios: comentarios.trim() || null,
     })
@@ -227,6 +292,7 @@ export const ConvenioForm = ({
                 const v = ventaOptions.find((o) => o.ventaid === Number(e.target.value))
                 setSelectedVentaId(v?.ventaid ?? null)
                 setSelectedClienteId(v?.clienteid ?? null)
+                setVentaMensualidad(Number(v?.mensualidad || 0))
               }}
             >
               <option value="">Selecciona una venta...</option>
@@ -274,6 +340,19 @@ export const ConvenioForm = ({
             />
           </div>
 
+          {/* Meses del convenio */}
+          <div>
+            <label className="block text-sm font-medium text-black mb-1">
+              Meses para liquidar atraso <span className="text-red-500">*</span>
+            </label>
+            <Input
+              type="number"
+              min="1"
+              value={mesesConvenio}
+              onChange={(e) => setMesesConvenio(Math.max(1, parseInt(e.target.value) || 1))}
+            />
+          </div>
+
           {/* Motivo */}
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-black mb-1">
@@ -295,8 +374,12 @@ export const ConvenioForm = ({
           {(corridasEnAtraso > 0 || isEditMode) && (
             <div className="md:col-span-2">
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <p className="text-sm font-semibold text-amber-800 mb-3">Recargos por atraso</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <p className="text-sm font-semibold text-amber-800 mb-3">Plan de convenio (atraso + mensualidad corriente)</p>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Deuda mensualidades vencidas</p>
+                    <p className="text-lg font-bold text-amber-700">{formatCurrency(deudaMensualidades)}</p>
+                  </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Recargo calculado (total)</p>
                     <p className="text-lg font-bold text-amber-700">{formatCurrency(recargoOriginal)}</p>
@@ -315,6 +398,26 @@ export const ConvenioForm = ({
                       onChange={(e) => setRecargoAcordado(Math.max(0, parseFloat(e.target.value) || 0))}
                     />
                     <p className="text-xs text-gray-400 mt-1">0 = condonación total</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Deuda total negociada</p>
+                    <p className="text-lg font-bold text-amber-900">{formatCurrency(deudaTotalConvenio)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Cuota mensual convenio</p>
+                    <p className="text-lg font-bold text-blue-700">{formatCurrency(montoConvenioMensual)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Mensualidad corriente</p>
+                    <p className="text-lg font-bold text-gray-700">{formatCurrency(ventaMensualidad)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Pago mensual objetivo</p>
+                    <p className="text-lg font-bold text-green-700">{formatCurrency(pagoTotalMensualObjetivo)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Fin estimado del convenio</p>
+                    <p className="text-sm font-semibold text-gray-800">{fechaFinEstimada || '—'}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Descuento / Condonado</p>

@@ -457,8 +457,15 @@ export const VentaDetail = () => {
         motivo: data.motivo,
         descripcion: data.descripcion,
         meses_atraso: data.meses_atraso,
+        meses_convenio: data.meses_convenio,
         recargo_original: data.recargo_original,
         recargo_acordado: data.recargo_acordado,
+        deuda_mensualidades: data.deuda_mensualidades,
+        deuda_total_convenio: data.deuda_total_convenio,
+        monto_convenio_mensual: data.monto_convenio_mensual,
+        mensualidad_corriente: data.mensualidad_corriente,
+        pago_total_mensual_objetivo: data.pago_total_mensual_objetivo,
+        fecha_fin_estimada: data.fecha_fin_estimada,
         estatus: data.estatus,
         comentarios: data.comentarios,
       })
@@ -820,6 +827,8 @@ export const VentaDetail = () => {
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Fecha</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Pagos en Atraso</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Meses convenio</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Pago mensual objetivo</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Motivo</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Estado</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Detalle</th>
@@ -836,6 +845,10 @@ export const VentaDetail = () => {
                         ) : (
                           <span className="text-gray-500">0</span>
                         )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{conv.meses_convenio ?? '—'}</td>
+                      <td className="px-6 py-4 text-sm font-semibold text-green-700">
+                        {conv.pago_total_mensual_objetivo != null ? formatCurrency(conv.pago_total_mensual_objetivo) : '—'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">{conv.motivo ?? '—'}</td>
                       <td className="px-6 py-4">

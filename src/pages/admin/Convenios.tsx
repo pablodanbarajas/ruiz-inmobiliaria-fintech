@@ -90,8 +90,15 @@ export const Convenios = () => {
         motivo: data.motivo,
         descripcion: data.descripcion,
         meses_atraso: data.meses_atraso,
+        meses_convenio: data.meses_convenio,
         recargo_original: data.recargo_original,
         recargo_acordado: data.recargo_acordado,
+        deuda_mensualidades: data.deuda_mensualidades,
+        deuda_total_convenio: data.deuda_total_convenio,
+        monto_convenio_mensual: data.monto_convenio_mensual,
+        mensualidad_corriente: data.mensualidad_corriente,
+        pago_total_mensual_objetivo: data.pago_total_mensual_objetivo,
+        fecha_fin_estimada: data.fecha_fin_estimada,
         estatus: data.estatus,
         comentarios: data.comentarios,
       })
@@ -210,6 +217,16 @@ export const Convenios = () => {
                   {row.meses_atraso ?? 0}
                 </span>
               ),
+            },
+            {
+              key: 'meses_convenio',
+              label: 'Meses convenio',
+              render: (row) => row.meses_convenio ?? '—',
+            },
+            {
+              key: 'pago_total_mensual_objetivo',
+              label: 'Pago mensual objetivo',
+              render: (row) => (row.pago_total_mensual_objetivo != null ? `$${Number(row.pago_total_mensual_objetivo).toLocaleString('es-MX')}` : '—'),
             },
             {
               key: 'motivo',

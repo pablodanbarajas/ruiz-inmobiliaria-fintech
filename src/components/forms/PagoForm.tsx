@@ -84,7 +84,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
   const [comentario, setComentario] = useState(pago?.comentario ?? '')
   const [recargo, setRecargo] = useState<number>(pago?.recargo ?? 0)
   const [cobrador, setCobrador] = useState<string>(pago?.cobrador ?? '')
-  const [activeConvenio, setActiveConvenio] = useState<{ recargo_acordado: number | null; meses_atraso: number | null } | null>(null)
+  const [activeConvenio, setActiveConvenio] = useState<{ recargo_acordado: number | null; meses_atraso: number | null; meses_convenio: number | null } | null>(null)
   const [checkingConvenio, setCheckingConvenio] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [cuentasBancarias, setCuentasBancarias] = useState<CuentaBancaria[]>([])
@@ -293,7 +293,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
     setCheckingConvenio(true)
     supabase
       .from('convenios')
-      .select('recargo_acordado, meses_atraso')
+      .select('recargo_acordado, meses_atraso, meses_convenio')
       .eq('ventaid', ventaid)
       .eq('estatus', 'V')
       .order('created_at', { ascending: false })
@@ -311,7 +311,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
     const effectiveDiasTolerancia = diasTolerancia > 0 ? diasTolerancia : fetchedDiasTolerancia
     let newRecargo: number
     if (activeConvenio) {
-      const meses = activeConvenio.meses_atraso ?? 1
+      const meses = activeConvenio.meses_convenio ?? activeConvenio.meses_atraso ?? 1
       const rAcordado = activeConvenio.recargo_acordado ?? 0
       newRecargo = meses > 0 ? Math.round((rAcordado / meses) * 100) / 100 : 0
     } else {

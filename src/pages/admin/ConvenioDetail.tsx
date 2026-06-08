@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { ConvenioForm } from '@/components/forms/ConvenioForm'
 import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
-import { ChevronLeft, Edit2 } from 'lucide-react'
+import { ChevronLeft, Edit2, AlertTriangle } from 'lucide-react'
 import type { Convenio, Venta, Cliente, Lote } from '@/types/database'
 import { formatDate, formatCurrency, getConvenioStatusLabel, getConvenioStatusColor } from '@/utils/helpers'
 
@@ -53,8 +53,15 @@ export const ConvenioDetail = () => {
           motivo: data.motivo,
           descripcion: data.descripcion,
           meses_atraso: data.meses_atraso,
+          meses_convenio: data.meses_convenio,
           recargo_original: data.recargo_original,
           recargo_acordado: data.recargo_acordado,
+          deuda_mensualidades: data.deuda_mensualidades,
+          deuda_total_convenio: data.deuda_total_convenio,
+          monto_convenio_mensual: data.monto_convenio_mensual,
+          mensualidad_corriente: data.mensualidad_corriente,
+          pago_total_mensual_objetivo: data.pago_total_mensual_objetivo,
+          fecha_fin_estimada: data.fecha_fin_estimada,
           estatus: data.estatus,
           comentarios: data.comentarios,
         })
@@ -64,6 +71,27 @@ export const ConvenioDetail = () => {
       fetchConvenioDetail()
     } catch (err: any) {
       alert(`Error al actualizar convenio: ${err.message}`)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleMarcarIncumplido = async () => {
+    try {
+      setIsSubmitting(true)
+      const nota = `Incumplimiento marcado el ${new Date().toISOString().split('T')[0]}`
+      const comentariosActuales = convenio?.comentarios?.trim()
+      const comentarios = comentariosActuales ? `${comentariosActuales}\n${nota}` : nota
+
+      const { error } = await supabase
+        .from('convenios')
+        .update({ estatus: 'X', comentarios })
+        .eq('convenioid', id)
+
+      if (error) throw error
+      await fetchConvenioDetail()
+    } catch (err: any) {
+      alert(`Error al marcar incumplimiento: ${err.message}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -113,14 +141,27 @@ export const ConvenioDetail = () => {
             <ChevronLeft size={20} />
             Volver
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setShowEditModal(true)}
-            className="inline-flex items-center gap-2"
-          >
-            <Edit2 size={16} />
-            Editar
-          </Button>
+          <div className="flex items-center gap-3">
+            {convenio.estatus === 'V' && (
+              <Button
+                variant="destructive"
+                onClick={handleMarcarIncumplido}
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-2"
+              >
+                <AlertTriangle size={16} />
+                Marcar Incumplido
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => setShowEditModal(true)}
+              className="inline-flex items-center gap-2"
+            >
+              <Edit2 size={16} />
+              Editar
+            </Button>
+          </div>
         </div>
 
         {/* Main card */}
@@ -178,6 +219,38 @@ export const ConvenioDetail = () => {
               </div>
             </div>
           )}
+
+          {/* Plan de convenio */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 pt-4 border-t border-gray-100">
+            <div>
+              <p className="text-sm text-gray-500">Meses del convenio</p>
+              <p className="text-lg font-semibold text-gray-900">{convenio.meses_convenio ?? '—'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Deuda mensualidades</p>
+              <p className="text-lg font-semibold text-gray-900">{formatCurrency(convenio.deuda_mensualidades)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Deuda total convenio</p>
+              <p className="text-lg font-semibold text-gray-900">{formatCurrency(convenio.deuda_total_convenio)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Cuota mensual convenio</p>
+              <p className="text-lg font-semibold text-blue-700">{formatCurrency(convenio.monto_convenio_mensual)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Mensualidad corriente</p>
+              <p className="text-lg font-semibold text-gray-900">{formatCurrency(convenio.mensualidad_corriente)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Pago mensual objetivo</p>
+              <p className="text-lg font-semibold text-green-700">{formatCurrency(convenio.pago_total_mensual_objetivo)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Fecha fin estimada</p>
+              <p className="text-lg font-semibold text-gray-900">{formatDate(convenio.fecha_fin_estimada)}</p>
+            </div>
+          </div>
 
           {/* Descripción */}
           <div className="mb-6">
