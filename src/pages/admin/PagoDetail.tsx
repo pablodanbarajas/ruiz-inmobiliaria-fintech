@@ -228,6 +228,9 @@ export const PagoDetail = () => {
               {pago.servicios_extra != null && pago.servicios_extra > 0 && (
                 <p className="text-sm text-indigo-600 mt-1">+ {formatCurrency(pago.servicios_extra)} servicios/extra</p>
               )}
+              {pago.servicios_extra != null && pago.servicios_extra < 0 && (
+                <p className="text-sm text-indigo-600 mt-1">- {formatCurrency(Math.abs(pago.servicios_extra))} aplicado de saldo a favor</p>
+              )}
             </div>
             <div>
               <p className="text-sm text-gray-500">Fecha de Pago</p>

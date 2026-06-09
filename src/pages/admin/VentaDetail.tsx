@@ -39,6 +39,12 @@ interface CorridaWithPagos extends CorridaFinanciera {
   pagos?: Pago[]
 }
 
+const getPagoAplicado = (pago: Pago) => {
+  const monto = pago.montopagado || 0
+  const aplicadoDeSaldo = Math.max(0, -(pago.servicios_extra || 0))
+  return monto + aplicadoDeSaldo
+}
+
 export const VentaDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -518,7 +524,7 @@ export const VentaDetail = () => {
 
   // Only count non-cancelled pagos; enganche is already registered as nopago=0
   const totalPagado = corridas.reduce(
-    (sum, c) => sum + (c.pagos?.filter((p) => p.estatus !== 'C').reduce((ps, p) => ps + (p.montopagado || 0), 0) || 0),
+    (sum, c) => sum + (c.pagos?.filter((p) => p.estatus !== 'C').reduce((ps, p) => ps + getPagoAplicado(p), 0) || 0),
     0
   )
   const saldoPendiente = (venta.preciolote || 0) - totalPagado
@@ -530,7 +536,7 @@ export const VentaDetail = () => {
   const today = new Date().toISOString().split('T')[0]
   const corridasVencidas = corridas.filter((c) => {
     if (!c.fecha || c.fecha >= today || c.nopago === 0) return false
-    const totalCorrida = c.pagos?.filter((p) => p.estatus !== 'C').reduce((s, p) => s + (p.montopagado || 0), 0) ?? 0
+    const totalCorrida = c.pagos?.filter((p) => p.estatus !== 'C').reduce((s, p) => s + getPagoAplicado(p), 0) ?? 0
     return totalCorrida < (c.mensualidad || 0)
   }).length
 
@@ -913,7 +919,7 @@ export const VentaDetail = () => {
                   {corridas.slice(corridaPage * CORRIDA_PAGE_SIZE, (corridaPage + 1) * CORRIDA_PAGE_SIZE).map((corrida) => {
                     const totalPagadoCorrida = corrida.pagos
                       ?.filter((p) => p.estatus !== 'C')
-                      .reduce((s, p) => s + (p.montopagado || 0), 0) ?? 0
+                      .reduce((s, p) => s + getPagoAplicado(p), 0) ?? 0
 
                     // Cargos extra aplicables: activos (no cancelados) cuya fecha de inicio
                     // es anterior o igual a la fecha de esta mensualidad (solo en mensualidades, no enganche)

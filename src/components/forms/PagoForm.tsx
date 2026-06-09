@@ -89,11 +89,19 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [cuentasBancarias, setCuentasBancarias] = useState<CuentaBancaria[]>([])
   const [loadingCuentas, setLoadingCuentas] = useState(false)
+  const [desarrolloCuentaId, setDesarrolloCuentaId] = useState<number | null>(null)
+  const [saldoFavorDisponible, setSaldoFavorDisponible] = useState(0)
 
   // Track whether montopagado was auto-filled (so recargo updates can also update it)
   const autoFilledMonto = useRef(false)
 
   const needsVentaPicker = !isEditMode && !initialCorridaId
+
+  const getPagoAplicado = (p: Pago): number => {
+    const monto = p.montopagado || 0
+    const aplicadoDeSaldo = Math.max(0, -(p.servicios_extra || 0))
+    return monto + aplicadoDeSaldo
+  }
 
   // ── Total cargos extra aplicables a la corrida seleccionada ───
   const totalCargosExtraCorrida = useMemo(() => {
@@ -102,6 +110,11 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
       .filter(c => c.estatus !== 'X' && c.fecha != null && selectedCorrida.fecha != null && c.fecha <= selectedCorrida.fecha)
       .reduce((sum, c) => sum + (c.monto || 0), 0)
   }, [selectedCorrida, cargosExtra])
+
+  const cuentasDisponibles = useMemo(() => {
+    if (desarrolloCuentaId == null) return cuentasBancarias
+    return cuentasBancarias.filter((c) => c.desarrolloid == null || c.desarrolloid === desarrolloCuentaId)
+  }, [cuentasBancarias, desarrolloCuentaId])
 
   // ── Load ventas for picker ──────────────────────────────────────
   useEffect(() => {
@@ -203,10 +216,11 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
         // Fetch dias_tolerancia from the venta (used for recargo calculation)
         const { data: ventaInfo } = await supabase
           .from('venta')
-          .select('dias_tolerancia')
+          .select('dias_tolerancia, lote:lote(desarrolloid)')
           .eq('ventaid', selectedVentaId)
           .single()
         setFetchedDiasTolerancia((ventaInfo as any)?.dias_tolerancia ?? 0)
+        setDesarrolloCuentaId((ventaInfo as any)?.lote?.desarrolloid ?? null)
 
         const corridasConPagos = await Promise.all(
           (corridaData || []).map(async (c) => {
@@ -216,7 +230,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
               .eq('corridafinancieraid', c.corridafinancieraid)
               .neq('estatus', 'C')
 
-            const total = (pagosData || []).reduce((s: number, p: Pago) => s + (p.montopagado || 0), 0)
+              const total = (pagosData || []).reduce((s: number, p: Pago) => s + getPagoAplicado(p), 0)
             return {
               ...c,
               pagos: pagosData || [],
@@ -249,13 +263,21 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
         .single()
 
       if (data) {
+        const { data: ventaInfo } = await supabase
+          .from('venta')
+          .select('lote:lote(desarrolloid)')
+          .eq('ventaid', data.ventaid)
+          .maybeSingle()
+
+        setDesarrolloCuentaId((ventaInfo as any)?.lote?.desarrolloid ?? null)
+
         const { data: pagosData } = await supabase
           .from('pagos')
           .select('*')
           .eq('corridafinancieraid', initialCorridaId)
           .neq('estatus', 'C')
 
-        const total = (pagosData || []).reduce((s: number, p: Pago) => s + (p.montopagado || 0), 0)
+        const total = (pagosData || []).reduce((s: number, p: Pago) => s + getPagoAplicado(p), 0)
         // Cargos extra aplicables a esta corrida
         const cargosAplicables = data.nopago !== 0
           ? cargosExtra.filter(c => c.estatus !== 'X' && c.fecha != null && data.fecha != null && c.fecha <= data.fecha)
@@ -282,6 +304,80 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
 
     loadInitialCorrida()
   }, [initialCorridaId, pago])
+
+  // Resolve desarrollo scope for account filtering in edit mode.
+  useEffect(() => {
+    if (!isEditMode || !pago?.corridafinancieraid) return
+
+    const loadEditDesarrollo = async () => {
+      const { data: corridaInfo } = await supabase
+        .from('corridafinanciera')
+        .select('ventaid')
+        .eq('corridafinancieraid', pago.corridafinancieraid)
+        .maybeSingle()
+
+      if (!corridaInfo?.ventaid) {
+        setDesarrolloCuentaId(null)
+        return
+      }
+
+      const { data: ventaInfo } = await supabase
+        .from('venta')
+        .select('lote:lote(desarrolloid)')
+        .eq('ventaid', corridaInfo.ventaid)
+        .maybeSingle()
+
+      setDesarrolloCuentaId((ventaInfo as any)?.lote?.desarrolloid ?? null)
+    }
+
+    loadEditDesarrollo()
+  }, [isEditMode, pago?.corridafinancieraid])
+
+  // Calculate available credit from servicios_extra for the selected venta.
+  useEffect(() => {
+    const ventaid = selectedCorrida?.ventaid
+    if (!ventaid) {
+      setSaldoFavorDisponible(0)
+      return
+    }
+
+    const loadSaldoFavor = async () => {
+      const { data: corridasVenta } = await supabase
+        .from('corridafinanciera')
+        .select('corridafinancieraid')
+        .eq('ventaid', ventaid)
+
+      const corridaIds = (corridasVenta || []).map((c: any) => c.corridafinancieraid)
+      if (corridaIds.length === 0) {
+        setSaldoFavorDisponible(0)
+        return
+      }
+
+      const { data: pagosVenta } = await supabase
+        .from('pagos')
+        .select('servicios_extra')
+        .in('corridafinancieraid', corridaIds)
+        .neq('estatus', 'C')
+
+      let acumulado = 0
+      for (const p of pagosVenta || []) {
+        const extra = Number((p as any).servicios_extra || 0)
+        if (extra > 0) acumulado += extra
+        if (extra < 0) acumulado -= Math.abs(extra)
+      }
+
+      setSaldoFavorDisponible(Math.max(0, Math.round(acumulado * 100) / 100))
+    }
+
+    loadSaldoFavor()
+  }, [selectedCorrida?.ventaid])
+
+  // If selected account stops matching current development scope, clear it.
+  useEffect(() => {
+    if (!cuentaBancariaId) return
+    const exists = cuentasDisponibles.some((c) => c.cuenta_bancaria_id === Number(cuentaBancariaId))
+    if (!exists) setCuentaBancariaId('')
+  }, [cuentaBancariaId, cuentasDisponibles])
 
   // ── Check for active convenio when corrida/venta changes ─────
   useEffect(() => {
@@ -346,9 +442,12 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
     const monto = parseFloat(montopagado)
     if (!montopagado || isNaN(monto) || monto <= 0) newErrors.montopagado = 'Ingresa un monto válido mayor a 0'
     const extra = parseFloat(serviciosExtra)
-    if (serviciosExtra && (isNaN(extra) || extra < 0)) newErrors.servicios_extra = 'Servicios/Extra debe ser 0 o mayor'
+    if (serviciosExtra && isNaN(extra)) newErrors.servicios_extra = 'Servicios/Extra debe ser un número válido'
+    if (!isNaN(extra) && extra < 0 && Math.abs(extra) > saldoFavorDisponible) {
+      newErrors.servicios_extra = `No puedes aplicar más de ${formatCurrency(saldoFavorDisponible)} de saldo a favor.`
+    }
     if (!formapago) newErrors.formapago = 'Selecciona la forma de pago'
-    if (formapago === 2 && cuentasBancarias.length > 0 && !cuentaBancariaId) {
+    if (formapago === 2 && cuentasDisponibles.length > 0 && !cuentaBancariaId) {
       newErrors.cuenta_bancaria_id = 'Selecciona la cuenta bancaria de destino'
     }
     if (formapago === 6 && !cobrador.trim()) newErrors.cobrador = 'El nombre del cobrador es requerido'
@@ -374,6 +473,19 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
       recargo,
       cobrador: formapago === 6 ? cobrador.trim() || null : null,
     })
+  }
+
+  const handleAplicarSaldoFavor = () => {
+    if (!selectedCorrida || saldoFavorDisponible <= 0) return
+    const pendienteBase = Math.max(0, (selectedCorrida.mensualidad || 0) + totalCargosExtraCorrida - (selectedCorrida.totalPagado || 0))
+    const totalObjetivo = Math.max(0, pendienteBase + recargo)
+    const aplicado = Math.min(saldoFavorDisponible, totalObjetivo)
+
+    setServiciosExtra((aplicado * -1).toFixed(2))
+    const nuevoMonto = Math.max(0, totalObjetivo - aplicado)
+    autoFilledMonto.current = true
+    setMontopagado(nuevoMonto.toFixed(2))
+    setErrors((prev) => ({ ...prev, servicios_extra: '' }))
   }
 
   return (
@@ -658,7 +770,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
             <label className="block text-sm font-medium text-black mb-1">Servicios / Extra</label>
             <Input
               type="number"
-              min="0"
+              min={saldoFavorDisponible > 0 ? `${-saldoFavorDisponible}` : undefined}
               step="0.01"
               value={serviciosExtra}
               onChange={(e) => setServiciosExtra(e.target.value)}
@@ -668,7 +780,17 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
             {errors.servicios_extra ? (
               <p className="text-xs text-red-500 mt-1">{errors.servicios_extra}</p>
             ) : (
-              <p className="text-xs text-gray-500 mt-1">Monto adicional pagado para servicios o saldo a favor.</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Usa positivo para acumular saldo a favor y negativo para aplicarlo.
+                {saldoFavorDisponible > 0 ? ` Disponible: ${formatCurrency(saldoFavorDisponible)}.` : ''}
+              </p>
+            )}
+            {saldoFavorDisponible > 0 && !isEditMode && (
+              <div className="mt-2">
+                <Button type="button" variant="outline" size="sm" onClick={handleAplicarSaldoFavor}>
+                  Aplicar saldo a favor
+                </Button>
+              </div>
             )}
           </div>
 
@@ -676,13 +798,13 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
           {formapago === 2 && (
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-black mb-1">
-                Cuenta bancaria de destino {cuentasBancarias.length > 0 && <span className="text-red-500">*</span>}
+                Cuenta bancaria de destino {cuentasDisponibles.length > 0 && <span className="text-red-500">*</span>}
               </label>
               {loadingCuentas ? (
                 <p className="text-sm text-gray-500">Cargando catálogo de cuentas...</p>
-              ) : cuentasBancarias.length === 0 ? (
+              ) : cuentasDisponibles.length === 0 ? (
                 <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                  No hay catálogo de cuentas disponible. Aplica la migración de cuentas bancarias para habilitar la selección.
+                  No hay cuentas activas disponibles para este desarrollo.
                 </p>
               ) : (
                 <>
@@ -694,7 +816,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
                     }`}
                   >
                     <option value="">Selecciona una cuenta...</option>
-                    {cuentasBancarias.map((c) => (
+                    {cuentasDisponibles.map((c) => (
                       <option key={c.cuenta_bancaria_id} value={c.cuenta_bancaria_id}>
                         {c.nombre}
                         {c.banco ? ` - ${c.banco}` : ''}

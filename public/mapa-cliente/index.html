@@ -22,6 +22,7 @@
     <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Disponible</div>
     <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Vendido</div>
     <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Reservado</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div>No disponible</div>
   </div>
 </header>
 
@@ -162,8 +163,10 @@
   const stateStyle = {
     D: { fill:'rgba(76,175,130,0.4)',   fillHover:'rgba(76,175,130,0.75)',  stroke:'#2a7a4b', badge:'background:#e8f5ee;color:#1a5c35', label:'Disponible' },
     V: { fill:'rgba(192,96,90,0.4)',    fillHover:'rgba(192,96,90,0.75)',   stroke:'#c0392b', badge:'background:#fdecea;color:#9b2335', label:'Vendido' },
+    A: { fill:'rgba(212,146,10,0.4)',   fillHover:'rgba(212,146,10,0.75)', stroke:'#b5620a', badge:'background:#fef3e2;color:#8a4800', label:'Apartado' },
     R: { fill:'rgba(212,146,10,0.4)',   fillHover:'rgba(212,146,10,0.75)', stroke:'#b5620a', badge:'background:#fef3e2;color:#8a4800', label:'Reservado' },
     B: { fill:'rgba(107,114,128,0.35)', fillHover:'rgba(107,114,128,0.6)', stroke:'#4b5563', badge:'background:#f1f5f9;color:#334155', label:'Bloqueado' },
+    N: { fill:'rgba(107,114,128,0.5)',  fillHover:'rgba(107,114,128,0.75)', stroke:'#374151', badge:'background:#eef2f7;color:#374151', label:'No disponible' },
   };
 
   function getCategory(id, lotesData) {
@@ -205,7 +208,7 @@
     const overlay = document.getElementById('modalOverlay');
     const modal   = document.getElementById('modal');
     let hasDragged = false;
-    const counts = { D:0, V:0, R:0, B:0 };
+    const counts = { D:0, V:0, A:0, R:0, B:0, N:0 };
 
     document.querySelectorAll('[id^="text-blanco"]').forEach(el => {
       el.style.fill = 'white'; el.style.stroke = 'none';
@@ -284,7 +287,7 @@
     document.getElementById('statsBar').innerHTML = `
       <div class="stat-item">
         <span class="stat-label">Total lotes:</span>
-        <span class="stat-num">${counts.D + counts.V + counts.R + counts.B + 38}</span>
+        <span class="stat-num">${counts.D + counts.V + counts.A + counts.R + counts.B + counts.N + 38}</span>
       </div>
       <div class="stat-divider"></div>
       <div class="stat-item">
@@ -296,7 +299,13 @@
       <div class="stat-item">
         <div class="stat-dot" style="background:#f59e0b"></div>
         <span class="stat-label">Reservados:</span>
-        <span class="stat-num">${counts.R}</span>
+        <span class="stat-num">${counts.R + counts.A}</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-dot" style="background:#6b7280"></div>
+        <span class="stat-label">No disponibles:</span>
+        <span class="stat-num">${counts.N + counts.B}</span>
       </div>
     `;
 
