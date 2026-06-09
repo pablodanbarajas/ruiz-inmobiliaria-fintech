@@ -16,6 +16,7 @@ import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Conveni
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import { useAuth } from '@/context/AuthContext'
+import { syncExpiredConvenios } from '@/services/convenios'
 import {
   formatDate,
   formatDateTime,
@@ -411,6 +412,8 @@ export const VentaDetail = () => {
       }
 
       if (insertResult.error) throw insertResult.error
+
+      await syncExpiredConvenios()
 
       setShowPagoModal(false)
       setSelectedCorridaId(null)

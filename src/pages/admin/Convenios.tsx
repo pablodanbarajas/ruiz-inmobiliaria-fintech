@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight, Eye, Plus } from 'lucide-react'
 import type { Convenio, Venta, Cliente, Lote } from '@/types/database'
 import { formatDate, getConvenioStatusLabel, getConvenioStatusColor } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { syncExpiredConvenios } from '@/services/convenios'
 
 interface ConvenioWithDetails extends Convenio {
   venta?: Venta & { cliente?: Cliente; lote?: Lote }
@@ -41,6 +42,7 @@ export const Convenios = () => {
   const fetchConvenios = async () => {
     try {
       setLoading(true)
+      await syncExpiredConvenios()
       const { data, error } = await supabase
         .from('convenios')
         .select('*, venta:venta(ventaid, estatus, cliente:cliente(clienteid, nombre), lote:lote(manzana, nolote, clavelote, desarrolloid))')

@@ -9,6 +9,7 @@ import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
 import { ChevronLeft, Edit2, AlertTriangle } from 'lucide-react'
 import type { Convenio, Venta, Cliente, Lote } from '@/types/database'
 import { formatDate, formatCurrency, getConvenioStatusLabel, getConvenioStatusColor } from '@/utils/helpers'
+import { syncExpiredConvenios } from '@/services/convenios'
 
 interface ConvenioWithDetails extends Convenio {
   venta?: Venta & { cliente?: Cliente; lote?: Lote }
@@ -27,6 +28,7 @@ export const ConvenioDetail = () => {
     if (!id) return
     try {
       setLoading(true)
+      await syncExpiredConvenios()
       const { data, error } = await supabase
         .from('convenios')
         .select('*, venta:venta(ventaid, estatus, cliente:cliente(*), lote:lote(*))')
@@ -68,7 +70,7 @@ export const ConvenioDetail = () => {
         .eq('convenioid', id)
       if (error) throw error
       setShowEditModal(false)
-      fetchConvenioDetail()
+      await fetchConvenioDetail()
     } catch (err: any) {
       alert(`Error al actualizar convenio: ${err.message}`)
     } finally {

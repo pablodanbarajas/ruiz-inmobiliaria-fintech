@@ -14,6 +14,7 @@ import {
   Send,
   ArrowLeftRight,
   ShieldCheck,
+  LandPlot,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { ROLE_LABELS } from '@/config/roles'
@@ -83,6 +84,12 @@ const MENU_ITEMS = [
     label: 'Usuarios',
     path: '/admin/usuarios',
     icon: ShieldCheck,
+    roles: ['admin'],
+  },
+  {
+    label: 'Cuentas Bancarias',
+    path: '/admin/cuentas-bancarias',
+    icon: LandPlot,
     roles: ['admin'],
   },
 ]

@@ -15,6 +15,7 @@ import type { ComboOption } from '@/components/ui/SearchCombobox'
 import type { Pago, CorridaFinanciera, Venta, Cliente } from '@/types/database'
 import { getPagoStatusLabel, getPagoStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { syncExpiredConvenios } from '@/services/convenios'
 
 interface PagoWithDetails extends Pago {
   corridafinanciera?: CorridaFinanciera & {
@@ -209,6 +210,8 @@ export const Pagos = () => {
       }
 
       if (insertResult.error) throw insertResult.error
+
+      await syncExpiredConvenios()
 
       setShowCreateModal(false)
       navigate(`/admin/pagos/${insertResult.data.pagoid}`)

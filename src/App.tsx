@@ -19,6 +19,7 @@ import { CargosExtra } from '@/pages/admin/CargosExtra'
 import { Traspasos } from '@/pages/admin/Traspasos'
 import { Mapa } from '@/pages/admin/Mapa'
 import { InvitarClientes } from '@/pages/admin/InvitarClientes'
+import { CuentasBancarias } from '@/pages/admin/CuentasBancarias'
 import { UsuariosAdmin } from '@/pages/admin/UsuariosAdmin'
 import { ADMIN_PANEL_ROLES } from '@/config/roles'
 
@@ -189,6 +190,16 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <InvitarClientes />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Cuentas bancarias */}
+        <Route
+          path="/admin/cuentas-bancarias"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <CuentasBancarias />
             </ProtectedRoute>
           }
         />

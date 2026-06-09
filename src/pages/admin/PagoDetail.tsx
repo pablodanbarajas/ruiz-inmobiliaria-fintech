@@ -7,7 +7,7 @@ import { Modal } from '@/components/ui/Modal'
 import { PagoForm } from '@/components/forms/PagoForm'
 import type { PagoFormData } from '@/components/forms/PagoForm'
 import { ChevronLeft, Edit2, XCircle, AlertTriangle } from 'lucide-react'
-import type { Pago, CorridaFinanciera, Venta, Cliente, Lote } from '@/types/database'
+import type { Pago, CorridaFinanciera, Venta, Cliente, Lote, CuentaBancaria } from '@/types/database'
 import { formatDate, formatCurrency, getPagoStatusLabel, getPagoStatusColor, getPagoFormaLabel } from '@/utils/helpers'
 
 interface PagoWithDetails extends Pago {
@@ -28,6 +28,7 @@ export const PagoDetail = () => {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [cuentaBancaria, setCuentaBancaria] = useState<CuentaBancaria | null>(null)
 
   const fetchPagoDetail = async () => {
     if (!id) return
@@ -42,6 +43,19 @@ export const PagoDetail = () => {
 
       if (error) throw error
       setPago(data as PagoWithDetails)
+
+      const accountId = (data as PagoWithDetails)?.cuenta_bancaria_id
+      if (accountId) {
+        const { data: cuentaData } = await supabase
+          .from('cuentas_bancarias')
+          .select('cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe, desarrolloid, activa')
+          .eq('cuenta_bancaria_id', accountId)
+          .maybeSingle()
+
+        setCuentaBancaria((cuentaData as CuentaBancaria) ?? null)
+      } else {
+        setCuentaBancaria(null)
+      }
     } catch (error) {
       console.error('Error fetching pago detail:', error)
     } finally {
@@ -250,7 +264,12 @@ export const PagoDetail = () => {
             {pago.formapago === 2 && pago.cuenta_bancaria_id != null && (
               <div>
                 <p className="text-sm text-gray-500">Cuenta bancaria destino</p>
-                <p className="text-base font-semibold text-gray-900">ID #{pago.cuenta_bancaria_id}</p>
+                <p className="text-base font-semibold text-gray-900">
+                  {cuentaBancaria?.nombre ?? `ID #${pago.cuenta_bancaria_id}`}
+                </p>
+                {cuentaBancaria?.banco && (
+                  <p className="text-xs text-gray-500">{cuentaBancaria.banco}{cuentaBancaria.numero_cuenta ? ` · ****${cuentaBancaria.numero_cuenta.slice(-4)}` : ''}</p>
+                )}
               </div>
             )}
           </div>
