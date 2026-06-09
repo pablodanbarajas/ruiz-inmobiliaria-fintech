@@ -10,6 +10,8 @@ import type { VentaFormData } from '@/components/forms/VentaForm'
 import { ChevronLeft, Plus } from 'lucide-react'
 import type { Lote, Desarrollo, Venta, Cliente } from '@/types/database'
 import { getLoteStatusLabel, getLoteStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
+import { useAuth } from '@/context/AuthContext'
+import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
 
 interface VentaWithCliente extends Venta {
   cliente?: Cliente
@@ -18,6 +20,7 @@ interface VentaWithCliente extends Venta {
 export const LoteDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { role } = useAuth()
   const location = useLocation()
   const searchParams = new URLSearchParams(location.search)
   const [lote, setLote] = useState<Lote & { desarrollo?: Desarrollo }  | null>(null)
@@ -27,6 +30,10 @@ export const LoteDetail = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showVentaModal, setShowVentaModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
+  const canEditLotes = !!currentRole && ROLE_CAPABILITIES[currentRole].editar_lotes
+  const canCreateVenta = !!currentRole && ROLE_CAPABILITIES[currentRole].editar_ventas
 
   useEffect(() => {
     const fetchLoteDetail = async () => {
@@ -64,6 +71,10 @@ export const LoteDetail = () => {
   }, [id])
 
   const handleUpdateLote = async (formData: any) => {
+    if (!canEditLotes) {
+      alert('Tu rol no tiene permiso para editar lotes.')
+      return
+    }
     try {
       setIsSubmitting(true)
       const { error } = await supabase
@@ -95,6 +106,10 @@ export const LoteDetail = () => {
   }
 
   const handleDeleteLote = async () => {
+    if (!canEditLotes) {
+      alert('Tu rol no tiene permiso para eliminar lotes.')
+      return
+    }
     try {
       setIsSubmitting(true)
       
@@ -149,6 +164,10 @@ export const LoteDetail = () => {
   }
 
   const handleCreateVenta = async (data: VentaFormData) => {
+    if (!canCreateVenta) {
+      alert('Tu rol no tiene permiso para registrar ventas.')
+      return
+    }
     try {
       setIsSubmitting(true)
 
@@ -287,20 +306,22 @@ export const LoteDetail = () => {
             <ChevronLeft size={20} />
             Volver
           </Button>
-          <div className="flex gap-4">
-            <Button
-              onClick={() => setShowEditModal(true)}
-              className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-2 px-6"
-            >
-              Editar
-            </Button>
-            <Button
-              onClick={() => setShowDeleteModal(true)}
-              className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6"
-            >
-              Eliminar
-            </Button>
-          </div>
+          {canEditLotes && (
+            <div className="flex gap-4">
+              <Button
+                onClick={() => setShowEditModal(true)}
+                className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-2 px-6"
+              >
+                Editar
+              </Button>
+              <Button
+                onClick={() => setShowDeleteModal(true)}
+                className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6"
+              >
+                Eliminar
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Lote Details */}
@@ -443,7 +464,7 @@ export const LoteDetail = () => {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200 flex items-center justify-between gap-4">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">Ventas Asociadas</h2>
-            {!ventas.some(v => (v as any).estatus !== 'C') && lote.estatus === 'D' && (
+            {!ventas.some(v => (v as any).estatus !== 'C') && lote.estatus === 'D' && canCreateVenta && (
               <Button
                 onClick={() => setShowVentaModal(true)}
                 className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold inline-flex items-center gap-2"

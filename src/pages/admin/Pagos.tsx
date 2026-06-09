@@ -16,6 +16,8 @@ import type { Pago, CorridaFinanciera, Venta, Cliente } from '@/types/database'
 import { getPagoStatusLabel, getPagoStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { syncExpiredConvenios } from '@/services/convenios'
+import { useAuth } from '@/context/AuthContext'
+import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
 
 interface PagoWithDetails extends Pago {
   corridafinanciera?: CorridaFinanciera & {
@@ -27,6 +29,7 @@ interface PagoWithDetails extends Pago {
 
 export const Pagos = () => {
   const navigate = useNavigate()
+  const { role } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [pagos, setPagos] = useState<PagoWithDetails[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,12 +46,15 @@ export const Pagos = () => {
   const [showCreateModal, setShowCreateModal] = useState(() => searchParams.get('new') === 'true')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
+  const canRegistrarPagos = !!currentRole && ROLE_CAPABILITIES[currentRole].registrar_pagos
+
   useEffect(() => {
     if (searchParams.get('new') === 'true') {
-      setShowCreateModal(true)
+      if (canRegistrarPagos) setShowCreateModal(true)
       setSearchParams({}, { replace: true })
     }
-  }, [searchParams, setSearchParams])
+  }, [searchParams, setSearchParams, canRegistrarPagos])
 
   useEffect(() => {
     const fetchClientes = async () => {
@@ -168,6 +174,10 @@ export const Pagos = () => {
   }, [filters, currentPage])
 
   const handleCreatePago = async (data: PagoFormData) => {
+    if (!canRegistrarPagos) {
+      alert('Tu rol no tiene permiso para registrar pagos.')
+      return
+    }
     try {
       setIsSubmitting(true)
       const payload = {
@@ -232,14 +242,16 @@ export const Pagos = () => {
             <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Tesorería</h1>
             <p className="text-[#9e9f92] mt-2">Registro de pagos realizados</p>
           </div>
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2"
-            style={{ backgroundColor: '#eaae4c', color: '#000' }}
-          >
-            <Plus size={18} />
-            Nuevo Pago
-          </Button>
+          {canRegistrarPagos && (
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center gap-2"
+              style={{ backgroundColor: '#eaae4c', color: '#000' }}
+            >
+              <Plus size={18} />
+              Nuevo Pago
+            </Button>
+          )}
         </div>
 
         {/* Filters */}
@@ -371,14 +383,16 @@ export const Pagos = () => {
     </AdminLayout>
 
     {/* ── Modal: Nuevo Pago ──────────────────────────────────── */}
-    <Modal
-      isOpen={showCreateModal}
-      title="Nuevo Pago"
-      onClose={() => !isSubmitting && setShowCreateModal(false)}
-      size="xl"
-    >
-      <PagoForm onSubmit={handleCreatePago} isLoading={isSubmitting} />
-    </Modal>
+    {canRegistrarPagos && (
+      <Modal
+        isOpen={showCreateModal}
+        title="Nuevo Pago"
+        onClose={() => !isSubmitting && setShowCreateModal(false)}
+        size="xl"
+      >
+        <PagoForm onSubmit={handleCreatePago} isLoading={isSubmitting} />
+      </Modal>
+    )}
     </>
   )
 }

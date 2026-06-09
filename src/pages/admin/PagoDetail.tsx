@@ -9,6 +9,8 @@ import type { PagoFormData } from '@/components/forms/PagoForm'
 import { ChevronLeft, Edit2, XCircle, AlertTriangle } from 'lucide-react'
 import type { Pago, CorridaFinanciera, Venta, Cliente, Lote, CuentaBancaria } from '@/types/database'
 import { formatDate, formatCurrency, getPagoStatusLabel, getPagoStatusColor, getPagoFormaLabel } from '@/utils/helpers'
+import { useAuth } from '@/context/AuthContext'
+import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
 
 interface PagoWithDetails extends Pago {
   corridafinanciera?: CorridaFinanciera & {
@@ -23,12 +25,16 @@ export const PagoDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const { role } = useAuth()
   const [pago, setPago] = useState<PagoWithDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [cuentaBancaria, setCuentaBancaria] = useState<CuentaBancaria | null>(null)
+
+  const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
+  const canRegistrarPagos = !!currentRole && ROLE_CAPABILITIES[currentRole].registrar_pagos
 
   const fetchPagoDetail = async () => {
     if (!id) return
@@ -98,6 +104,10 @@ export const PagoDetail = () => {
 
   // ── Edit handler ────────────────────────────────────
   const handleUpdatePago = async (data: PagoFormData) => {
+    if (!canRegistrarPagos) {
+      alert('Tu rol solo puede consultar pagos.')
+      return
+    }
     try {
       setIsSubmitting(true)
       const payload = {
@@ -154,6 +164,10 @@ export const PagoDetail = () => {
 
   // ── Cancel handler ───────────────────────────────────
   const handleCancelPago = async () => {
+    if (!canRegistrarPagos) {
+      alert('Tu rol no tiene permiso para cancelar pagos.')
+      return
+    }
     try {
       setIsSubmitting(true)
       const { error } = await supabase
@@ -191,7 +205,7 @@ export const PagoDetail = () => {
           </Button>
 
           {/* Action buttons (only when not cancelled) */}
-          {pago.estatus !== 'C' && (
+          {pago.estatus !== 'C' && canRegistrarPagos && (
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
@@ -376,51 +390,55 @@ export const PagoDetail = () => {
     </AdminLayout>
 
     {/* ── Modal: Editar Pago ────────────────────────────── */}
-    <Modal
-      isOpen={showEditModal}
-      title={`Editar Pago #${pago?.pagoid}`}
-      onClose={() => !isSubmitting && setShowEditModal(false)}
-      size="xl"
-    >
-      <PagoForm pago={pago ?? undefined} onSubmit={handleUpdatePago} isLoading={isSubmitting} />
-    </Modal>
+    {canRegistrarPagos && (
+      <Modal
+        isOpen={showEditModal}
+        title={`Editar Pago #${pago?.pagoid}`}
+        onClose={() => !isSubmitting && setShowEditModal(false)}
+        size="xl"
+      >
+        <PagoForm pago={pago ?? undefined} onSubmit={handleUpdatePago} isLoading={isSubmitting} />
+      </Modal>
+    )}
 
     {/* ── Modal: Confirmar Cancelación ──────────────────── */}
-    <Modal
-      isOpen={showCancelModal}
-      title="Cancelar Pago"
-      onClose={() => !isSubmitting && setShowCancelModal(false)}
-    >
-      <div className="space-y-6">
-        <div className="flex gap-3 bg-amber-50 border border-amber-300 rounded-lg p-4">
-          <AlertTriangle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-amber-800">Confirmar cancelación</p>
-            <p className="text-sm text-amber-700 mt-1">
-              Se cambiará el estado del pago a <strong>Cancelado</strong>. Esta acción puede revertirse
-              editando el pago.
-            </p>
+    {canRegistrarPagos && (
+      <Modal
+        isOpen={showCancelModal}
+        title="Cancelar Pago"
+        onClose={() => !isSubmitting && setShowCancelModal(false)}
+      >
+        <div className="space-y-6">
+          <div className="flex gap-3 bg-amber-50 border border-amber-300 rounded-lg p-4">
+            <AlertTriangle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-amber-800">Confirmar cancelación</p>
+              <p className="text-sm text-amber-700 mt-1">
+                Se cambiará el estado del pago a <strong>Cancelado</strong>. Esta acción puede revertirse
+                editando el pago.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowCancelModal(false)}
+              disabled={isSubmitting}
+            >
+              No, volver
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelPago}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Cancelando...' : 'Sí, cancelar pago'}
+            </Button>
           </div>
         </div>
-
-        <div className="flex justify-end gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setShowCancelModal(false)}
-            disabled={isSubmitting}
-          >
-            No, volver
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={handleCancelPago}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Cancelando...' : 'Sí, cancelar pago'}
-          </Button>
-        </div>
-      </div>
-    </Modal>
+      </Modal>
+    )}
     </>
   )
 }

@@ -11,6 +11,8 @@ import { Eye, Plus, Edit2, Trash2, Map } from 'lucide-react'
 import type { Desarrollo, TipoDesarrollo } from '@/types/database'
 import { getStatusLabel } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { useAuth } from '@/context/AuthContext'
+import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
 
 interface DesarrolloWithTipo extends Desarrollo {
   tipodesarrollo?: TipoDesarrollo
@@ -18,6 +20,7 @@ interface DesarrolloWithTipo extends Desarrollo {
 
 export const Desarrollos = () => {
   const navigate = useNavigate()
+  const { role } = useAuth()
   const [desarrollos, setDesarrollos] = useState<DesarrolloWithTipo[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -27,6 +30,9 @@ export const Desarrollos = () => {
   const [formLoading, setFormLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [desarrolloToDelete, setDesarrolloToDelete] = useState<Desarrollo | null>(null)
+
+  const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
+  const canEditDesarrollos = !!currentRole && ROLE_CAPABILITIES[currentRole].editar_desarrollos
 
   const fetchDesarrollos = async () => {
     try {
@@ -68,6 +74,10 @@ export const Desarrollos = () => {
   }, [searchTerm, statusFilter])
 
   const handleOpenModal = (desarrollo?: Desarrollo) => {
+    if (!canEditDesarrollos) {
+      alert('Tu rol solo puede consultar desarrollos.')
+      return
+    }
     setEditingDesarrollo(desarrollo || null)
     setIsModalOpen(true)
   }
@@ -78,6 +88,10 @@ export const Desarrollos = () => {
   }
 
   const handleDeleteDesarrollo = async () => {
+    if (!canEditDesarrollos) {
+      alert('Tu rol no tiene permiso para eliminar desarrollos.')
+      return
+    }
     if (!desarrolloToDelete) return
     try {
       setFormLoading(true)
@@ -114,6 +128,10 @@ export const Desarrollos = () => {
   }
 
   const handleFormSubmit = async (formData: any) => {
+    if (!canEditDesarrollos) {
+      alert('Tu rol no tiene permiso para modificar desarrollos.')
+      return
+    }
     try {
       setFormLoading(true)
 
@@ -150,13 +168,15 @@ export const Desarrollos = () => {
             <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Desarrollos</h1>
             <p className="text-[#9e9f92] mt-2">Listado de proyectos inmobiliarios</p>
           </div>
-          <Button
-            onClick={() => handleOpenModal()}
-            className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold inline-flex items-center gap-2"
-          >
-            <Plus size={20} />
-            Nuevo Desarrollo
-          </Button>
+          {canEditDesarrollos && (
+            <Button
+              onClick={() => handleOpenModal()}
+              className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold inline-flex items-center gap-2"
+            >
+              <Plus size={20} />
+              Nuevo Desarrollo
+            </Button>
+          )}
         </div>
 
         {/* Filters */}
@@ -231,15 +251,17 @@ export const Desarrollos = () => {
               label: 'Acciones',
               render: (row: DesarrolloWithTipo) => (
                 <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleOpenModal(row)}
-                    className="inline-flex items-center gap-1"
-                    title="Editar desarrollo"
-                  >
-                    <Edit2 size={16} />
-                  </Button>
+                  {canEditDesarrollos && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleOpenModal(row)}
+                      className="inline-flex items-center gap-1"
+                      title="Editar desarrollo"
+                    >
+                      <Edit2 size={16} />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -249,18 +271,20 @@ export const Desarrollos = () => {
                   >
                     <Eye size={16} />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setDesarrolloToDelete(row)
-                      setShowDeleteConfirm(true)
-                    }}
-                    className="inline-flex items-center gap-1 text-red-600 hover:text-red-700"
-                    title="Eliminar desarrollo"
-                  >
-                    <Trash2 size={16} />
-                  </Button>
+                  {canEditDesarrollos && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setDesarrolloToDelete(row)
+                        setShowDeleteConfirm(true)
+                      }}
+                      className="inline-flex items-center gap-1 text-red-600 hover:text-red-700"
+                      title="Eliminar desarrollo"
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  )}
                   {row.desarrolloid === 11 && (
                     <Button
                       variant="ghost"

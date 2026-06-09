@@ -8,6 +8,8 @@ import { DesarrolloForm } from '@/components/forms/DesarrolloForm'
 import { ChevronLeft, Edit2, Trash2 } from 'lucide-react'
 import type { Desarrollo, Lote, TipoDesarrollo } from '@/types/database'
 import { getStatusLabel, getLoteStatusLabel, getLoteStatusColor, formatCurrency } from '@/utils/helpers'
+import { useAuth } from '@/context/AuthContext'
+import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
 
 interface DesarrolloWithTipo extends Desarrollo {
   tipodesarrollo?: TipoDesarrollo
@@ -16,6 +18,7 @@ interface DesarrolloWithTipo extends Desarrollo {
 export const DesarrolloDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { role } = useAuth()
   const [desarrollo, setDesarrollo] = useState<DesarrolloWithTipo | null>(null)
   const [lotes, setLotes] = useState<Lote[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,6 +26,9 @@ export const DesarrolloDetail = () => {
   const [formLoading, setFormLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
+  const canEditDesarrollos = !!currentRole && ROLE_CAPABILITIES[currentRole].editar_desarrollos
 
   const fetchDesarrolloDetail = async () => {
     if (!id) return
@@ -61,6 +67,10 @@ export const DesarrolloDetail = () => {
   }, [id])
 
   const handleFormSubmit = async (formData: any) => {
+    if (!canEditDesarrollos) {
+      alert('Tu rol solo puede consultar desarrollos.')
+      return
+    }
     try {
       setFormLoading(true)
 
@@ -82,6 +92,10 @@ export const DesarrolloDetail = () => {
   }
 
   const handleDelete = async () => {
+    if (!canEditDesarrollos) {
+      alert('Tu rol no tiene permiso para eliminar desarrollos.')
+      return
+    }
     try {
       setDeleteLoading(true)
 
@@ -145,22 +159,24 @@ export const DesarrolloDetail = () => {
             <ChevronLeft size={20} />
             Volver
           </Button>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => setIsEditModalOpen(true)}
-              className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold inline-flex items-center gap-2"
-            >
-              <Edit2 size={18} />
-              Editar
-            </Button>
-            <Button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="bg-red-600 hover:bg-red-700 text-white font-semibold inline-flex items-center gap-2"
-            >
-              <Trash2 size={18} />
-              Eliminar
-            </Button>
-          </div>
+          {canEditDesarrollos && (
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setIsEditModalOpen(true)}
+                className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold inline-flex items-center gap-2"
+              >
+                <Edit2 size={18} />
+                Editar
+              </Button>
+              <Button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold inline-flex items-center gap-2"
+              >
+                <Trash2 size={18} />
+                Eliminar
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Development Details */}

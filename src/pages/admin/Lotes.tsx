@@ -12,9 +12,12 @@ import { Eye, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Lote, Desarrollo } from '@/types/database'
 import { getLoteStatusLabel, getLoteStatusColor, formatCurrency } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { useAuth } from '@/context/AuthContext'
+import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
 
 export const Lotes = () => {
   const navigate = useNavigate()
+  const { role } = useAuth()
   const [lotes, setLotes] = useState<(Lote & { desarrollo?: Desarrollo })[]>([])
   const [desarrollos, setDesarrollos] = useState<Desarrollo[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,6 +39,9 @@ export const Lotes = () => {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [loteEnEdicion, setLoteEnEdicion] = useState<Lote | null>(null)
+
+  const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
+  const canEditLotes = !!currentRole && ROLE_CAPABILITIES[currentRole].editar_lotes
 
   // Load desarrollos on mount
   useEffect(() => {
@@ -119,6 +125,10 @@ export const Lotes = () => {
   }, [filters, currentPage, reloadKey])
 
   const handleCreateLote = async (formData: any) => {
+    if (!canEditLotes) {
+      alert('Tu rol solo puede consultar lotes.')
+      return
+    }
     try {
       setIsSubmitting(true)
       const { error } = await supabase.from('lote').insert([formData])
@@ -140,11 +150,19 @@ export const Lotes = () => {
   }
 
   const handleEditLote = (lote: Lote) => {
+    if (!canEditLotes) {
+      alert('Tu rol no tiene permiso para editar lotes.')
+      return
+    }
     setLoteEnEdicion(lote)
     setShowEditModal(true)
   }
 
   const handleUpdateLote = async (formData: any) => {
+    if (!canEditLotes) {
+      alert('Tu rol no tiene permiso para modificar lotes.')
+      return
+    }
     try {
       setIsSubmitting(true)
       const { error } = await supabase
@@ -169,6 +187,10 @@ export const Lotes = () => {
   }
 
   const handleDeleteLote = async () => {
+    if (!canEditLotes) {
+      alert('Tu rol no tiene permiso para eliminar lotes.')
+      return
+    }
     try {
       setIsSubmitting(true)
 
@@ -215,12 +237,14 @@ export const Lotes = () => {
             <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Lotes</h1>
             <p className="text-[#9e9f92] mt-2">Listado de terrenos disponibles</p>
           </div>
-          <Button
-            onClick={() => setShowModal(true)}
-            className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-2 px-6"
-          >
-            + Nuevo Lote
-          </Button>
+          {canEditLotes && (
+            <Button
+              onClick={() => setShowModal(true)}
+              className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-2 px-6"
+            >
+              + Nuevo Lote
+            </Button>
+          )}
         </div>
 
         {/* Filters */}
@@ -332,27 +356,31 @@ export const Lotes = () => {
                   >
                     <Eye size={16} />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEditLote(row)}
-                    className="inline-flex items-center gap-1"
-                    title="Editar lote"
-                  >
-                    <Edit2 size={16} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setLoteEnEdicion(row)
-                      setShowDeleteConfirm(true)
-                    }}
-                    className="inline-flex items-center gap-1 text-red-600 hover:text-red-700"
-                    title="Eliminar lote"
-                  >
-                    <Trash2 size={16} />
-                  </Button>
+                  {canEditLotes && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditLote(row)}
+                        className="inline-flex items-center gap-1"
+                        title="Editar lote"
+                      >
+                        <Edit2 size={16} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setLoteEnEdicion(row)
+                          setShowDeleteConfirm(true)
+                        }}
+                        className="inline-flex items-center gap-1 text-red-600 hover:text-red-700"
+                        title="Eliminar lote"
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </>
+                  )}
                 </div>
               ),
             },
