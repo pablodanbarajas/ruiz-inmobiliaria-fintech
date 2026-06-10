@@ -33,6 +33,13 @@ interface PagoWithDetails extends Pago {
       lote?: (Lote & { desarrollo?: Desarrollo | Desarrollo[] }) | Array<Lote & { desarrollo?: Desarrollo | Desarrollo[] }>
     }
   }
+  cuenta_bancaria?: {
+    cuenta_bancaria_id: number
+    nombre: string
+    banco: string | null
+    numero_cuenta: string | null
+    clabe: string | null
+  } | null
 }
 
 type PendingRow = {
@@ -57,6 +64,15 @@ type ConciliacionDiariaRow = {
   monto: number
   aplicado: number
   diferenciaAjustes: number
+}
+
+type CorteCtaBancariaRow = {
+  cuentaId: number | null
+  cuentaNombre: string
+  banco: string
+  pagos: number
+  monto: number
+  aplicado: number
 }
 
 const ALLOWED_DESARROLLOS = ['Desarrollo de Prueba', 'Pueblos de la Barranca']
@@ -177,7 +193,7 @@ export const Pagos = () => {
       const [pagosRes, corridasRes, desarrollosRes] = await Promise.all([
         supabase
           .from('pagos')
-          .select('pagoid, fechapago, montopagado, servicios_extra, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera(corridafinancieraid, venta:venta(ventaid, clienteid, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre))))')
+          .select('pagoid, fechapago, montopagado, servicios_extra, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera(corridafinancieraid, venta:venta(ventaid, clienteid, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
           .order('fechapago', { ascending: false })
           .limit(10000),
         supabase
@@ -402,6 +418,37 @@ export const Pagos = () => {
     })
   }, [filteredPagos])
 
+  const corteCtaBancaria = useMemo<CorteCtaBancariaRow[]>(() => {
+    const map = new Map<string, CorteCtaBancariaRow>()
+
+    for (const pago of filteredPagos) {
+      if (pago.estatus === 'C') continue
+
+      const cuentaBancaria = (pago.cuenta_bancaria as any) || null
+      const key = cuentaBancaria ? String(cuentaBancaria.cuenta_bancaria_id) : 'SIN_CUENTA'
+      const cuentaNombre = cuentaBancaria?.nombre || 'Sin especificar'
+      const banco = cuentaBancaria?.banco || 'Efectivo/Otro'
+      const monto = Number(pago.montopagado || 0)
+      const aplicado = getPagoAplicado(pago)
+
+      const current = map.get(key) || {
+        cuentaId: cuentaBancaria?.cuenta_bancaria_id || null,
+        cuentaNombre,
+        banco,
+        pagos: 0,
+        monto: 0,
+        aplicado: 0,
+      }
+
+      current.pagos += 1
+      current.monto += monto
+      current.aplicado += aplicado
+      map.set(key, current)
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.aplicado - a.aplicado)
+  }, [filteredPagos])
+
   const exportCorteCobradorCsv = () => {
     const csv = toCsv(
       ['Cobrador', 'Pagos', 'Monto cobrado', 'Monto aplicado'],
@@ -418,6 +465,15 @@ export const Pagos = () => {
     )
 
     downloadCsv(`tesoreria_conciliacion_diaria_${new Date().toISOString().split('T')[0]}.csv`, csv)
+  }
+
+  const exportCorteCtaBancariaCsv = () => {
+    const csv = toCsv(
+      ['Cuenta Bancaria', 'Banco', 'Pagos', 'Monto cobrado', 'Monto aplicado'],
+      corteCtaBancaria.map((row) => [row.cuentaNombre, row.banco, row.pagos, row.monto, row.aplicado])
+    )
+
+    downloadCsv(`tesoreria_corte_cuentas_bancarias_${new Date().toISOString().split('T')[0]}.csv`, csv)
   }
 
   const handleCreatePago = async (data: PagoFormData) => {
@@ -509,6 +565,9 @@ export const Pagos = () => {
               </Button>
               <Button variant="outline" onClick={exportConciliacionDiariaCsv} className="inline-flex items-center gap-2">
                 <FileText size={16} /> Exportar Conciliacion Diaria CSV
+              </Button>
+              <Button variant="outline" onClick={exportCorteCtaBancariaCsv} className="inline-flex items-center gap-2">
+                <FileText size={16} /> Exportar por Cuentas CSV
               </Button>
               {canRegistrarPagos && (
                 <Button
@@ -639,6 +698,43 @@ export const Pagos = () => {
                         <td className="px-4 py-3">{row.clienteNombre}</td>
                         <td className="px-4 py-3 text-right">{row.corridasPendientes}</td>
                         <td className="px-4 py-3 text-right font-semibold text-orange-700">{formatCurrency(row.totalPendiente)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-6">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="font-semibold text-gray-800">Corte por cuenta bancaria</h2>
+            </div>
+            {loading ? (
+              <div className="py-10 text-center text-gray-500">Cargando...</div>
+            ) : corteCtaBancaria.length === 0 ? (
+              <div className="py-10 text-center text-gray-500">No hay datos de cuentas con los filtros actuales.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[620px]">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Cuenta / Banco</th>
+                      <th className="text-right px-4 py-3 font-semibold text-gray-600">Pagos</th>
+                      <th className="text-right px-4 py-3 font-semibold text-gray-600">Cobrado</th>
+                      <th className="text-right px-4 py-3 font-semibold text-gray-600">Aplicado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {corteCtaBancaria.map((row, idx) => (
+                      <tr key={`${row.cuentaId}-${idx}`} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <span className="font-semibold text-gray-900">{row.cuentaNombre}</span>
+                          <div className="text-xs text-gray-500">{row.banco}</div>
+                        </td>
+                        <td className="px-4 py-3 text-right">{row.pagos}</td>
+                        <td className="px-4 py-3 text-right">{formatCurrency(row.monto)}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-blue-700">{formatCurrency(row.aplicado)}</td>
                       </tr>
                     ))}
                   </tbody>
