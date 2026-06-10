@@ -44,6 +44,21 @@ type PendingRow = {
   montoPendiente: number
 }
 
+type CorteCobradorRow = {
+  cobrador: string
+  pagos: number
+  monto: number
+  aplicado: number
+}
+
+type ConciliacionDiariaRow = {
+  fecha: string
+  pagos: number
+  monto: number
+  aplicado: number
+  diferenciaAjustes: number
+}
+
 const ALLOWED_DESARROLLOS = ['Desarrollo de Prueba', 'Pueblos de la Barranca']
 
 const toCsv = (headers: string[], rows: (string | number)[][]): string => {
@@ -329,6 +344,82 @@ export const Pagos = () => {
     downloadCsv(`tesoreria_pendientes_${new Date().toISOString().split('T')[0]}.csv`, csv)
   }
 
+  const cortePorCobrador = useMemo<CorteCobradorRow[]>(() => {
+    const map = new Map<string, CorteCobradorRow>()
+
+    for (const pago of filteredPagos) {
+      const key = (pago.cobrador || 'Sin cobrador').trim() || 'Sin cobrador'
+      const current = map.get(key)
+      const monto = Number(pago.montopagado || 0)
+      const aplicado = getPagoAplicado(pago)
+
+      if (current) {
+        current.pagos += 1
+        current.monto += monto
+        current.aplicado += aplicado
+      } else {
+        map.set(key, {
+          cobrador: key,
+          pagos: 1,
+          monto,
+          aplicado,
+        })
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.aplicado - a.aplicado)
+  }, [filteredPagos])
+
+  const conciliacionDiaria = useMemo<ConciliacionDiariaRow[]>(() => {
+    const map = new Map<string, ConciliacionDiariaRow>()
+
+    for (const pago of filteredPagos) {
+      const fecha = pago.fechapago || 'Sin fecha'
+      const current = map.get(fecha)
+      const monto = Number(pago.montopagado || 0)
+      const aplicado = getPagoAplicado(pago)
+
+      if (current) {
+        current.pagos += 1
+        current.monto += monto
+        current.aplicado += aplicado
+        current.diferenciaAjustes += aplicado - monto
+      } else {
+        map.set(fecha, {
+          fecha,
+          pagos: 1,
+          monto,
+          aplicado,
+          diferenciaAjustes: aplicado - monto,
+        })
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.fecha === 'Sin fecha') return 1
+      if (b.fecha === 'Sin fecha') return -1
+      return a.fecha < b.fecha ? 1 : -1
+    })
+  }, [filteredPagos])
+
+  const exportCorteCobradorCsv = () => {
+    const csv = toCsv(
+      ['Cobrador', 'Pagos', 'Monto cobrado', 'Monto aplicado'],
+      cortePorCobrador.map((row) => [row.cobrador, row.pagos, row.monto, row.aplicado])
+    )
+
+    downloadCsv(`tesoreria_corte_cobrador_${new Date().toISOString().split('T')[0]}.csv`, csv)
+  }
+
+  const exportConciliacionDiariaCsv = () => {
+    const csv = toCsv(
+      ['Fecha', 'Pagos', 'Monto cobrado', 'Monto aplicado', 'Diferencia ajustes'],
+      conciliacionDiaria.map((row) => [row.fecha, row.pagos, row.monto, row.aplicado, row.diferenciaAjustes])
+    )
+
+    downloadCsv(`tesoreria_conciliacion_diaria_${new Date().toISOString().split('T')[0]}.csv`, csv)
+  }
+
   const handleCreatePago = async (data: PagoFormData) => {
     if (!canRegistrarPagos) {
       alert('Tu rol no tiene permiso para registrar pagos.')
@@ -412,6 +503,12 @@ export const Pagos = () => {
               </Button>
               <Button variant="outline" onClick={exportPendientesCsv} className="inline-flex items-center gap-2">
                 <FileText size={16} /> Exportar Pendientes CSV
+              </Button>
+              <Button variant="outline" onClick={exportCorteCobradorCsv} className="inline-flex items-center gap-2">
+                <FileText size={16} /> Exportar Corte Cobrador CSV
+              </Button>
+              <Button variant="outline" onClick={exportConciliacionDiariaCsv} className="inline-flex items-center gap-2">
+                <FileText size={16} /> Exportar Conciliacion Diaria CSV
               </Button>
               {canRegistrarPagos && (
                 <Button
@@ -548,6 +645,80 @@ export const Pagos = () => {
                 </table>
               </div>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100">
+                <h2 className="font-semibold text-gray-800">Corte por cobrador</h2>
+              </div>
+              {loading ? (
+                <div className="py-10 text-center text-gray-500">Cargando...</div>
+              ) : cortePorCobrador.length === 0 ? (
+                <div className="py-10 text-center text-gray-500">No hay datos de corte con los filtros actuales.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[560px]">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-600">Cobrador</th>
+                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Pagos</th>
+                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Cobrado</th>
+                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Aplicado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {cortePorCobrador.map((row) => (
+                        <tr key={row.cobrador} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">{row.cobrador}</td>
+                          <td className="px-4 py-3 text-right">{row.pagos}</td>
+                          <td className="px-4 py-3 text-right">{formatCurrency(row.monto)}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(row.aplicado)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100">
+                <h2 className="font-semibold text-gray-800">Conciliacion diaria</h2>
+              </div>
+              {loading ? (
+                <div className="py-10 text-center text-gray-500">Cargando...</div>
+              ) : conciliacionDiaria.length === 0 ? (
+                <div className="py-10 text-center text-gray-500">No hay datos de conciliacion con los filtros actuales.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[620px]">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-600">Fecha</th>
+                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Pagos</th>
+                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Cobrado</th>
+                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Aplicado</th>
+                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Ajustes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {conciliacionDiaria.map((row) => (
+                        <tr key={row.fecha} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">{row.fecha === 'Sin fecha' ? row.fecha : formatDate(row.fecha)}</td>
+                          <td className="px-4 py-3 text-right">{row.pagos}</td>
+                          <td className="px-4 py-3 text-right">{formatCurrency(row.monto)}</td>
+                          <td className="px-4 py-3 text-right">{formatCurrency(row.aplicado)}</td>
+                          <td className={`px-4 py-3 text-right font-semibold ${row.diferenciaAjustes >= 0 ? 'text-green-700' : 'text-orange-700'}`}>
+                            {formatCurrency(row.diferenciaAjustes)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
 
           <DataTable<PagoWithDetails>
