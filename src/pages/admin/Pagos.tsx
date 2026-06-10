@@ -399,9 +399,9 @@ export const Pagos = () => {
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>
-                TesorerÃ­a
+                Tesoreria
               </h1>
-              <p className="text-[#9e9f92] mt-2">Registro de pagos, filtros operativos y exportaciÃ³n CSV</p>
+              <p className="text-[#9e9f92] mt-2">Registro de pagos, filtros operativos y exportacion CSV</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" onClick={fetchPagosAndPendientes} className="inline-flex items-center gap-2">
@@ -438,7 +438,7 @@ export const Pagos = () => {
                   }))}
                   value={filters.clienteId}
                   onChange={(v) => setFilters({ ...filters, clienteId: v })}
-                  placeholder="Buscar por nombre o telÃ©fono..."
+                  placeholder="Buscar por nombre o telefono..."
                 />
               </div>
 
@@ -477,7 +477,7 @@ export const Pagos = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-black mb-1">MÃ©todo de cobranza</label>
+                <label className="block text-sm font-medium text-black mb-1">Metodo de cobranza</label>
                 <select
                   value={filters.formaPago}
                   onChange={(e) => setFilters({ ...filters, formaPago: e.target.value })}
@@ -520,7 +520,7 @@ export const Pagos = () => {
 
           <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-6">
             <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="font-semibold text-gray-800">Pendientes (quiÃ©n debe y cuÃ¡nto)</h2>
+              <h2 className="font-semibold text-gray-800">Pendientes (quien debe y cuanto)</h2>
             </div>
             {loading ? (
               <div className="py-10 text-center text-gray-500">Cargando...</div>
@@ -576,7 +576,7 @@ export const Pagos = () => {
               },
               {
                 key: 'metodo',
-                label: 'MÃ©todo',
+                label: 'Metodo',
                 render: (row: PagoWithDetails) => getPagoFormaLabel(row.formapago),
               },
               {
@@ -629,7 +629,7 @@ export const Pagos = () => {
               Anterior
             </Button>
             <span className="text-sm text-gray-600">
-              PÃ¡gina {totalItems === 0 ? 0 : currentPage} de {totalItems === 0 ? 0 : totalPages}
+              Pagina {totalItems === 0 ? 0 : currentPage} de {totalItems === 0 ? 0 : totalPages}
               {totalItems > 0 && ` (${startIndex + 1}-${Math.min(endIndex, totalItems)} de ${totalItems})`}
             </span>
             <Button
