@@ -6,6 +6,7 @@ import {
   Users,
   ShoppingCart,
   DollarSign,
+  ChartColumn,
   TrendingUp,
   FileText,
   Wrench,
@@ -15,6 +16,7 @@ import {
   ArrowLeftRight,
   ShieldCheck,
   LandPlot,
+  ClipboardList,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { ROLE_LABELS } from '@/config/roles'
@@ -54,6 +56,18 @@ const MENU_ITEMS = [
     label: 'Tesorería',
     path: '/admin/pagos',
     icon: DollarSign,
+    roles: ['admin', 'finanzas', 'contratos', 'cobranza_caja'],
+  },
+  {
+    label: 'Reportes Pagos',
+    path: '/admin/reportes-pagos',
+    icon: ChartColumn,
+    roles: ['admin', 'finanzas', 'contratos', 'cobranza_caja'],
+  },
+  {
+    label: 'Reportes Pagos',
+    path: '/admin/reportes-pagos',
+    icon: ClipboardList,
     roles: ['admin', 'finanzas', 'contratos', 'cobranza_caja'],
   },
   {
