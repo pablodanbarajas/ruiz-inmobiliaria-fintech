@@ -13,7 +13,6 @@ import { Ventas } from '@/pages/admin/Ventas'
 import { VentaDetail } from '@/pages/admin/VentaDetail'
 import { Pagos } from '@/pages/admin/Pagos'
 import { PagoDetail } from '@/pages/admin/PagoDetail'
-import { ReportesPagos } from '@/pages/admin/ReportesPagos'
 import { Convenios } from '@/pages/admin/Convenios'
 import { ConvenioDetail } from '@/pages/admin/ConvenioDetail'
 import { CargosExtra } from '@/pages/admin/CargosExtra'
@@ -136,15 +135,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/admin/reportes-pagos"
-          element={
-            <ProtectedRoute allowedRoles={[...ROLES_PAGOS]}>
-              <ReportesPagos />
-            </ProtectedRoute>
-          }
-        />
-
         {/* Convenios */}
         <Route
           path="/admin/convenios"
