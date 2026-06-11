@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { PagoForm } from '@/components/forms/PagoForm'
 import type { PagoFormData } from '@/components/forms/PagoForm'
-import { Eye, ChevronLeft, ChevronRight, Plus, Download, FileText, Filter } from 'lucide-react'
+import { Eye, ChevronLeft, ChevronRight, Plus, Download, FileText, Filter, ChevronDown } from 'lucide-react'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
@@ -105,8 +105,8 @@ const downloadCsv = (filename: string, csvContent: string) => {
 
 const getPagoAplicado = (pago: Pago) => {
   const monto = pago.montopagado || 0
-  const aplicadoDeSaldo = Math.max(0, -(pago.servicios_extra || 0))
-  return monto + aplicadoDeSaldo
+  const extra = pago.servicios_extra || 0
+  return monto + extra
 }
 
 const pickFirst = <T,>(value: T | T[] | null | undefined): T | undefined => {
@@ -149,6 +149,8 @@ export const Pagos = () => {
   const [desarrollos, setDesarrollos] = useState<Desarrollo[]>([])
   const [showCreateModal, setShowCreateModal] = useState(() => searchParams.get('new') === 'true')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [activeTab, setActiveTab] = useState<'pagos' | 'pendientes' | 'reportes'>('pagos')
+  const [showExportMenu, setShowExportMenu] = useState(false)
 
   const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
   const canRegistrarPagos = !!currentRole && ROLE_CAPABILITIES[currentRole].registrar_pagos
@@ -325,8 +327,12 @@ export const Pagos = () => {
   const pagos = filteredPagos.slice(startIndex, endIndex)
 
   const totalCobrado = filteredPagos.reduce((sum, p) => sum + Number(p.montopagado || 0), 0)
+  const totalAplicado = filteredPagos.reduce((sum, p) => sum + getPagoAplicado(p), 0)
   const totalPendiente = filteredPendientes.reduce((sum, p) => sum + p.montoPendiente, 0)
   const clientesConAdeudo = pendingByClient.length
+
+  // Paginated data for current page
+  const filteredPagosForPagination = pagos
 
   const exportPagosCsv = () => {
     const csv = toCsv(
@@ -548,27 +554,45 @@ export const Pagos = () => {
               <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>
                 Tesoreria
               </h1>
-              <p className="text-[#9e9f92] mt-2">Registro de pagos, filtros operativos y exportacion CSV</p>
+              <p className="text-[#9e9f92] mt-2">Registro de pagos, análisis y reportes</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" onClick={fetchPagosAndPendientes} className="inline-flex items-center gap-2">
                 <Filter size={16} /> Recargar
               </Button>
-              <Button onClick={exportPagosCsv} className="inline-flex items-center gap-2">
-                <Download size={16} /> Exportar Pagos CSV
-              </Button>
-              <Button variant="outline" onClick={exportPendientesCsv} className="inline-flex items-center gap-2">
-                <FileText size={16} /> Exportar Pendientes CSV
-              </Button>
-              <Button variant="outline" onClick={exportCorteCobradorCsv} className="inline-flex items-center gap-2">
-                <FileText size={16} /> Exportar Corte Cobrador CSV
-              </Button>
-              <Button variant="outline" onClick={exportConciliacionDiariaCsv} className="inline-flex items-center gap-2">
-                <FileText size={16} /> Exportar Conciliacion Diaria CSV
-              </Button>
-              <Button variant="outline" onClick={exportCorteCtaBancariaCsv} className="inline-flex items-center gap-2">
-                <FileText size={16} /> Exportar por Cuentas CSV
-              </Button>
+              
+              {/* Export Dropdown */}
+              <div className="relative">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  className="inline-flex items-center gap-2"
+                >
+                  <Download size={16} /> Exportar
+                  <ChevronDown size={14} className={`transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
+                </Button>
+                
+                {showExportMenu && (
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-10">
+                    <button onClick={() => { exportPagosCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
+                      📊 Pagos Registrados
+                    </button>
+                    <button onClick={() => { exportPendientesCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
+                      ⏳ Pendientes
+                    </button>
+                    <button onClick={() => { exportCorteCobradorCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
+                      👤 Corte por Cobrador
+                    </button>
+                    <button onClick={() => { exportConciliacionDiariaCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
+                      📅 Conciliación Diaria
+                    </button>
+                    <button onClick={() => { exportCorteCtaBancariaCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm border-t">
+                      🏦 Por Cuentas Bancarias
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {canRegistrarPagos && (
                 <Button
                   onClick={() => setShowCreateModal(true)}
@@ -659,155 +683,276 @@ export const Pagos = () => {
             </div>
           </div>
 
+          {/* KPIs Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="bg-white rounded-lg shadow p-4 border-l-4 border-[#eaae4c]">
               <p className="text-sm text-gray-500">Total cobrado</p>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalCobrado)}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4 border-l-4 border-[#504840]">
-              <p className="text-sm text-gray-500">Total pendiente</p>
-              <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalPendiente)}</p>
+              <p className="text-sm text-gray-500">Total aplicado</p>
+              <p className="text-2xl font-bold text-blue-700">{formatCurrency(totalAplicado)}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4 border-l-4 border-[#9e9f92]">
-              <p className="text-sm text-gray-500">Clientes con adeudo</p>
-              <p className="text-2xl font-bold text-gray-900">{clientesConAdeudo}</p>
+              <p className="text-sm text-gray-500">Diferencia</p>
+              <p className={`text-2xl font-bold ${totalCobrado - totalAplicado >= 0 ? 'text-green-700' : 'text-orange-700'}`}>
+                {formatCurrency(totalCobrado - totalAplicado)}
+              </p>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-6">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="font-semibold text-gray-800">Pendientes (quien debe y cuanto)</h2>
+          {/* Tabs */}
+          <div className="mb-6 border-b border-gray-200">
+            <div className="flex gap-8">
+              <button
+                onClick={() => setActiveTab('pagos')}
+                className={`pb-3 px-2 font-medium transition-colors ${
+                  activeTab === 'pagos'
+                    ? 'text-[#eaae4c] border-b-2 border-[#eaae4c]'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                📝 Pagos Registrados
+              </button>
+              <button
+                onClick={() => setActiveTab('pendientes')}
+                className={`pb-3 px-2 font-medium transition-colors ${
+                  activeTab === 'pendientes'
+                    ? 'text-[#eaae4c] border-b-2 border-[#eaae4c]'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                ⏳ Pendientes ({pendingByClient.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('reportes')}
+                className={`pb-3 px-2 font-medium transition-colors ${
+                  activeTab === 'reportes'
+                    ? 'text-[#eaae4c] border-b-2 border-[#eaae4c]'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                📊 Reportes
+              </button>
             </div>
-            {loading ? (
-              <div className="py-10 text-center text-gray-500">Cargando...</div>
-            ) : pendingByClient.length === 0 ? (
-              <div className="py-10 text-center text-gray-500">No hay cartera pendiente con los filtros actuales.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[620px]">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Cliente</th>
-                      <th className="text-right px-4 py-3 font-semibold text-gray-600">Corridas pendientes</th>
-                      <th className="text-right px-4 py-3 font-semibold text-gray-600">Total pendiente</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {pendingByClient.slice(0, 12).map((row) => (
-                      <tr key={`${row.clienteNombre}-${row.corridasPendientes}`} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">{row.clienteNombre}</td>
-                        <td className="px-4 py-3 text-right">{row.corridasPendientes}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-orange-700">{formatCurrency(row.totalPendiente)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
 
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-6">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="font-semibold text-gray-800">Corte por cuenta bancaria</h2>
-            </div>
-            {loading ? (
-              <div className="py-10 text-center text-gray-500">Cargando...</div>
-            ) : corteCtaBancaria.length === 0 ? (
-              <div className="py-10 text-center text-gray-500">No hay datos de cuentas con los filtros actuales.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[620px]">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600">Cuenta / Banco</th>
-                      <th className="text-right px-4 py-3 font-semibold text-gray-600">Pagos</th>
-                      <th className="text-right px-4 py-3 font-semibold text-gray-600">Cobrado</th>
-                      <th className="text-right px-4 py-3 font-semibold text-gray-600">Aplicado</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {corteCtaBancaria.map((row, idx) => (
-                      <tr key={`${row.cuentaId}-${idx}`} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">
-                          <span className="font-semibold text-gray-900">{row.cuentaNombre}</span>
-                          <div className="text-xs text-gray-500">{row.banco}</div>
-                        </td>
-                        <td className="px-4 py-3 text-right">{row.pagos}</td>
-                        <td className="px-4 py-3 text-right">{formatCurrency(row.monto)}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-blue-700">{formatCurrency(row.aplicado)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
-            )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="font-semibold text-gray-800">Corte por cobrador</h2>
-              </div>
-              {loading ? (
-                <div className="py-10 text-center text-gray-500">Cargando...</div>
-              ) : cortePorCobrador.length === 0 ? (
-                <div className="py-10 text-center text-gray-500">No hay datos de corte con los filtros actuales.</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm min-w-[560px]">
-                    <thead className="bg-gray-50 border-b border-gray-200">
-                      <tr>
-                        <th className="text-left px-4 py-3 font-semibold text-gray-600">Cobrador</th>
-                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Pagos</th>
-                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Cobrado</th>
-                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Aplicado</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {cortePorCobrador.map((row) => (
-                        <tr key={row.cobrador} className="hover:bg-gray-50">
-                          <td className="px-4 py-3">{row.cobrador}</td>
-                          <td className="px-4 py-3 text-right">{row.pagos}</td>
-                          <td className="px-4 py-3 text-right">{formatCurrency(row.monto)}</td>
-                          <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(row.aplicado)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+          {/* FILTERS - Show only in Pagos tab */}
+          {activeTab === 'pagos' && (
+            <div className="bg-white rounded-lg shadow-md border-t-4 border-[#504840] p-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">Cliente</label>
+                  <SearchCombobox
+                    options={clientes.map((c): ComboOption => ({
+                      value: String(c.clienteid),
+                      label: c.nombre || 'Sin nombre',
+                      sublabel: c.telefonocelular || c.telefono2 || undefined,
+                    }))}
+                    value={filters.clienteId}
+                    onChange={(v) => setFilters({ ...filters, clienteId: v })}
+                    placeholder="Buscar por nombre o telefono..."
+                  />
                 </div>
-              )}
-            </div>
 
-            <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">Desarrollo</label>
+                  <select
+                    value={filters.desarrolloId}
+                    onChange={(e) => setFilters({ ...filters, desarrolloId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                  >
+                    <option value="">Todos</option>
+                    {desarrollos.map((d) => (
+                      <option key={d.desarrolloid} value={d.desarrolloid}>
+                        {d.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">Fecha Desde</label>
+                  <Input
+                    type="date"
+                    value={filters.fechaDesde}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFilters({ ...filters, fechaDesde: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">Fecha Hasta</label>
+                  <Input
+                    type="date"
+                    value={filters.fechaHasta}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFilters({ ...filters, fechaHasta: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">Metodo de cobranza</label>
+                  <select
+                    value={filters.formaPago}
+                    onChange={(e) => setFilters({ ...filters, formaPago: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                  >
+                    <option value="">Todos</option>
+                    {FORMAS_PAGO.map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">Cobrador / Ruta</label>
+                  <Input
+                    value={filters.cobrador}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFilters({ ...filters, cobrador: e.target.value })}
+                    placeholder="Nombre cobrador"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 1: PAGOS REGISTRADOS */}
+          {activeTab === 'pagos' && (
+            <>
+              <DataTable<PagoWithDetails>
+                emptyMessage="No se encontraron pagos con los filtros aplicados"
+                columns={[
+                  {
+                    key: 'pagoid',
+                    label: 'Pago ID',
+                    width: 'w-20',
+                  },
+                  {
+                    key: 'cliente',
+                    label: 'Cliente',
+                    render: (row: PagoWithDetails) => getPagoContext(row).cliente?.nombre || '-',
+                  },
+                  {
+                    key: 'lote',
+                    label: 'Lote',
+                    render: (row: PagoWithDetails) => {
+                      const ctx = getPagoContext(row)
+                      return ctx.lote ? `M${ctx.lote.manzana} L${ctx.lote.nolote}` : '-'
+                    },
+                  },
+                  {
+                    key: 'concepto',
+                    label: 'Concepto',
+                    render: (row: PagoWithDetails) => getPagoContext(row).venta?.ventaid ? 'Venta' : 'Otro',
+                  },
+                  {
+                    key: 'fechapago',
+                    label: 'Fecha de Pago',
+                    render: (row: PagoWithDetails) => formatDate(row.fechapago),
+                  },
+                  {
+                    key: 'metodo',
+                    label: 'Metodo',
+                    render: (row: PagoWithDetails) => getPagoFormaLabel(row.formapago),
+                  },
+                  {
+                    key: 'cobrador',
+                    label: 'Cobrador',
+                    render: (row: PagoWithDetails) => row.cobrador || '-',
+                  },
+                  {
+                    key: 'montopagado',
+                    label: 'Monto',
+                    render: (row: PagoWithDetails) => formatCurrency(row.montopagado),
+                  },
+                  {
+                    key: 'estatus',
+                    label: 'Estado',
+                    render: (row: PagoWithDetails) => (
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getPagoStatusColor(row.estatus)}`}>
+                        {getPagoStatusLabel(row.estatus)}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'actions',
+                    label: 'Acciones',
+                    render: (row: PagoWithDetails) => (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(`/admin/pagos/${row.pagoid}`)}
+                        className="inline-flex items-center gap-1"
+                      >
+                        <Eye size={16} />
+                        Ver
+                      </Button>
+                    ),
+                  },
+                ]}
+                data={filteredPagosForPagination}
+                loading={loading}
+              />
+
+              {/* Pagination Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-4 mt-6">
+                <Button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  variant="outline"
+                  className="inline-flex items-center gap-2"
+                >
+                  <ChevronLeft size={18} />
+                  Anterior
+                </Button>
+                <span className="text-sm text-gray-600">
+                  Pagina {totalItems === 0 ? 0 : currentPage} de {totalItems === 0 ? 0 : totalPages}
+                  {totalItems > 0 && ` (${startIndex + 1}-${Math.min(endIndex, totalItems)} de ${totalItems})`}
+                </span>
+                <Button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage >= totalPages || totalItems === 0}
+                  variant="outline"
+                  className="inline-flex items-center gap-2"
+                >
+                  Siguiente
+                  <ChevronRight size={18} />
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* TAB 2: PENDIENTES */}
+          {activeTab === 'pendientes' && (
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-6">
               <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="font-semibold text-gray-800">Conciliacion diaria</h2>
+                <h2 className="font-semibold text-gray-800">Clientes con cartera pendiente</h2>
               </div>
               {loading ? (
                 <div className="py-10 text-center text-gray-500">Cargando...</div>
-              ) : conciliacionDiaria.length === 0 ? (
-                <div className="py-10 text-center text-gray-500">No hay datos de conciliacion con los filtros actuales.</div>
+              ) : pendingByClient.length === 0 ? (
+                <div className="py-10 text-center text-gray-500">No hay cartera pendiente con los filtros actuales.</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm min-w-[620px]">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
-                        <th className="text-left px-4 py-3 font-semibold text-gray-600">Fecha</th>
-                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Pagos</th>
-                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Cobrado</th>
-                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Aplicado</th>
-                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Ajustes</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-600">Cliente</th>
+                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Corridas pendientes</th>
+                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Total pendiente</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {conciliacionDiaria.map((row) => (
-                        <tr key={row.fecha} className="hover:bg-gray-50">
-                          <td className="px-4 py-3">{row.fecha === 'Sin fecha' ? row.fecha : formatDate(row.fecha)}</td>
-                          <td className="px-4 py-3 text-right">{row.pagos}</td>
-                          <td className="px-4 py-3 text-right">{formatCurrency(row.monto)}</td>
-                          <td className="px-4 py-3 text-right">{formatCurrency(row.aplicado)}</td>
-                          <td className={`px-4 py-3 text-right font-semibold ${row.diferenciaAjustes >= 0 ? 'text-green-700' : 'text-orange-700'}`}>
-                            {formatCurrency(row.diferenciaAjustes)}
-                          </td>
+                      {pendingByClient.map((row) => (
+                        <tr key={`${row.clienteNombre}-${row.corridasPendientes}`} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">{row.clienteNombre}</td>
+                          <td className="px-4 py-3 text-right">{row.corridasPendientes}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-orange-700">{formatCurrency(row.totalPendiente)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -815,100 +960,123 @@ export const Pagos = () => {
                 </div>
               )}
             </div>
-          </div>
+          )}
 
-          <DataTable<PagoWithDetails>
-            emptyMessage="No se encontraron pagos con los filtros aplicados"
-            columns={[
-              {
-                key: 'pagoid',
-                label: 'Pago ID',
-                width: 'w-20',
-              },
-              {
-                key: 'cliente',
-                label: 'Cliente',
-                render: (row: PagoWithDetails) => getPagoContext(row).cliente?.nombre || '-',
-              },
-              {
-                key: 'venta',
-                label: 'Venta ID',
-                render: (row: PagoWithDetails) => getPagoContext(row).venta?.ventaid || '-',
-                width: 'w-24',
-              },
-              {
-                key: 'fechapago',
-                label: 'Fecha de Pago',
-                render: (row: PagoWithDetails) => formatDate(row.fechapago),
-              },
-              {
-                key: 'metodo',
-                label: 'Metodo',
-                render: (row: PagoWithDetails) => getPagoFormaLabel(row.formapago),
-              },
-              {
-                key: 'cobrador',
-                label: 'Cobrador',
-                render: (row: PagoWithDetails) => row.cobrador || '-',
-              },
-              {
-                key: 'montopagado',
-                label: 'Monto',
-                render: (row: PagoWithDetails) => formatCurrency(row.montopagado),
-              },
-              {
-                key: 'estatus',
-                label: 'Estado',
-                render: (row: PagoWithDetails) => (
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getPagoStatusColor(row.estatus)}`}>
-                    {getPagoStatusLabel(row.estatus)}
-                  </span>
-                ),
-              },
-              {
-                key: 'actions',
-                label: 'Acciones',
-                render: (row: PagoWithDetails) => (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate(`/admin/pagos/${row.pagoid}`)}
-                    className="inline-flex items-center gap-1"
-                  >
-                    <Eye size={16} />
-                    Ver
-                  </Button>
-                ),
-              },
-            ]}
-            data={pagos}
-            loading={loading}
-          />
+          {/* TAB 3: REPORTES */}
+          {activeTab === 'reportes' && (
+            <>
+              <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-6">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <h2 className="font-semibold text-gray-800">Corte por cuenta bancaria</h2>
+                </div>
+                {loading ? (
+                  <div className="py-10 text-center text-gray-500">Cargando...</div>
+                ) : corteCtaBancaria.length === 0 ? (
+                  <div className="py-10 text-center text-gray-500">No hay datos de cuentas con los filtros actuales.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm min-w-[620px]">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="text-left px-4 py-3 font-semibold text-gray-600">Cuenta / Banco</th>
+                          <th className="text-right px-4 py-3 font-semibold text-gray-600">Pagos</th>
+                          <th className="text-right px-4 py-3 font-semibold text-gray-600">Cobrado</th>
+                          <th className="text-right px-4 py-3 font-semibold text-gray-600">Aplicado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {corteCtaBancaria.map((row, idx) => (
+                          <tr key={`${row.cuentaId}-${idx}`} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <span className="font-semibold text-gray-900">{row.cuentaNombre}</span>
+                              <div className="text-xs text-gray-500">{row.banco}</div>
+                            </td>
+                            <td className="px-4 py-3 text-right">{row.pagos}</td>
+                            <td className="px-4 py-3 text-right">{formatCurrency(row.monto)}</td>
+                            <td className="px-4 py-3 text-right font-semibold text-blue-700">{formatCurrency(row.aplicado)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-4 mt-6">
-            <Button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              variant="outline"
-              className="inline-flex items-center gap-2"
-            >
-              <ChevronLeft size={18} />
-              Anterior
-            </Button>
-            <span className="text-sm text-gray-600">
-              Pagina {totalItems === 0 ? 0 : currentPage} de {totalItems === 0 ? 0 : totalPages}
-              {totalItems > 0 && ` (${startIndex + 1}-${Math.min(endIndex, totalItems)} de ${totalItems})`}
-            </span>
-            <Button
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage >= totalPages || totalItems === 0}
-              variant="outline"
-              className="inline-flex items-center gap-2"
-            >
-              Siguiente
-              <ChevronRight size={18} />
-            </Button>
-          </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-100">
+                    <h2 className="font-semibold text-gray-800">Corte por cobrador</h2>
+                  </div>
+                  {loading ? (
+                    <div className="py-10 text-center text-gray-500">Cargando...</div>
+                  ) : cortePorCobrador.length === 0 ? (
+                    <div className="py-10 text-center text-gray-500">No hay datos de corte con los filtros actuales.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm min-w-[560px]">
+                        <thead className="bg-gray-50 border-b border-gray-200">
+                          <tr>
+                            <th className="text-left px-4 py-3 font-semibold text-gray-600">Cobrador</th>
+                            <th className="text-right px-4 py-3 font-semibold text-gray-600">Pagos</th>
+                            <th className="text-right px-4 py-3 font-semibold text-gray-600">Cobrado</th>
+                            <th className="text-right px-4 py-3 font-semibold text-gray-600">Aplicado</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {cortePorCobrador.map((row) => (
+                            <tr key={row.cobrador} className="hover:bg-gray-50">
+                              <td className="px-4 py-3">{row.cobrador}</td>
+                              <td className="px-4 py-3 text-right">{row.pagos}</td>
+                              <td className="px-4 py-3 text-right">{formatCurrency(row.monto)}</td>
+                              <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(row.aplicado)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-100">
+                    <h2 className="font-semibold text-gray-800">Conciliacion diaria</h2>
+                  </div>
+                  {loading ? (
+                    <div className="py-10 text-center text-gray-500">Cargando...</div>
+                  ) : conciliacionDiaria.length === 0 ? (
+                    <div className="py-10 text-center text-gray-500">No hay datos de conciliacion con los filtros actuales.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm min-w-[620px]">
+                        <thead className="bg-gray-50 border-b border-gray-200">
+                          <tr>
+                            <th className="text-left px-4 py-3 font-semibold text-gray-600">Fecha</th>
+                            <th className="text-right px-4 py-3 font-semibold text-gray-600">Pagos</th>
+                            <th className="text-right px-4 py-3 font-semibold text-gray-600">Cobrado</th>
+                            <th className="text-right px-4 py-3 font-semibold text-gray-600">Aplicado</th>
+                            <th className="text-right px-4 py-3 font-semibold text-gray-600">Ajustes</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {conciliacionDiaria.map((row) => (
+                            <tr key={row.fecha} className="hover:bg-gray-50">
+                              <td className="px-4 py-3">{row.fecha === 'Sin fecha' ? row.fecha : formatDate(row.fecha)}</td>
+                              <td className="px-4 py-3 text-right">{row.pagos}</td>
+                              <td className="px-4 py-3 text-right">{formatCurrency(row.monto)}</td>
+                              <td className="px-4 py-3 text-right">{formatCurrency(row.aplicado)}</td>
+                              <td className={`px-4 py-3 text-right font-semibold ${row.diferenciaAjustes >= 0 ? 'text-green-700' : 'text-orange-700'}`}>
+                                {formatCurrency(row.diferenciaAjustes)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </AdminLayout>
 

@@ -99,8 +99,8 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
 
   const getPagoAplicado = (p: Pago): number => {
     const monto = p.montopagado || 0
-    const aplicadoDeSaldo = Math.max(0, -(p.servicios_extra || 0))
-    return monto + aplicadoDeSaldo
+    const extra = p.servicios_extra || 0
+    return monto + extra
   }
 
   // ── Total cargos extra aplicables a la corrida seleccionada ───

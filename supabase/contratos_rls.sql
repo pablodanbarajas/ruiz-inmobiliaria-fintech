@@ -17,75 +17,34 @@ ALTER TABLE public.variables_disponibles ENABLE ROW LEVEL SECURITY;
 -- 2. POLÍTICAS PARA TABLA: contrato_template
 -- ============================================================================
 
--- Admin puede leer y crear templates
-DROP POLICY IF EXISTS "contrato_template_select_admin" ON public.contrato_template;
-CREATE POLICY "contrato_template_select_admin" ON public.contrato_template
-  FOR SELECT
+DROP POLICY IF EXISTS "contrato_template_admin" ON public.contrato_template;
+CREATE POLICY "contrato_template_admin" ON public.contrato_template FOR ALL TO authenticated
   USING (
-    auth.role() = 'authenticated' AND EXISTS (
-      SELECT 1 FROM auth.users u WHERE u.id = auth.uid() AND u.raw_user_meta_data->>'role' = 'admin'
-    )
-  );
-
-DROP POLICY IF EXISTS "contrato_template_insert_admin" ON public.contrato_template;
-CREATE POLICY "contrato_template_insert_admin" ON public.contrato_template
-  FOR INSERT
+    (auth.jwt() ->> 'role') = 'admin'
+    OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+    OR (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
+  )
   WITH CHECK (
-    auth.role() = 'authenticated' AND EXISTS (
-      SELECT 1 FROM auth.users u WHERE u.id = auth.uid() AND u.raw_user_meta_data->>'role' = 'admin'
-    )
-  );
-
-DROP POLICY IF EXISTS "contrato_template_update_admin" ON public.contrato_template;
-CREATE POLICY "contrato_template_update_admin" ON public.contrato_template
-  FOR UPDATE
-  USING (
-    auth.role() = 'authenticated' AND EXISTS (
-      SELECT 1 FROM auth.users u WHERE u.id = auth.uid() AND u.raw_user_meta_data->>'role' = 'admin'
-    )
-  );
-
-DROP POLICY IF EXISTS "contrato_template_delete_admin" ON public.contrato_template;
-CREATE POLICY "contrato_template_delete_admin" ON public.contrato_template
-  FOR DELETE
-  USING (
-    auth.role() = 'authenticated' AND EXISTS (
-      SELECT 1 FROM auth.users u WHERE u.id = auth.uid() AND u.raw_user_meta_data->>'role' = 'admin'
-    )
+    (auth.jwt() ->> 'role') = 'admin'
+    OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+    OR (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
   );
 
 -- ============================================================================
 -- 3. POLÍTICAS PARA TABLA: contrato_generado
 -- ============================================================================
 
--- Admin puede leer contratos generados
-DROP POLICY IF EXISTS "contrato_generado_select_admin" ON public.contrato_generado;
-CREATE POLICY "contrato_generado_select_admin" ON public.contrato_generado
-  FOR SELECT
+DROP POLICY IF EXISTS "contrato_generado_admin" ON public.contrato_generado;
+CREATE POLICY "contrato_generado_admin" ON public.contrato_generado FOR ALL TO authenticated
   USING (
-    auth.role() = 'authenticated' AND EXISTS (
-      SELECT 1 FROM auth.users u WHERE u.id = auth.uid() AND u.raw_user_meta_data->>'role' = 'admin'
-    )
-  );
-
--- Admin puede generar contratos
-DROP POLICY IF EXISTS "contrato_generado_insert_admin" ON public.contrato_generado;
-CREATE POLICY "contrato_generado_insert_admin" ON public.contrato_generado
-  FOR INSERT
+    (auth.jwt() ->> 'role') = 'admin'
+    OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+    OR (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
+  )
   WITH CHECK (
-    auth.role() = 'authenticated' AND EXISTS (
-      SELECT 1 FROM auth.users u WHERE u.id = auth.uid() AND u.raw_user_meta_data->>'role' = 'admin'
-    )
-  );
-
--- Admin puede actualizar contratos (cambiar estado)
-DROP POLICY IF EXISTS "contrato_generado_update_admin" ON public.contrato_generado;
-CREATE POLICY "contrato_generado_update_admin" ON public.contrato_generado
-  FOR UPDATE
-  USING (
-    auth.role() = 'authenticated' AND EXISTS (
-      SELECT 1 FROM auth.users u WHERE u.id = auth.uid() AND u.raw_user_meta_data->>'role' = 'admin'
-    )
+    (auth.jwt() ->> 'role') = 'admin'
+    OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+    OR (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
   );
 
 -- ============================================================================

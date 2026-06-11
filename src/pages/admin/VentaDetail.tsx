@@ -41,8 +41,8 @@ interface CorridaWithPagos extends CorridaFinanciera {
 
 const getPagoAplicado = (pago: Pago) => {
   const monto = pago.montopagado || 0
-  const aplicadoDeSaldo = Math.max(0, -(pago.servicios_extra || 0))
-  return monto + aplicadoDeSaldo
+  const extra = pago.servicios_extra || 0
+  return monto + extra
 }
 
 export const VentaDetail = () => {
