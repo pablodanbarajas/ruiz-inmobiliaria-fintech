@@ -119,6 +119,8 @@ export const ContratoTemplateForm = ({
     'fecha_hoy',
     'fecha_firma'
   ]
+
+  return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Nombre */}
       <div>
