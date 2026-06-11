@@ -1,7 +1,48 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Recibe eventos de Quentli (INVOICE_PAID, INVOICE_PAID_OTHER)
-// y registra el pago automáticamente en la tabla `pago` de Supabase.
+/**
+ * Webhook para recibir eventos de Quentli (INVOICE_PAID, INVOICE_PAID_OTHER)
+ * y registrar automáticamente pagos en la tabla `pago` de Supabase.
+ * 
+ * SEGURIDAD: Valida firma HMAC-SHA256 de Quentli en cada solicitud
+ * Header esperado: X-Quentli-Signature (HMAC-SHA256 del body)
+ */
+
+/**
+ * Verifica la firma HMAC-SHA256 del webhook de Quentli
+ */
+async function verifyQuentliSignature(
+  bodyText: string,
+  receivedSignature: string,
+  secret: string
+): Promise<boolean> {
+  try {
+    // Crear HMAC-SHA256
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    )
+
+    // Decodificar firma (esperada en hexadecimal)
+    const signatureBytes = new Uint8Array(
+      receivedSignature.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) ?? []
+    )
+
+    const bodyBytes = new TextEncoder().encode(bodyText)
+
+    // Verificar firma
+    const isValid = await crypto.subtle.verify('HMAC', key, signatureBytes, bodyBytes)
+
+    return isValid
+  } catch (error) {
+    console.error('Error verifying signature:', error)
+    return false
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -10,9 +51,46 @@ Deno.serve(async (req: Request) => {
     })
   }
 
+  // 1. VALIDACIÓN DE SEGURIDAD: Verificar firma HMAC
+  const receivedSignature = req.headers.get('X-Quentli-Signature')
+  const quentliSecret = Deno.env.get('QUENTLI_WEBHOOK_SECRET') ?? ''
+
+  if (!receivedSignature || !quentliSecret) {
+    console.error('Missing signature header or secret', {
+      hasSignature: !!receivedSignature,
+      hasSecret: !!quentliSecret,
+    })
+    return new Response(JSON.stringify({ error: 'Missing security validation' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  // 2. Leer el body como texto (importante para validación de firma)
+  let bodyText: string
+  try {
+    bodyText = await req.text()
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  // 3. Verificar la firma
+  const isSignatureValid = await verifyQuentliSignature(bodyText, receivedSignature, quentliSecret)
+  if (!isSignatureValid) {
+    console.error('Invalid webhook signature', { signature: receivedSignature.substring(0, 10) + '...' })
+    return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  // 4. Parsear el JSON
   let body: any
   try {
-    body = await req.json()
+    body = JSON.parse(bodyText)
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
       status: 400,

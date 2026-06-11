@@ -119,7 +119,8 @@ export const ConvenioForm = ({
       .eq('ventaid', selectedVentaId)
       .single()
       .then(({ data }) => {
-        setVentaMensualidad(Number((data as any)?.mensualidad || 0))
+        const ventaData = data as { mensualidad: number } | null
+        setVentaMensualidad(Number(ventaData?.mensualidad || 0))
       })
   }, [selectedVentaId])
 

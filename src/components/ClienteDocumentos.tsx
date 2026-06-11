@@ -61,12 +61,13 @@ export const ClienteDocumentos = ({ clienteid }: ClienteDocumentosProps) => {
             })
 
           if (!error && data) {
+            type FileMetadata = { size?: number; [key: string]: unknown }
             result[tipo.key] = data
               .filter((f) => f.name !== '.emptyFolderPlaceholder')
               .map((f) => ({
                 name: f.name,
                 path: `${clienteid}/${tipo.key}/${f.name}`,
-                size: (f.metadata as any)?.size ?? 0,
+                size: ((f.metadata as FileMetadata | null)?.size ?? 0) as number,
                 created_at: f.created_at ?? '',
               }))
           } else {

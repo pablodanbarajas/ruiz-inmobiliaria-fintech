@@ -23,6 +23,39 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+interface ClientRecord {
+  clienteid: number;
+  nombre: string;
+}
+
+async function enrichWithClientData(session: AuthSession): Promise<AuthSession> {
+  if (!session.isAuthenticated || !session.user?.email) return session;
+  
+  try {
+    const { data } = await supabase
+      .from('cliente')
+      .select('clienteid, nombre')
+      .eq('email', session.user.email)
+      .maybeSingle();
+    
+    if (data) {
+      const firstName = (data as ClientRecord).nombre.trim().split(/\s+/)[0];
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          name: firstName,
+          id: (data as ClientRecord).clienteid.toString() // Usar clienteid como id
+        }
+      };
+    }
+  } catch (error) {
+    console.warn('Error enriching client data:', error);
+  }
+  
+  return session;
+}
+
 function mapSupabaseSession(session: any): AuthSession {
   if (!session?.user) {
     return {
@@ -52,20 +85,6 @@ function mapSupabaseSession(session: any): AuthSession {
   };
 }
 
-async function enrichWithClientFirstName(session: AuthSession): Promise<AuthSession> {
-  if (!session.isAuthenticated || !session.user?.email) return session;
-  const { data } = await supabase
-    .from('cliente')
-    .select('nombre')
-    .eq('email', session.user.email)
-    .maybeSingle();
-  if (data?.nombre) {
-    const firstName = data.nombre.trim().split(/\s+/)[0];
-    return { ...session, user: { ...session.user, name: firstName } };
-  }
-  return session;
-}
-
 export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<AuthSession>({
     isAuthenticated: false,
@@ -78,18 +97,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     supabase.auth.getSession().then(async ({ data }) => {
       if (!isMounted) return;
-      const enriched = await enrichWithClientFirstName(mapSupabaseSession(data.session));
+      const baseSession = mapSupabaseSession(data.session);
+      const enriched = await enrichWithClientData(baseSession);
       if (!isMounted) return;
       setSession(enriched);
       setIsLoading(false);
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        // Sincrónico: no hacer await aquí porque Supabase awaita este callback
-        // internamente y bloquearía signInWithPassword. El nombre enriquecido
-        // se aplica en getSession (carga inicial) y en el login callback.
-        setSession(mapSupabaseSession(session));
+      async (_event, session) => {
+        const baseSession = mapSupabaseSession(session);
+        const enriched = await enrichWithClientData(baseSession);
+        setSession(enriched);
       }
     );
 
@@ -103,8 +122,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoading(true);
     try {
       const newSession = await authService.login(credentials);
-      const enriched = await enrichWithClientFirstName(newSession);
-      setSession(enriched);
+      setSession(newSession);
     } finally {
       setIsLoading(false);
     }

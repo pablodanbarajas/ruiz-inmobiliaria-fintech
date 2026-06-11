@@ -222,13 +222,27 @@ export const Convenios = () => {
             },
             {
               key: 'meses_convenio',
-              label: 'Meses convenio',
-              render: (row) => row.meses_convenio ?? '—',
+              label: 'Plazo (meses)',
+              render: (row) => row.meses_convenio ? `${row.meses_convenio} meses` : '—',
+            },
+            {
+              key: 'monto_convenio_mensual',
+              label: 'Atraso mensual',
+              render: (row) => (row.monto_convenio_mensual != null ? `$${Number(row.monto_convenio_mensual).toLocaleString('es-MX')}` : '—'),
             },
             {
               key: 'pago_total_mensual_objetivo',
-              label: 'Pago mensual objetivo',
+              label: 'Total mensual',
               render: (row) => (row.pago_total_mensual_objetivo != null ? `$${Number(row.pago_total_mensual_objetivo).toLocaleString('es-MX')}` : '—'),
+            },
+            {
+              key: 'fecha_fin_estimada',
+              label: 'Fin estimada',
+              render: (row) => {
+                if (!row.fecha_fin_estimada) return '—'
+                const date = new Date(row.fecha_fin_estimada)
+                return date.toLocaleDateString('es-MX')
+              },
             },
             {
               key: 'motivo',

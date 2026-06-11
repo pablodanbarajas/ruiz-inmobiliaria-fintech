@@ -2,7 +2,14 @@ import { supabase } from './client';
 import type { IAuthService } from '../interfaces';
 import type { AuthSession, LoginCredentials } from '../../types/auth.types';
 
-function mapSupabaseSession(session: any): AuthSession {
+interface ClientRecord {
+  clienteid: number;
+  nombre: string;
+  email: string;
+  telefonocelular: string;
+}
+
+async function mapSupabaseSessionWithClientData(session: any): Promise<AuthSession> {
   if (!session?.user) {
     return {
       isAuthenticated: false,
@@ -10,17 +17,32 @@ function mapSupabaseSession(session: any): AuthSession {
     };
   }
 
+  // Obtener datos del cliente desde la tabla cliente
+  let clientData: ClientRecord | null = null;
+  try {
+    const { data } = await supabase
+      .from('cliente')
+      .select('clienteid, nombre, email, telefonocelular')
+      .eq('email', session.user.email)
+      .maybeSingle();
+    
+    clientData = data as ClientRecord | null;
+  } catch (error) {
+    console.warn('Error fetching client data:', error);
+  }
+
   return {
     isAuthenticated: true,
     user: {
-      id: session.user.id,
+      id: clientData?.clienteid?.toString() || session.user.id,
       name:
+        clientData?.nombre?.trim().split(/\s+/)[0] ||
         session.user.user_metadata?.name ||
         session.user.user_metadata?.full_name ||
         session.user.email?.split('@')[0] ||
         'Cliente',
       email: session.user.email || '',
-      phone: session.user.user_metadata?.phone || '',
+      phone: clientData?.telefonocelular || session.user.user_metadata?.phone || '',
       avatarUrl:
         session.user.user_metadata?.avatar_url ||
         `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
@@ -49,7 +71,7 @@ export const supabaseAuthService: IAuthService = {
       throw new Error(error.message);
     }
 
-    return mapSupabaseSession(data.session);
+    return mapSupabaseSessionWithClientData(data.session);
   },
 
   async logout(): Promise<void> {

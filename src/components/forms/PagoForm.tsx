@@ -219,8 +219,11 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
           .select('dias_tolerancia, lote:lote(desarrolloid)')
           .eq('ventaid', selectedVentaId)
           .single()
-        setFetchedDiasTolerancia((ventaInfo as any)?.dias_tolerancia ?? 0)
-        setDesarrolloCuentaId((ventaInfo as any)?.lote?.desarrolloid ?? null)
+        
+        type VentaInfoType = { dias_tolerancia: number; lote: { desarrolloid: number } | null } | null
+        const ventaData = ventaInfo as VentaInfoType
+        setFetchedDiasTolerancia(ventaData?.dias_tolerancia ?? 0)
+        setDesarrolloCuentaId(ventaData?.lote?.desarrolloid ?? null)
 
         const corridasConPagos = await Promise.all(
           (corridaData || []).map(async (c) => {
@@ -269,7 +272,9 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
           .eq('ventaid', data.ventaid)
           .maybeSingle()
 
-        setDesarrolloCuentaId((ventaInfo as any)?.lote?.desarrolloid ?? null)
+        type VentaLoteType = { lote: { desarrolloid: number } | null } | null
+        const ventaData = ventaInfo as VentaLoteType
+        setDesarrolloCuentaId(ventaData?.lote?.desarrolloid ?? null)
 
         const { data: pagosData } = await supabase
           .from('pagos')
@@ -327,7 +332,9 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
         .eq('ventaid', corridaInfo.ventaid)
         .maybeSingle()
 
-      setDesarrolloCuentaId((ventaInfo as any)?.lote?.desarrolloid ?? null)
+      type VentaLoteType = { lote: { desarrolloid: number } | null } | null
+      const ventaData = ventaInfo as VentaLoteType
+      setDesarrolloCuentaId(ventaData?.lote?.desarrolloid ?? null)
     }
 
     loadEditDesarrollo()
@@ -360,8 +367,9 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
         .neq('estatus', 'C')
 
       let acumulado = 0
-      for (const p of pagosVenta || []) {
-        const extra = Number((p as any).servicios_extra || 0)
+      type PagoExtra = { servicios_extra: number | null }
+      for (const p of (pagosVenta || []) as PagoExtra[]) {
+        const extra = Number(p.servicios_extra || 0)
         if (extra > 0) acumulado += extra
         if (extra < 0) acumulado -= Math.abs(extra)
       }
