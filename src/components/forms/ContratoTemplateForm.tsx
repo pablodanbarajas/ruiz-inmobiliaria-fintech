@@ -225,12 +225,7 @@ export const ContratoTemplateForm = ({
             id="htmlContent"
             value={formData.contenido_html}
             onChange={handleHtmlChange}
-            placeholder={`<h1>Contrato de {{tipo_contrato}}</h1>
-<p>Vendedor: {{cliente_nombre}}</p>
-<p>Propiedad: {{lote_clavelote}} en {{desarrollo_nombre}}</p>
-<p>Precio: ${{venta_precio}}</p>
-
-Inserta las variables usando {{nombreVariable}}`}
+            placeholder="<h1>Contrato de {{tipo_contrato}}</h1>\n<p>Vendedor: {{cliente_nombre}}</p>\n<p>Propiedad: {{lote_clavelote}} en {{desarrollo_nombre}}</p>\n<p>Precio: ${{venta_precio}}</p>\n\nInserta las variables usando {{nombreVariable}}"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
             rows={12}
             required

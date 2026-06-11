@@ -20,7 +20,6 @@ export const Contratos = () => {
   const [activeTab, setActiveTab] = useState<'templates' | 'generados'>('templates')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showPreviewModal, setShowPreviewModal] = useState(false)
-  const [selectedTemplate, setSelectedTemplate] = useState<ContratoTemplate | null>(null)
   const [previewContent, setPreviewContent] = useState('')
   const [filterName, setFilterName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -133,7 +132,7 @@ export const Contratos = () => {
   )
 
   // Columnas para tabla de templates
-  const templateColumns = [
+  const templateColumns: Array<{ key: string; label: string; width: string; render?: (value: any) => React.ReactNode }> = [
     { key: 'nombre', label: 'Nombre', width: '25%' },
     { 
       key: 'tipo_contrato', 
@@ -166,7 +165,7 @@ export const Contratos = () => {
   ]
 
   // Columnas para tabla de contratos generados
-  const contratosColumns = [
+  const contratosColumns: Array<{ key: string; label: string; width: string; render?: (value: any) => React.ReactNode }> = [
     { key: 'contrato_generado_id', label: 'ID', width: '8%' },
     { 
       key: 'contrato_template_id', 
@@ -343,7 +342,7 @@ export const Contratos = () => {
                           <div className="flex gap-2">
                             <button
                               onClick={() => {
-                                setSelectedTemplate(null)
+
                                 setPreviewContent(contrato.contenido_html || '')
                                 setShowPreviewModal(true)
                               }}
