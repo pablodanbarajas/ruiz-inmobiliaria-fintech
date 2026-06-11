@@ -737,10 +737,6 @@ export const Pagos = () => {
             </div>
           </div>
 
-              </div>
-            </div>
-          </div>
-
           {/* FILTERS - Show only in Pagos tab */}
           {activeTab === 'pagos' && (
             <div className="bg-white rounded-lg shadow-md border-t-4 border-[#504840] p-6 mb-6">
