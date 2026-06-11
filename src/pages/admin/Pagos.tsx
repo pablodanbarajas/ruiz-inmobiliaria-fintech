@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { PagoForm } from '@/components/forms/PagoForm'
 import type { PagoFormData } from '@/components/forms/PagoForm'
-import { Eye, ChevronLeft, ChevronRight, Plus, Download, Filter, ChevronDown } from 'lucide-react'
+import { Eye, ChevronLeft, ChevronRight, Plus, Download, Filter, ChevronDown, Receipt, Clock, BarChart3, Users, Calendar, Building2 } from 'lucide-react'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
@@ -572,20 +572,20 @@ export const Pagos = () => {
                 
                 {showExportMenu && (
                   <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-10">
-                    <button onClick={() => { exportPagosCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
-                      📊 Pagos Registrados
+                    <button onClick={() => { exportPagosCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2">
+                      <BarChart3 size={16} /> Pagos Registrados
                     </button>
-                    <button onClick={() => { exportPendientesCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
-                      ⏳ Pendientes
+                    <button onClick={() => { exportPendientesCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2">
+                      <Clock size={16} /> Pendientes
                     </button>
-                    <button onClick={() => { exportCorteCobradorCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
-                      👤 Corte por Cobrador
+                    <button onClick={() => { exportCorteCobradorCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2">
+                      <Users size={16} /> Corte por Cobrador
                     </button>
-                    <button onClick={() => { exportConciliacionDiariaCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">
-                      📅 Conciliación Diaria
+                    <button onClick={() => { exportConciliacionDiariaCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2">
+                      <Calendar size={16} /> Conciliación Diaria
                     </button>
-                    <button onClick={() => { exportCorteCtaBancariaCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm border-t">
-                      🏦 Por Cuentas Bancarias
+                    <button onClick={() => { exportCorteCtaBancariaCsv(); setShowExportMenu(false) }} className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 border-t">
+                      <Building2 size={16} /> Por Cuentas Bancarias
                     </button>
                   </div>
                 )}
@@ -704,33 +704,33 @@ export const Pagos = () => {
             <div className="flex gap-8">
               <button
                 onClick={() => setActiveTab('pagos')}
-                className={`pb-3 px-2 font-medium transition-colors ${
+                className={`pb-3 px-2 font-medium transition-colors flex items-center gap-2 ${
                   activeTab === 'pagos'
                     ? 'text-[#eaae4c] border-b-2 border-[#eaae4c]'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                📝 Pagos Registrados
+                <Receipt size={18} /> Pagos Registrados
               </button>
               <button
                 onClick={() => setActiveTab('pendientes')}
-                className={`pb-3 px-2 font-medium transition-colors ${
+                className={`pb-3 px-2 font-medium transition-colors flex items-center gap-2 ${
                   activeTab === 'pendientes'
                     ? 'text-[#eaae4c] border-b-2 border-[#eaae4c]'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                ⏳ Pendientes ({pendingByClient.length})
+                <Clock size={18} /> Pendientes ({pendingByClient.length})
               </button>
               <button
                 onClick={() => setActiveTab('reportes')}
-                className={`pb-3 px-2 font-medium transition-colors ${
+                className={`pb-3 px-2 font-medium transition-colors flex items-center gap-2 ${
                   activeTab === 'reportes'
                     ? 'text-[#eaae4c] border-b-2 border-[#eaae4c]'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                📊 Reportes
+                <BarChart3 size={18} /> Reportes
               </button>
             </div>
           </div>
