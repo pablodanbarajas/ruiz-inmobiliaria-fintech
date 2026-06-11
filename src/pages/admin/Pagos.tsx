@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { PagoForm } from '@/components/forms/PagoForm'
 import type { PagoFormData } from '@/components/forms/PagoForm'
-import { Eye, ChevronLeft, ChevronRight, Plus, Download, FileText, Filter, ChevronDown } from 'lucide-react'
+import { Eye, ChevronLeft, ChevronRight, Plus, Download, Filter, ChevronDown } from 'lucide-react'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
@@ -328,8 +328,6 @@ export const Pagos = () => {
 
   const totalCobrado = filteredPagos.reduce((sum, p) => sum + Number(p.montopagado || 0), 0)
   const totalAplicado = filteredPagos.reduce((sum, p) => sum + getPagoAplicado(p), 0)
-  const totalPendiente = filteredPendientes.reduce((sum, p) => sum + p.montoPendiente, 0)
-  const clientesConAdeudo = pendingByClient.length
 
   // Paginated data for current page
   const filteredPagosForPagination = pagos
