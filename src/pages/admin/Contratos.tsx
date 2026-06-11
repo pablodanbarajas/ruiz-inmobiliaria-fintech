@@ -7,7 +7,7 @@ import { Modal } from '@/components/ui/Modal'
 import { ContratoTemplateForm } from '@/components/forms/ContratoTemplateForm'
 import { useToastContext } from '@/context/ToastContext'
 import { contratoService } from '@/services/contratos'
-import { Eye, Plus, Edit, Download, FileText } from 'lucide-react'
+import { Eye, Plus, Download, FileText } from 'lucide-react'
 import type { ContratoTemplate, ContratoGenerado } from '@/types/contrato.types'
 import { formatDate } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
@@ -91,7 +91,6 @@ export const Contratos = () => {
 
   // Previsualizar contrato
   const handlePreview = async (template: ContratoTemplate) => {
-    setSelectedTemplate(template)
     setPreviewContent(template.contenido_html || '<p>Sin contenido</p>')
     setShowPreviewModal(true)
   }
@@ -292,13 +291,7 @@ export const Contratos = () => {
                             >
                               <Eye className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={() => setSelectedTemplate(template)}
-                              className="p-1 hover:bg-yellow-100 rounded text-yellow-600"
-                              title="Editar"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
+
                           </div>
                         </td>
                       </tr>
