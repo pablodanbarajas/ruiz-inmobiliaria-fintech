@@ -4,11 +4,10 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import { DataTable } from '@/components/DataTable'
 import { ContratoTemplateForm } from '@/components/forms/ContratoTemplateForm'
 import { useToastContext } from '@/context/ToastContext'
 import { contratoService } from '@/services/contratos'
-import { Eye, Plus, Edit, Trash2, FileText, Download } from 'lucide-react'
+import { Eye, Plus, Edit, Download, FileText } from 'lucide-react'
 import type { ContratoTemplate, ContratoGenerado } from '@/types/contrato.types'
 import { formatDate } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
@@ -35,7 +34,7 @@ export const Contratos = () => {
       // Filtrar por desarrollos en demo mode
       let filtered = data
       if (DEMO_DESARROLLOIDS.length > 0) {
-        filtered = data.filter(t => DEMO_DESARROLLOIDS.includes(t.desarrolloid))
+        filtered = data.filter(t => t.desarrolloid && DEMO_DESARROLLOIDS.includes(t.desarrolloid))
       }
       
       setTemplates(filtered)
@@ -52,25 +51,14 @@ export const Contratos = () => {
       setLoading(true)
       const { data, error } = await supabase
         .from('contrato_generado')
-        .select(`
-          *,
-          template:contrato_template(nombre, tipo_contrato),
-          venta:venta(ventaid, estatus, cliente:cliente(nombre), lote:lote(clavelote))
-        `)
-        .order('created_at', { ascending: false })
+        .select(`*`)
+        .order('fecha_generacion', { ascending: false })
 
       if (error) throw error
 
       let list = (data || []) as ContratoGenerado[]
       
-      // Filtrar por demo mode
-      if (DEMO_DESARROLLOIDS.length > 0) {
-        list = list.filter(c => {
-          const templateDevId = (c.template as any)?.desarrolloid
-          return DEMO_DESARROLLOIDS.includes(templateDevId)
-        })
-      }
-
+      // Filtrar por demo mode - aquí solo mostramos los generados sin filtrar por desarrollo
       setContratosGenerados(list)
     } catch (err) {
       showError('Error', `No se pudieron cargar los contratos: ${(err as Error).message}`)
@@ -116,7 +104,7 @@ export const Contratos = () => {
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
-    link.setAttribute('download', `contrato-${contrato.contratoid}.html`)
+    link.setAttribute('download', `contrato-${contrato.contrato_generado_id}.html`)
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()
@@ -128,8 +116,8 @@ export const Contratos = () => {
     try {
       const { error } = await supabase
         .from('contrato_generado')
-        .update({ estatus: 'firmado', fecha_firma: new Date().toISOString() })
-        .eq('contratoid', contractId)
+        .update({ estado: 'firmado', fecha_firma: new Date().toISOString() })
+        .eq('contrato_generado_id', contractId)
 
       if (error) throw error
       success('Éxito', 'Contrato marcado como firmado')
@@ -179,27 +167,28 @@ export const Contratos = () => {
 
   // Columnas para tabla de contratos generados
   const contratosColumns = [
-    { key: 'contratoid', label: 'ID', width: '8%' },
+    { key: 'contrato_generado_id', label: 'ID', width: '8%' },
     { 
-      key: 'template', 
-      label: 'Template', 
+      key: 'contrato_template_id', 
+      label: 'Template ID', 
       width: '15%',
-      render: (value: any) => <span>{value?.nombre || '-'}</span>
+      render: (value: any) => <span>{value || '-'}</span>
     },
     { 
-      key: 'venta', 
-      label: 'Cliente', 
-      width: '20%',
-      render: (value: any) => <span>{value?.cliente?.nombre || '-'}</span>
+      key: 'ventaid', 
+      label: 'Venta ID', 
+      width: '12%',
+      render: (value: any) => <span>{value || '-'}</span>
     },
     { 
-      key: 'estatus', 
+      key: 'estado', 
       label: 'Estado', 
       width: '12%',
       render: (value: string) => (
         <span className={`text-xs px-2 py-1 rounded ${
           value === 'firmado' ? 'bg-blue-100 text-blue-800' :
           value === 'cancelado' ? 'bg-red-100 text-red-800' :
+          value === 'draft' ? 'bg-gray-100 text-gray-800' :
           'bg-yellow-100 text-yellow-800'
         }`}>
           {value || 'generado'}
@@ -207,7 +196,7 @@ export const Contratos = () => {
       )
     },
     { 
-      key: 'created_at', 
+      key: 'fecha_generacion', 
       label: 'Generado', 
       width: '12%',
       render: (value: string) => <span className="text-sm">{formatDate(value)}</span>
@@ -215,8 +204,13 @@ export const Contratos = () => {
   ]
 
   return (
-    <AdminLayout title="Contratos">
+    <AdminLayout>
       <div className="space-y-6">
+        {/* Título */}
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Contratos</h1>
+          <p className="text-gray-600 mt-1">Gestiona templates y contratos generados</p>
+        </div>
         {/* Tabs */}
         <div className="flex gap-2 border-b">
           <button
@@ -339,7 +333,7 @@ export const Contratos = () => {
                   </thead>
                   <tbody>
                     {contratosgenerados.map(contrato => (
-                      <tr key={contrato.contratoid} className="border-b hover:bg-gray-50">
+                      <tr key={contrato.contrato_generado_id} className="border-b hover:bg-gray-50">
                         {contratosColumns.map(col => (
                           <td key={col.key} className="px-4 py-3 text-sm">
                             {col.render ? col.render((contrato as any)[col.key]) : (contrato as any)[col.key]}
@@ -365,9 +359,9 @@ export const Contratos = () => {
                             >
                               <Download className="w-4 h-4" />
                             </button>
-                            {contrato.estatus !== 'firmado' && (
+                            {contrato.estado !== 'firmado' && (
                               <button
-                                onClick={() => handleMarkSigned(contrato.contratoid)}
+                                onClick={() => handleMarkSigned(contrato.contrato_generado_id)}
                                 className="p-1 hover:bg-purple-100 rounded text-purple-600"
                                 title="Marcar como firmado"
                               >
@@ -388,7 +382,7 @@ export const Contratos = () => {
 
       {/* Modal crear/editar template */}
       {showCreateModal && (
-        <Modal title="Nuevo Template de Contrato" onClose={() => setShowCreateModal(false)}>
+        <Modal isOpen={showCreateModal} title="Nuevo Template de Contrato" onClose={() => setShowCreateModal(false)}>
           <ContratoTemplateForm
             onSubmit={handleCreateTemplate}
             isSubmitting={isSubmitting}
@@ -398,7 +392,7 @@ export const Contratos = () => {
 
       {/* Modal previsualizar */}
       {showPreviewModal && (
-        <Modal title="Previsualización de Contrato" onClose={() => setShowPreviewModal(false)} size="lg">
+        <Modal isOpen={showPreviewModal} title="Previsualización de Contrato" onClose={() => setShowPreviewModal(false)} size="lg">
           <div className="bg-white p-6 rounded border">
             <div
               className="prose prose-sm max-w-none"
@@ -409,12 +403,6 @@ export const Contratos = () => {
             <Button variant="secondary" onClick={() => setShowPreviewModal(false)}>
               Cerrar
             </Button>
-            {selectedTemplate && (
-              <Button onClick={() => handleDownload({ contenido_html: previewContent } as ContratoGenerado)}>
-                <Download className="w-4 h-4 mr-2" />
-                Descargar
-              </Button>
-            )}
           </div>
         </Modal>
       )}

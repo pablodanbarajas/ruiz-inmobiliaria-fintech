@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { useToastContext } from '@/context/ToastContext'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import type { ContratoTemplateFormData } from '@/types/contrato.types'
 
@@ -17,17 +16,16 @@ export const ContratoTemplateForm = ({
   onSubmit,
   isSubmitting = false
 }: ContratoTemplateFormProps) => {
-  const { success } = useToastContext()
   const [desarrollos, setDesarrollos] = useState<any[]>([])
   const [variables, setVariables] = useState<string[]>([])
   const [formData, setFormData] = useState<ContratoTemplateFormData>({
     nombre: initialData?.nombre || '',
     descripcion: initialData?.descripcion || '',
     tipo_contrato: initialData?.tipo_contrato || 'venta',
-    desarrolloid: initialData?.desarrolloid || 0,
+    desarrolloid: initialData?.desarrolloid || null,
     contenido_html: initialData?.contenido_html || '',
     notas: initialData?.notas || '',
-    variables_json: initialData?.variables_json || []
+    variables_json: initialData?.variables_json || {}
   })
 
   // Cargar desarrollos
@@ -61,7 +59,13 @@ export const ContratoTemplateForm = ({
     const matches = Array.from(html.matchAll(regex)).map(m => m[1])
     const unique = Array.from(new Set(matches))
     setVariables(unique)
-    setFormData(prev => ({ ...prev, variables_json: unique }))
+    
+    // Crear objeto Record<string, boolean>
+    const variablesObj: Record<string, boolean> = {}
+    unique.forEach(v => {
+      variablesObj[v] = true
+    })
+    setFormData(prev => ({ ...prev, variables_json: variablesObj }))
   }
 
   const handleHtmlChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -78,7 +82,7 @@ export const ContratoTemplateForm = ({
       return
     }
 
-    if (formData.desarrolloid === 0) {
+    if (formData.desarrolloid === null || formData.desarrolloid === 0) {
       alert('Selecciona un desarrollo')
       return
     }
@@ -115,8 +119,6 @@ export const ContratoTemplateForm = ({
     'fecha_hoy',
     'fecha_firma'
   ]
-
-  return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Nombre */}
       <div>
@@ -139,12 +141,12 @@ export const ContratoTemplateForm = ({
           </label>
           <select
             value={formData.tipo_contrato}
-            onChange={(e) => setFormData(prev => ({ ...prev, tipo_contrato: e.target.value }))}
+            onChange={(e) => setFormData(prev => ({ ...prev, tipo_contrato: e.target.value as 'venta' | 'enganche' | 'convenio' | 'otro' }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="venta">Venta</option>
-            <option value="financiamiento">Financiamiento</option>
-            <option value="donacion">Donación</option>
+            <option value="enganche">Enganche</option>
+            <option value="convenio">Convenio</option>
             <option value="otro">Otro</option>
           </select>
         </div>
@@ -155,12 +157,12 @@ export const ContratoTemplateForm = ({
             Desarrollo
           </label>
           <select
-            value={formData.desarrolloid || 0}
-            onChange={(e) => setFormData(prev => ({ ...prev, desarrolloid: parseInt(e.target.value) }))}
+            value={formData.desarrolloid || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, desarrolloid: parseInt(e.target.value) || null }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
           >
-            <option value={0}>Selecciona un desarrollo</option>
+            <option value="">Selecciona un desarrollo</option>
             {desarrollos.map(dev => (
               <option key={dev.desarrolloid} value={dev.desarrolloid}>
                 {dev.nombre}
@@ -244,7 +246,7 @@ Inserta las variables usando {{nombreVariable}}`}
                     key={varName}
                     className="px-2 py-1 bg-white border border-blue-200 text-blue-700 text-xs rounded"
                   >
-                    {{varName}}
+                    {`{{${varName}}}`}
                   </span>
                 ))}
               </div>
