@@ -63,6 +63,12 @@ const MENU_ITEMS = [
     roles: ['admin'],
   },
   {
+    label: 'Contratos',
+    path: '/admin/contratos',
+    icon: FileText,
+    roles: ['admin', 'contratos'],
+  },
+  {
     label: 'Cargos Extra',
     path: '/admin/cargos-extra',
     icon: Wrench,
