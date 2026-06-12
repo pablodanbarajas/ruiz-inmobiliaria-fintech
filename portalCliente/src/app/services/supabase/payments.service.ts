@@ -136,8 +136,8 @@ export const supabasePaymentsService: IPaymentsService = {
       0
     );
 
-    // Total a pagar = (preciolote - pagado) + cargosExtras + recargos
-    const pendingBalance = Math.max(0, (totalPrecio - totalPagado) + totalCargosExtras + totalRecargos);
+    // Saldo pendiente = preciolote - pagado (SIN incluir cargos ni recargos)
+    const pendingBalance = Math.max(0, totalPrecio - totalPagado);
 
     return {
       nextPayment,
