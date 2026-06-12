@@ -84,10 +84,34 @@ export const supabasePaymentsService: IPaymentsService = {
 
     const nextPayment = pendingPayments.length > 0 ? pendingPayments[0] : null;
 
-    const pendingBalance = pendingPayments.reduce(
-      (acc, payment) => acc + Number(payment.amount ?? 0),
+    // Obtener todos los corridafinancieraid del cliente de la vista
+    const corridaIds = rows.map((row) => row.corridafinancieraid);
+
+    // Calcular saldo pendiente igual que el admin: sum(montopagado + servicios_extra)
+    // filtrando por los corridafinancieraid del cliente
+    const { data: pagosData, error: pagosError } = await supabase
+      .from('pagos')
+      .select('montopagado, servicios_extra, estatus')
+      .in('corridafinancieraid', corridaIds)
+      .neq('estatus', 'C');
+
+    if (pagosError) {
+      throw new Error(`Error al obtener pagos: ${pagosError.message}`);
+    }
+
+    const totalPagado = (pagosData ?? []).reduce(
+      (sum: number, p: any) => sum + ((p.montopagado || 0) + (p.servicios_extra || 0)),
       0
     );
+
+    // El saldo pendiente se calcula: total de venta - pagos aplicados
+    // Sum de todos los scheduled_amount - totalPagado
+    const totalScheduled = rows.reduce(
+      (sum, row) => sum + Number(row.scheduled_amount ?? 0),
+      0
+    );
+
+    const pendingBalance = Math.max(0, totalScheduled - totalPagado);
 
     return {
       nextPayment,
