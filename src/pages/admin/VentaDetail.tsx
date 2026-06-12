@@ -532,9 +532,9 @@ export const VentaDetail = () => {
   // Calcular cargos extra totales aplicables
   const today = new Date().toISOString().split('T')[0]
   const totalCargosExtras = corridas.reduce((sum, corrida) => {
-    // Cargos extra aplicables: SOLO PENDIENTES (estatus='P') y fecha <= fecha de corrida (solo en mensualidades)
+    // Cargos extra aplicables: no cancelados por error (estatus != 'X') y fecha <= fecha de corrida (solo en mensualidades)
     const cargosAplicables = corrida.nopago !== 0
-      ? cargosExtra.filter((c) => c.estatus === 'P' && c.fecha && corrida.fecha && c.fecha <= corrida.fecha)
+      ? cargosExtra.filter((c) => c.estatus !== 'X' && c.fecha && corrida.fecha && c.fecha <= corrida.fecha)
       : []
     return sum + cargosAplicables.reduce((s, c) => s + (c.monto || 0), 0)
   }, 0)

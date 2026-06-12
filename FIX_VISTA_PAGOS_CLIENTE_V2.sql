@@ -21,7 +21,7 @@ SELECT auth.uid() AS user_id,
     cf.mensualidad AS scheduled_amount,
     CASE
         WHEN cf.nopago = (SELECT MIN(cf2.nopago) FROM corridafinanciera cf2 WHERE cf2.ventaid = cf.ventaid)
-        THEN COALESCE(( SELECT sum(ce.monto) AS sum FROM cargos_extra ce WHERE (ce.loteid = l.loteid)), (0)::numeric)
+        THEN COALESCE(( SELECT sum(ce.monto) AS sum FROM cargos_extra ce WHERE (ce.loteid = l.loteid) AND ce.estatus != 'X'), (0)::numeric)
         ELSE (0)::numeric
     END AS cargo_extra_amount,
         CASE
