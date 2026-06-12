@@ -48,7 +48,6 @@ export const supabaseLotsService: ILotsService = {
     const { data, error } = await supabase
       .from('client_lots')
       .select('*')
-      .eq('user_id', clientId)
       .order('development_name', { ascending: true });
 
     if (error) {

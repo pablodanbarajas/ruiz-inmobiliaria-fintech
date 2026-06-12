@@ -66,7 +66,6 @@ export const supabasePaymentsService: IPaymentsService = {
     const { data, error } = await supabase
       .from('vista_pagos_cliente')
       .select('*')
-      .eq('user_id', clientId)
       .order('due_date', { ascending: true });
 
     if (error) {
