@@ -84,15 +84,27 @@ export const supabasePaymentsService: IPaymentsService = {
 
     const nextPayment = pendingPayments.length > 0 ? pendingPayments[0] : null;
 
-    // Obtener todos los corridafinancieraid del cliente de la vista
-    const corridaIds = rows.map((row) => row.corridafinancieraid);
+    // Obtener TODAS las ventas del cliente y sus preciolote
+    const { data: ventasData, error: ventasError } = await supabase
+      .from('venta')
+      .select('ventaid, preciolote, estatus')
+      .eq('clienteid', Number(clientId))
+      .in('estatus', ['A', 'V']);
 
-    // Calcular saldo pendiente igual que el admin: sum(montopagado + servicios_extra)
-    // filtrando por los corridafinancieraid del cliente
+    if (ventasError) {
+      throw new Error(`Error al obtener ventas: ${ventasError.message}`);
+    }
+
+    const totalPrecio = (ventasData ?? []).reduce(
+      (sum: number, v: any) => sum + (v.preciolote || 0),
+      0
+    );
+
+    // Obtener todos los pagos del cliente y sumar montopagado + servicios_extra
     const { data: pagosData, error: pagosError } = await supabase
       .from('pagos')
       .select('montopagado, servicios_extra, estatus')
-      .in('corridafinancieraid', corridaIds)
+      .in('ventaid', (ventasData ?? []).map((v: any) => v.ventaid))
       .neq('estatus', 'C');
 
     if (pagosError) {
@@ -104,14 +116,8 @@ export const supabasePaymentsService: IPaymentsService = {
       0
     );
 
-    // El saldo pendiente se calcula: total de venta - pagos aplicados
-    // Sum de todos los scheduled_amount - totalPagado
-    const totalScheduled = rows.reduce(
-      (sum, row) => sum + Number(row.scheduled_amount ?? 0),
-      0
-    );
-
-    const pendingBalance = Math.max(0, totalScheduled - totalPagado);
+    // Exacto como el admin: saldoPendiente = preciolote - totalPagado
+    const pendingBalance = Math.max(0, totalPrecio - totalPagado);
 
     return {
       nextPayment,
