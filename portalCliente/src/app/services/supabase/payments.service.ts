@@ -135,11 +135,13 @@ export const supabasePaymentsService: IPaymentsService = {
       );
 
     // Alternativa: obtener cargos_extra desde la vista_pagos_cliente (ya tiene cargo_extra_amount)
-    // Los cargos extra ya están en la vista, así que sumamos el cargo_extra_amount de TODAS las filas
-    const totalCargosExtras = rows.reduce(
-      (sum, row) => sum + (Number(row.cargo_extra_amount ?? 0) || 0),
-      0
-    );
+    // Sumar solo UNA vez por lote (no por cada mensualidad/fila)
+    const uniqueLotes = new Set(rows.map((row) => row.lot_id));
+    const totalCargosExtras = Array.from(uniqueLotes).reduce((sum, lotId) => {
+      // Obtener el cargo_extra_amount de la PRIMERA fila de este lote
+      const firstRowOfLote = rows.find((row) => row.lot_id === lotId);
+      return sum + (Number(firstRowOfLote?.cargo_extra_amount ?? 0) || 0);
+    }, 0);
 
     // Obtener recargos: suma de recargo_pendiente de TODAS las filas pendientes
     const totalRecargos = pendingPayments.reduce(
