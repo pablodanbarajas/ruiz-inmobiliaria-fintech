@@ -122,20 +122,7 @@ export const supabasePaymentsService: IPaymentsService = {
       0
     );
 
-    // Obtener todos los cargos_extra del cliente (filtrar por loteid en venta)
-    const { data: lotesData, error: lotesError } = await supabase
-      .from('lote')
-      .select('loteid')
-      .in('desarrolloid', 
-        (ventasData ?? []).map((v: any) => v.ventaid)
-          .map((vid: any) => {
-            // Este query es simplificado; idealmente necesitarías hacer JOIN
-            // pero Supabase tiene limitaciones. Alternativa: obtener lote desde vista
-          })
-      );
-
-    // Alternativa: obtener cargos_extra desde la vista_pagos_cliente (ya tiene cargo_extra_amount)
-    // Sumar solo UNA vez por lote (no por cada mensualidad/fila)
+    // Sumar cargos_extra solo UNA vez por lote (de la vista_pagos_cliente)
     const uniqueLotes = new Set(rows.map((row) => row.lot_id));
     const totalCargosExtras = Array.from(uniqueLotes).reduce((sum, lotId) => {
       // Obtener el cargo_extra_amount de la PRIMERA fila de este lote
@@ -158,5 +145,7 @@ export const supabasePaymentsService: IPaymentsService = {
       pendingPayments,
       completedPayments
     };
+  }
+};
   }
 };
