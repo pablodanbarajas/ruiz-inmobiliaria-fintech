@@ -25,13 +25,23 @@ export function HomeContent({
   const locationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    developmentsService
-      .getPublicDevelopments()
-      .then((data) => {
-        setAllDevelopments(data);
-        setDevelopments(data);
-      })
-      .finally(() => setIsLoading(false));
+    // Esperar un frame antes de intentar cargar para evitar race conditions
+    const timeoutId = setTimeout(() => {
+      developmentsService
+        .getPublicDevelopments()
+        .then((data) => {
+          if (data && data.length > 0) {
+            setAllDevelopments(data);
+            setDevelopments(data);
+          }
+        })
+        .catch((error) => {
+          console.error('Error loading developments:', error);
+        })
+        .finally(() => setIsLoading(false));
+    }, 50);
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   // Close suggestions when clicking outside

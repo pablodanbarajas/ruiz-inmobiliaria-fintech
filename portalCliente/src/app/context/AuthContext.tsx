@@ -94,7 +94,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
 
+    // Inicializar sesión
     supabase.auth.getSession().then(async ({ data }) => {
       if (!isMounted) return;
       const baseSession = mapSupabaseSession(data.session);
@@ -104,22 +106,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(false);
     });
 
-    // Listener de cambios de sesión con suppressErrors
+    // Listener de cambios de sesión (con delay para evitar race conditions)
     const { data: subscription } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        // Pequeño delay para evitar race conditions con otras queries
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Cancelar timeout anterior si existe
+        if (timeoutId) clearTimeout(timeoutId);
         
-        if (!isMounted) return;
-        const baseSession = mapSupabaseSession(session);
-        const enriched = await enrichWithClientData(baseSession);
-        if (!isMounted) return;
-        setSession(enriched);
+        // Esperar a que otros procesos terminen
+        timeoutId = setTimeout(async () => {
+          if (!isMounted) return;
+          
+          try {
+            const baseSession = mapSupabaseSession(session);
+            const enriched = await enrichWithClientData(baseSession);
+            if (!isMounted) return;
+            setSession(enriched);
+          } catch (error) {
+            console.warn('Error en auth state change:', error);
+          }
+        }, 200);
       }
     );
 
     return () => {
       isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
       subscription.subscription.unsubscribe();
     };
   }, []);
