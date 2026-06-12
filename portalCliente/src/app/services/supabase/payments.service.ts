@@ -100,18 +100,25 @@ export const supabasePaymentsService: IPaymentsService = {
       0
     );
 
-    // Obtener todos los pagos del cliente y sumar montopagado + servicios_extra
+    // Obtener todos los pagos del cliente via JOIN con corridafinanciera
+    // pagos -> corridafinanciera -> venta
     const { data: pagosData, error: pagosError } = await supabase
       .from('pagos')
-      .select('montopagado, servicios_extra, estatus')
-      .in('ventaid', (ventasData ?? []).map((v: any) => v.ventaid))
+      .select('montopagado, servicios_extra, estatus, corridafinancieraid(ventaid)')
       .neq('estatus', 'C');
 
     if (pagosError) {
       throw new Error(`Error al obtener pagos: ${pagosError.message}`);
     }
 
-    const totalPagado = (pagosData ?? []).reduce(
+    // Filtrar pagos que pertenecen al cliente (ventaid en la lista de ventas del cliente)
+    const ventaIds = new Set((ventasData ?? []).map((v: any) => v.ventaid));
+    const clientPagos = (pagosData ?? []).filter((p: any) => {
+      const cf = p.corridafinancieraid as any;
+      return cf && ventaIds.has(cf.ventaid);
+    });
+
+    const totalPagado = clientPagos.reduce(
       (sum: number, p: any) => sum + ((p.montopagado || 0) + (p.servicios_extra || 0)),
       0
     );
