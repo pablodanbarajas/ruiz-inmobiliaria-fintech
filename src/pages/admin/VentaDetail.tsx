@@ -801,7 +801,7 @@ export const VentaDetail = () => {
         )}
 
         {/* Resumen financiero */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-6 gap-4 mb-8">
           <div className="bg-white rounded-lg shadow p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Precio Total</p>
             <p className="text-xl md:text-2xl font-bold text-blue-600">{formatCurrency(venta.preciolote)}</p>
@@ -811,7 +811,7 @@ export const VentaDetail = () => {
             <p className="text-xl md:text-2xl font-bold text-green-600">{formatCurrency(totalPagado)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4 md:p-6">
-            <p className="text-sm text-gray-500 mb-2">Saldo Pendiente</p>
+            <p className="text-sm text-gray-500 mb-2">Deuda del Lote</p>
             <p className="text-xl md:text-2xl font-bold text-orange-600">{formatCurrency(saldoPendiente)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4 md:p-6">
@@ -827,7 +827,7 @@ export const VentaDetail = () => {
             </p>
           </div>
           <div className="bg-white rounded-lg shadow p-4 md:p-6">
-            <p className="text-sm text-gray-500 mb-2">Total a Pagar</p>
+            <p className="text-sm text-gray-500 mb-2">Total Adeudado</p>
             <p className="text-xl md:text-2xl font-bold text-red-600">{formatCurrency(totalAPagar)}</p>
           </div>
         </div>
