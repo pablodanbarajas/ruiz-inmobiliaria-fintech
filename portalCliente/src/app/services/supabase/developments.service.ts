@@ -1,4 +1,4 @@
-import { publicSupabase } from './publicClient';
+import { supabase } from './client';
 import type { IDevelopmentsService } from '../interfaces';
 import type { PublicDevelopment } from '../../types/development.types';
 
@@ -19,7 +19,7 @@ export const supabaseDevelopmentsService: IDevelopmentsService = {
     const ALLOWED_IDS = [11, 20]; // Pueblos de la Barranca, Desarrollo de Prueba
     const ORDER = [11, 20];
 
-    const { data, error } = await publicSupabase
+    const { data, error } = await supabase
       .from('public_developments')
       .select('*')
       .in('id', ALLOWED_IDS);

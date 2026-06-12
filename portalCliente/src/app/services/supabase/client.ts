@@ -9,5 +9,13 @@ if (!env.isSupabaseConfigured()) {
 
 export const supabase = createClient(
   env.SUPABASE_URL,
-  env.SUPABASE_ANON_KEY
+  env.SUPABASE_ANON_KEY,
+  {
+    auth: {
+      // Evitar rehydrate automático que causa race conditions
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  }
 );
