@@ -28,8 +28,12 @@ export function HomeContent({
     developmentsService
       .getPublicDevelopments()
       .then((data) => {
+        console.log('Desarrollos cargados:', data);
         setAllDevelopments(data);
         setDevelopments(data);
+      })
+      .catch((error) => {
+        console.error('Error al cargar desarrollos:', error);
       })
       .finally(() => setIsLoading(false));
   }, []);
