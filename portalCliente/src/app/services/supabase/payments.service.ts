@@ -84,7 +84,7 @@ export const supabasePaymentsService: IPaymentsService = {
 
     const nextPayment = pendingPayments.length > 0 ? pendingPayments[0] : null;
 
-    // Obtener TODAS las ventas del cliente y sus preciolote
+    // Obtener TODAS las ventas del cliente
     const { data: ventasData, error: ventasError } = await supabase
       .from('venta')
       .select('ventaid, preciolote, estatus')
@@ -95,13 +95,13 @@ export const supabasePaymentsService: IPaymentsService = {
       throw new Error(`Error al obtener ventas: ${ventasError.message}`);
     }
 
+    const ventaIds = new Set((ventasData ?? []).map((v: any) => v.ventaid));
     const totalPrecio = (ventasData ?? []).reduce(
       (sum: number, v: any) => sum + (v.preciolote || 0),
       0
     );
 
-    // Obtener todos los pagos del cliente via JOIN con corridafinanciera
-    // pagos -> corridafinanciera -> venta
+    // Obtener todos los pagos del cliente
     const { data: pagosData, error: pagosError } = await supabase
       .from('pagos')
       .select('montopagado, servicios_extra, estatus, corridafinancieraid(ventaid)')
@@ -111,8 +111,7 @@ export const supabasePaymentsService: IPaymentsService = {
       throw new Error(`Error al obtener pagos: ${pagosError.message}`);
     }
 
-    // Filtrar pagos que pertenecen al cliente (ventaid en la lista de ventas del cliente)
-    const ventaIds = new Set((ventasData ?? []).map((v: any) => v.ventaid));
+    // Filtrar pagos que pertenecen al cliente
     const clientPagos = (pagosData ?? []).filter((p: any) => {
       const cf = p.corridafinancieraid as any;
       return cf && ventaIds.has(cf.ventaid);
@@ -123,8 +122,33 @@ export const supabasePaymentsService: IPaymentsService = {
       0
     );
 
-    // Exacto como el admin: saldoPendiente = preciolote - totalPagado
-    const pendingBalance = Math.max(0, totalPrecio - totalPagado);
+    // Obtener todos los cargos_extra del cliente (filtrar por loteid en venta)
+    const { data: lotesData, error: lotesError } = await supabase
+      .from('lote')
+      .select('loteid')
+      .in('desarrolloid', 
+        (ventasData ?? []).map((v: any) => v.ventaid)
+          .map((vid: any) => {
+            // Este query es simplificado; idealmente necesitarías hacer JOIN
+            // pero Supabase tiene limitaciones. Alternativa: obtener lote desde vista
+          })
+      );
+
+    // Alternativa: obtener cargos_extra desde la vista_pagos_cliente (ya tiene cargo_extra_amount)
+    // Los cargos extra ya están en la vista, así que sumamos el cargo_extra_amount de TODAS las filas
+    const totalCargosExtras = rows.reduce(
+      (sum, row) => sum + (Number(row.cargo_extra_amount ?? 0) || 0),
+      0
+    );
+
+    // Obtener recargos: suma de recargo_pendiente de TODAS las filas pendientes
+    const totalRecargos = pendingPayments.reduce(
+      (sum, p) => sum + (p.breakdown?.recargo || 0),
+      0
+    );
+
+    // Total a pagar = (preciolote - pagado) + cargosExtras + recargos
+    const pendingBalance = Math.max(0, (totalPrecio - totalPagado) + totalCargosExtras + totalRecargos);
 
     return {
       nextPayment,

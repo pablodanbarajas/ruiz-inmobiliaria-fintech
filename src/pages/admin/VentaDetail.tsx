@@ -528,12 +528,34 @@ export const VentaDetail = () => {
     0
   )
   const saldoPendiente = (venta.preciolote || 0) - totalPagado
+  
+  // Calcular cargos extra totales aplicables
+  const today = new Date().toISOString().split('T')[0]
+  const totalCargosExtras = corridas.reduce((sum, corrida) => {
+    // Cargos extra aplicables: activos (no cancelados) y fecha <= fecha de corrida (solo en mensualidades)
+    const cargosAplicables = corrida.nopago !== 0
+      ? cargosExtra.filter((c) => c.estatus !== 'X' && c.fecha && corrida.fecha && c.fecha <= corrida.fecha)
+      : []
+    return sum + cargosAplicables.reduce((s, c) => s + (c.monto || 0), 0)
+  }, 0)
+  
+  // Calcular recargos totales
+  const totalRecargos = corridas.reduce((sum, corrida) => {
+    const totalPagadoCorrida = corrida.pagos
+      ?.filter((p) => p.estatus !== 'C')
+      .reduce((s, p) => s + getPagoAplicado(p), 0) ?? 0
+    const recargo = (!totalPagadoCorrida && corrida.fecha)
+      ? calcularRecargo(corrida.fecha)
+      : 0
+    return sum + recargo
+  }, 0)
+  
+  const totalAPagar = saldoPendiente + totalCargosExtras + totalRecargos
   const porcPagado = (venta.preciolote ?? 0) > 0 ? totalPagado / (venta.preciolote ?? 1) : 0
   const aplicaDevolucion = porcPagado > 0.20
   const montoDevolucion = (venta.preciolote ?? 0) * 0.20
 
   // Corridas vencidas sin pago activo (para alerta de cancelación)
-  const today = new Date().toISOString().split('T')[0]
   const corridasVencidas = corridas.filter((c) => {
     if (!c.fecha || c.fecha >= today || c.nopago === 0) return false
     const totalCorrida = c.pagos?.filter((p) => p.estatus !== 'C').reduce((s, p) => s + getPagoAplicado(p), 0) ?? 0
@@ -785,16 +807,28 @@ export const VentaDetail = () => {
             <p className="text-xl md:text-2xl font-bold text-blue-600">{formatCurrency(venta.preciolote)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4 md:p-6">
-            <p className="text-sm text-gray-500 mb-2">Mensualidad</p>
-            <p className="text-xl md:text-2xl font-bold text-[#504840]">{formatCurrency(venta.mensualidad)}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Total Pagado</p>
             <p className="text-xl md:text-2xl font-bold text-green-600">{formatCurrency(totalPagado)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Saldo Pendiente</p>
             <p className="text-xl md:text-2xl font-bold text-orange-600">{formatCurrency(saldoPendiente)}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 md:p-6">
+            <p className="text-sm text-gray-500 mb-2">Cargos Extra</p>
+            <p className={`text-xl md:text-2xl font-bold ${totalCargosExtras > 0 ? 'text-purple-600' : 'text-gray-400'}`}>
+              {formatCurrency(totalCargosExtras)}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 md:p-6">
+            <p className="text-sm text-gray-500 mb-2">Recargos</p>
+            <p className={`text-xl md:text-2xl font-bold ${totalRecargos > 0 ? 'text-orange-500' : 'text-gray-400'}`}>
+              {formatCurrency(totalRecargos)}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 md:p-6">
+            <p className="text-sm text-gray-500 mb-2">Total a Pagar</p>
+            <p className="text-xl md:text-2xl font-bold text-red-600">{formatCurrency(totalAPagar)}</p>
           </div>
         </div>
 
