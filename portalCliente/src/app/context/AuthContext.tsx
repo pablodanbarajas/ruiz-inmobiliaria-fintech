@@ -104,10 +104,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(false);
     });
 
+    // Listener de cambios de sesión con suppressErrors
     const { data: subscription } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        // Pequeño delay para evitar race conditions con otras queries
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        if (!isMounted) return;
         const baseSession = mapSupabaseSession(session);
         const enriched = await enrichWithClientData(baseSession);
+        if (!isMounted) return;
         setSession(enriched);
       }
     );
