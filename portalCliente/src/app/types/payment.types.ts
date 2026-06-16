@@ -27,9 +27,30 @@ export interface Payment {
   };
 }
 
+export interface LoteSummary {
+  lotId: number;
+  ventaid: number;
+  lotKey: string;
+  developmentName: string;
+  preciolote: number;
+  totalPagado: number;
+  saldoLote: number;        // preciolote - totalPagado (igual a admin "Deuda del Lote")
+  totalCargosExtras: number; // igual a admin "Cargos Extra"
+  totalRecargos: number;    // igual a admin "Recargos"
+  totalAdeudado: number;    // saldoLote + cargos + recargos (igual a admin "Total Adeudado")
+  pendingPayments: Payment[];
+  completedPayments: Payment[];
+}
+
 export interface PaymentSummary {
   pendingPayments: Payment[];
   completedPayments: Payment[];
+  /** Saldo total = totalPrecio - totalPagado (sin cargos/recargos) */
+  pendingBalance: number;
+  /** Total adeudado con cargos y recargos (coincide con admin) */
+  totalAdeudado: number;
+  /** Detalle por lote */
+  lotes: LoteSummary[];
 }
 
 // ---------------------------------------------------------------------------
