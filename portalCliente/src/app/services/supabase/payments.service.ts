@@ -196,8 +196,6 @@ export const supabasePaymentsService: IPaymentsService = {
   }
 };
 
-
-type ClientPaymentRow = {
   user_id: string;
   clienteid: number;
   ventaid: number;
