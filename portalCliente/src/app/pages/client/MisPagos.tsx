@@ -176,17 +176,6 @@ function LoteSection({
 
   return (
     <div className="mb-10">
-      {/* Encabezado del lote */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex items-center justify-center w-10 h-10 bg-teal-100 rounded-full">
-          <Home className="w-5 h-5 text-teal-700" />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-gray-900">{lote.lotKey}</h2>
-          <p className="text-sm text-gray-500">{lote.developmentName}</p>
-        </div>
-      </div>
-
       {/* Tarjetas resumen del lote (igual que admin) */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -288,6 +277,7 @@ export function MisPagos() {
   const [summary, setSummary] = useState<PaymentSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState(0);
 
   const handlePagar = async (pago: Payment) => {
     try {
@@ -329,9 +319,15 @@ export function MisPagos() {
 
   const { pendingPayments, lotes, totalAdeudado } = summary;
 
-  const proximoPago = [...pendingPayments].sort(
-    (a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime()
-  )[0];
+  // Próximo pago por cada lote
+  const proximosPorLote = lotes.map((lote) => {
+    const next = [...lote.pendingPayments].sort(
+      (a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime()
+    )[0];
+    return { lote, next };
+  });
+
+  const loteActivo = lotes[activeTab];
 
   return (
     <div className="max-w-7xl mx-auto px-8 py-4">
@@ -342,17 +338,29 @@ export function MisPagos() {
 
       {/* Cards globales */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <SummaryCard
-          title="Próximo pago"
-          value={proximoPago ? `$${proximoPago.amount.toLocaleString('es-MX')}` : 'N/A'}
-          subtitle={
-            proximoPago
-              ? `Vence el ${parseDate(proximoPago.date).toLocaleDateString('es-MX')}`
-              : 'Sin pagos próximos'
-          }
-          icon={Calendar}
-          color="orange"
-        />
+        {/* Próximos pagos — uno por lote */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="w-5 h-5 text-orange-500" />
+            <span className="text-sm font-semibold text-gray-700">Próximos pagos</span>
+          </div>
+          <div className="space-y-3">
+            {proximosPorLote.map(({ lote, next }) => (
+              <div key={lote.ventaid} className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">{lote.lotKey}</p>
+                  <p className="text-xs text-gray-400">
+                    {next ? `Vence el ${parseDate(next.date).toLocaleDateString('es-MX')}` : 'Sin pagos pendientes'}
+                  </p>
+                </div>
+                <span className="text-base font-bold text-gray-900">
+                  {next ? `$${next.amount.toLocaleString('es-MX')}` : '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <SummaryCard
           title="Total adeudado"
           value={fmt(totalAdeudado)}
@@ -362,16 +370,37 @@ export function MisPagos() {
         />
       </div>
 
-      {/* Sección por lote */}
-      {lotes.map((lote) => (
+      {/* Pestañas por lote */}
+      <div className="border-b border-gray-200 mb-6">
+        <div className="flex gap-0">
+          {lotes.map((lote, idx) => (
+            <button
+              key={lote.ventaid}
+              onClick={() => setActiveTab(idx)}
+              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === idx
+                  ? 'border-teal-700 text-teal-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Home className="w-4 h-4" />
+              <span>{lote.lotKey}</span>
+              <span className="text-xs text-gray-400">{lote.developmentName}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Contenido del lote activo */}
+      {loteActivo && (
         <LoteSection
-          key={lote.ventaid}
-          lote={lote}
+          lote={loteActivo}
           onPagar={handlePagar}
           payingId={payingId}
         />
-      ))}
+      )}
     </div>
   );
 }
+
 
