@@ -293,13 +293,15 @@ export function MisPagos() {
 
   useEffect(() => {
     if (!session.user) return;
+    // Si ya hay datos cargados, no recargar (evita refresh al cambiar de pestaña del navegador)
+    if (summary) return;
 
     setIsLoading(true);
     paymentsService
       .getClientPayments(session.user.id)
       .then(setSummary)
       .finally(() => setIsLoading(false));
-  }, [session.user]);
+  }, [session.user, summary]);
 
   if (isLoading || !summary) {
     return (
