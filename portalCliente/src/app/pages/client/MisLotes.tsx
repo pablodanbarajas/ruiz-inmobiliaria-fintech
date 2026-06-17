@@ -20,13 +20,15 @@ export function MisLotes() {
 
   useEffect(() => {
     if (!session.user) return;
+    // Si ya hay datos cargados, no recargar (evita refresh al cambiar de pestaña del navegador)
+    if (lots.length > 0) return;
 
     setIsLoading(true);
     lotsService
       .getClientLots(session.user.id)
       .then(setLots)
       .finally(() => setIsLoading(false));
-  }, [session.user]);
+  }, [session.user, lots]);
 
   const activeLots   = lots.filter((l) => l.status !== 'finalizado').length;
   const finishedLots = lots.filter((l) => l.status === 'finalizado').length;
