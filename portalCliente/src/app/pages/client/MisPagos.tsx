@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Calendar, DollarSign, FileText, Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, Home, CreditCard, TrendingDown, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
+import { Calendar, DollarSign, FileText, Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, Home } from 'lucide-react';
 
 const PAGE_SIZE = 5;
 
@@ -48,7 +48,7 @@ function Pagination({
   );
 }
 import { useAuth } from '../../hooks/useAuth';
-import { paymentsService } from '../../services';
+import { useData } from '../../context/DataContext';
 import type { Payment, PaymentStatus, PaymentSummary, LoteSummary } from '../../types/payment.types';
 import { SummaryCard } from '../../components/shared/SummaryCard';
 import { supabase } from '../../services/supabase/client';
@@ -273,9 +273,7 @@ function LoteSection({
 }
 
 export function MisPagos() {
-  const { session } = useAuth();
-  const [summary, setSummary] = useState<PaymentSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { paymentSummary: summary, paymentsLoading: isLoading } = useData();
   const [payingId, setPayingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
 
@@ -290,18 +288,6 @@ export function MisPagos() {
       setPayingId(null);
     }
   };
-
-  useEffect(() => {
-    if (!session.user) return;
-    // Si ya hay datos cargados, no recargar (evita refresh al cambiar de pestaña del navegador)
-    if (summary) return;
-
-    setIsLoading(true);
-    paymentsService
-      .getClientPayments(session.user.id)
-      .then(setSummary)
-      .finally(() => setIsLoading(false));
-  }, [session.user, summary]);
 
   if (isLoading || !summary) {
     return (

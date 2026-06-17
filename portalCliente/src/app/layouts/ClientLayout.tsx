@@ -3,6 +3,7 @@ import { Home, MapPin, CreditCard, MessageCircle } from 'lucide-react';
 import { Sidebar } from '../components/common/Sidebar';
 import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
+import { DataProvider } from '../context/DataContext';
 
 const clientMenuItems = [
   { path: '/home',           label: 'Home',      icon: Home },
@@ -24,7 +25,9 @@ export function ClientLayout() {
           />
 
           <main className="flex-1">
-            <Outlet />
+            <DataProvider>
+              <Outlet />
+            </DataProvider>
           </main>
         </div>
       </div>

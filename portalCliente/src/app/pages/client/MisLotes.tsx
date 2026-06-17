@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { MapPin, Calendar, CheckCircle } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
-import { lotsService } from '../../services';
+import { useData } from '../../context/DataContext';
 import type { ClientLot, LotStatus } from '../../types/lot.types';
 import { LotCard } from '../../components/lotes/LotCard';
 import { SummaryCard } from '../../components/shared/SummaryCard';
@@ -13,22 +12,8 @@ function parseDate(str: string): Date {
 }
 
 export function MisLotes() {
-  const { session } = useAuth();
-  const [lots, setLots] = useState<ClientLot[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { lots, lotsLoading: isLoading } = useData();
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('todos');
-
-  useEffect(() => {
-    if (!session.user) return;
-    // Si ya hay datos cargados, no recargar (evita refresh al cambiar de pestaña del navegador)
-    if (lots.length > 0) return;
-
-    setIsLoading(true);
-    lotsService
-      .getClientLots(session.user.id)
-      .then(setLots)
-      .finally(() => setIsLoading(false));
-  }, [session.user, lots]);
 
   const activeLots   = lots.filter((l) => l.status !== 'finalizado').length;
   const finishedLots = lots.filter((l) => l.status === 'finalizado').length;
