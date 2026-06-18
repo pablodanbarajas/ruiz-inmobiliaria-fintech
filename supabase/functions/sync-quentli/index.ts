@@ -116,33 +116,26 @@ Deno.serve(async (req: Request) => {
     if (customerRes.ok) {
       const customerData = await customerRes.json()
       quentliCustomerId = customerData.id ?? customerData.customerId ?? customerData.data?.id
-    } else if (customerRes.status === 409) {
-      // Cliente ya existe — intentar obtener el ID del cuerpo del 409
-      try {
-        const conflictData = await customerRes.json()
-        quentliCustomerId =
-          conflictData.id ??
-          conflictData.customerId ??
-          conflictData.data?.id ??
-          conflictData.data?.customerId
-      } catch { /* continuar con búsqueda */ }
+      console.log('Customer created, id:', quentliCustomerId)
+    } else {
+      // Cliente ya existe o error — intentar buscarlo por username sin importar el código
+      const errStatus = customerRes.status
+      let errBody = ''
+      try { errBody = await customerRes.text() } catch { /* ignorar */ }
+      console.log(`Customer POST failed (${errStatus}): ${errBody.substring(0, 200)} — buscando por username`)
 
-      // Si el 409 no devolvió el ID, buscar con distintos formatos de query
-      if (!quentliCustomerId) {
-        // Intento 1: GET por username directo (REST idiomático)
-        const directRes = await fetch(
-          `${QUENTLI_API}/v1/customers/${encodeURIComponent(String(clienteid))}`,
-          { headers: qHeaders },
-        )
-        console.log('direct lookup status:', directRes.status)
-        if (directRes.ok) {
-          const directData = await directRes.json()
-          console.log('direct lookup body:', JSON.stringify(directData).substring(0, 300))
-          quentliCustomerId =
-            directData.id ?? directData.customerId ?? directData.data?.id ?? directData.data?.customerId
-        }
+      // Intento 1: GET directo por username como path param
+      const directRes = await fetch(
+        `${QUENTLI_API}/v1/customers/${encodeURIComponent(String(clienteid))}`,
+        { headers: qHeaders },
+      )
+      if (directRes.ok) {
+        const d = await directRes.json()
+        quentliCustomerId = d.id ?? d.customerId ?? d.data?.id ?? d.data?.customerId
+        console.log('Found via direct lookup:', quentliCustomerId)
       }
 
+      // Intento 2: GET con query params si el directo no funcionó
       if (!quentliCustomerId) {
         const searchFormats = [
           `${QUENTLI_API}/v1/customers?username=${encodeURIComponent(String(clienteid))}`,
@@ -152,7 +145,7 @@ Deno.serve(async (req: Request) => {
         for (const url of searchFormats) {
           const listRes = await fetch(url, { headers: qHeaders })
           const bodyText = await listRes.text()
-          console.log(`search ${url} → ${listRes.status}: ${bodyText.substring(0, 300)}`)
+          console.log(`search ${url} → ${listRes.status}: ${bodyText.substring(0, 200)}`)
           if (listRes.ok) {
             try {
               const listData = JSON.parse(bodyText)
@@ -162,13 +155,10 @@ Deno.serve(async (req: Request) => {
                 listData[0]?.id ??
                 listData[0]?.customerId
               if (quentliCustomerId) break
-            } catch { /* ignorar parse error */ }
+            } catch { /* ignorar */ }
           }
         }
       }
-    } else {
-      const errBody = await customerRes.text()
-      throw new Error(`Error al crear cliente en Quentli: ${errBody}`)
     }
 
     if (!quentliCustomerId) {
