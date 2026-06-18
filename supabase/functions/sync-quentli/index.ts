@@ -156,7 +156,10 @@ Deno.serve(async (req: Request) => {
           displayName: `Mensualidad ${clavelote ?? ''} · Venta #${ventaid}`,
           amount: montocentavos,
           currency: 'MXN',
-          oneOff: true,
+          recurrentDetail: {
+            collectionInterval: 'MONTH',
+            chargeEach: 1,
+          },
         },
       }),
     })
