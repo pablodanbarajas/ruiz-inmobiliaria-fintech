@@ -74,6 +74,12 @@ Deno.serve(async (req: Request) => {
     const body = await req.json()
     const { action } = body
 
+    const apiKey = Deno.env.get('QUENTLI_API_KEY') ?? ''
+    const qHeaders = {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    }
+
     // ── MODO CANCELAR SUSCRIPCIÓN ────────────────────────────
     if (action === 'cancel') {
       const { subscriptionId: subToCancel } = body
@@ -117,12 +123,6 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Faltan campos requeridos: clienteid, mensualidad, plazo, fechaprimeramensualidad' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
-    }
-
-    const apiKey = Deno.env.get('QUENTLI_API_KEY') ?? ''
-    const qHeaders = {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
     }
 
     // ── 1. Crear cliente en Quentli (o buscarlo si ya existe) ────
