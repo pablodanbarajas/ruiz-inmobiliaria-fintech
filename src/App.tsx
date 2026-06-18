@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/context/AuthContext'
 import { ToastProvider } from '@/context/ToastContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { ScrollRestorer } from '@/components/ScrollRestorer'
 import { Login } from '@/pages/auth/Login'
 import { Dashboard } from '@/pages/admin/Dashboard'
 import { Desarrollos } from '@/pages/admin/Desarrollos'
@@ -35,6 +36,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <ToastProvider>
+          <ScrollRestorer />
           <Routes>
         {/* Auth Routes */}
         <Route path="/login" element={<Login />} />

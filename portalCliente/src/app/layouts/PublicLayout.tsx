@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router';
+import { Outlet, ScrollRestoration } from 'react-router';
 import { Home, MessageCircle } from 'lucide-react';
 import { Sidebar } from '../components/common/Sidebar';
 import { Header } from '../components/common/Header';
@@ -12,6 +12,7 @@ const publicMenuItems = [
 export function PublicLayout() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
+      <ScrollRestoration />
       <div className="flex flex-1">
         <Sidebar menuItems={publicMenuItems} />
 
