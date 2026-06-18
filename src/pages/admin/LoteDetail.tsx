@@ -229,7 +229,7 @@ export const LoteDetail = () => {
         const accessToken = sessionData.session?.access_token
 
         if (clienteData && accessToken) {
-          await fetch(
+          const syncRes = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-quentli`,
             {
               method: 'POST',
@@ -251,6 +251,15 @@ export const LoteDetail = () => {
               }),
             },
           )
+          if (syncRes.ok) {
+            const syncData = await syncRes.json()
+            if (syncData.quentliCustomerId || syncData.quentliSubscriptionId) {
+              await supabase.from('venta').update({
+                quentli_customer_id: syncData.quentliCustomerId ?? null,
+                quentli_subscription_id: syncData.quentliSubscriptionId ?? null,
+              }).eq('ventaid', ventaid)
+            }
+          }
         }
       } catch (quentliErr) {
         console.warn('Quentli sync omitida (no bloquea):', quentliErr)

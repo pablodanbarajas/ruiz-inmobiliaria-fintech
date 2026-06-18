@@ -122,6 +122,10 @@ Deno.serve(async (req: Request) => {
     ? parseInt(metadataMap['corridafinancieraid'], 10)
     : null
 
+  // Extraer subscriptionId (presente en pagos de suscripción automática)
+  const subscriptionId: string | null =
+    data?.subscriptionId ?? data?.subscription?.id ?? null
+
   if (!clienteid || isNaN(clienteid) || montopagado <= 0) {
     return new Response(
       JSON.stringify({ error: 'Datos insuficientes: se requiere customer.username y amount' }),
@@ -194,6 +198,20 @@ Deno.serve(async (req: Request) => {
     )
   }
 
+  // ── RUTA 1.5: Pago de suscripción — buscar por quentli_subscription_id (más preciso) ──
+  let ventaIdFromSub: number | null = null
+  if (subscriptionId) {
+    const { data: ventaSub } = await supabase
+      .from('venta')
+      .select('ventaid, mensualidad')
+      .eq('quentli_subscription_id', subscriptionId)
+      .maybeSingle()
+    if (ventaSub) {
+      ventaIdFromSub = ventaSub.ventaid
+      console.log('Venta encontrada por subscriptionId:', ventaIdFromSub)
+    }
+  }
+
   // ── RUTA 2: Pago de suscripción — buscar por cliente y monto ──
   // 1. Buscar venta activa del cliente que coincida con el monto
   const { data: ventas, error: ventaError } = await supabase
@@ -209,9 +227,11 @@ Deno.serve(async (req: Request) => {
     )
   }
 
-  // Priorizar la venta cuya mensualidad coincide con el monto pagado
-  const venta =
-    ventas.find((v) => Math.abs((v.mensualidad ?? 0) - montopagado) < 1) ?? ventas[0]
+  // Priorizar: subscriptionId match > mensualidad match > primera venta
+  const ventaByAmount = ventas.find((v) => Math.abs((v.mensualidad ?? 0) - montopagado) < 1) ?? ventas[0]
+  const venta = ventaIdFromSub
+    ? (ventas.find((v) => v.ventaid === ventaIdFromSub) ?? ventaByAmount)
+    : ventaByAmount
 
   // 2. Obtener corridas financieras pendientes de pago (nopago > 0)
   const { data: corridas, error: corridaError } = await supabase

@@ -107,6 +107,8 @@ export type Venta = {
   idempotencykey: string | null
   dias_tolerancia: number | null
   vendedor: string | null
+  quentli_customer_id: string | null
+  quentli_subscription_id: string | null
 }
 
 export type CorridaFinanciera = {
