@@ -297,69 +297,90 @@ export const Dashboard = () => {
           // Ultimas ventas
           const { data: vData } = await supabase
             .from('venta')
-            .select('ventaid, precio, estatus, cliente:clienteid(nombre), lote:loteid(manzana, nolote, clavelote, desarrolloid)')
+            .select('ventaid, preciolote, estatus, clienteid, loteid')
             .order('ventaid', { ascending: false })
             .limit(30)
 
-          const ventasFiltradas = DEMO_DESARROLLOIDS.length > 0
-            ? (vData || []).filter((v: any) => {
-                const lote = Array.isArray(v.lote) ? v.lote[0] : v.lote
-                return DEMO_DESARROLLOIDS.includes(lote?.desarrolloid)
-              })
-            : (vData || [])
+          if (vData && vData.length > 0) {
+            const loteIds = [...new Set((vData as any[]).map((v) => v.loteid).filter(Boolean))]
+            const clienteIds = [...new Set((vData as any[]).map((v) => v.clienteid).filter(Boolean))]
+            const [{ data: lotesData }, { data: clientesData }] = await Promise.all([
+              supabase.from('lote').select('loteid, manzana, nolote, clavelote, desarrolloid').in('loteid', loteIds),
+              supabase.from('cliente').select('clienteid, nombre').in('clienteid', clienteIds),
+            ])
+            const loteMap = new Map((lotesData || []).map((l: any) => [l.loteid, l]))
+            const clienteMap = new Map((clientesData || []).map((c: any) => [c.clienteid, c]))
 
-          setVentasRecientes(
-            ventasFiltradas.slice(0, 6).map((v: any) => {
-              const lote = Array.isArray(v.lote) ? v.lote[0] : v.lote
-              const cliente = Array.isArray(v.cliente) ? v.cliente[0] : v.cliente
-              return {
-                ventaid: v.ventaid,
-                precio: v.precio,
-                estatus: v.estatus,
-                clienteNombre: cliente?.nombre ?? `Cliente #${v.clienteid}`,
-                loteLabel: lote ? `Mza ${lote.manzana} – L${lote.nolote}${lote.clavelote ? ` (${lote.clavelote})` : ''}` : '—',
-              }
-            })
-          )
+            const ventasFiltradas = DEMO_DESARROLLOIDS.length > 0
+              ? (vData as any[]).filter((v) => DEMO_DESARROLLOIDS.includes(loteMap.get(v.loteid)?.desarrolloid))
+              : (vData as any[])
+
+            setVentasRecientes(
+              ventasFiltradas.slice(0, 6).map((v: any) => {
+                const lote = loteMap.get(v.loteid)
+                const cliente = clienteMap.get(v.clienteid)
+                return {
+                  ventaid: v.ventaid,
+                  precio: v.preciolote,
+                  estatus: v.estatus,
+                  clienteNombre: cliente?.nombre ?? `Cliente #${v.clienteid}`,
+                  loteLabel: lote ? `Mza ${lote.manzana} – L${lote.nolote}${lote.clavelote ? ` (${lote.clavelote})` : ''}` : '—',
+                }
+              })
+            )
+          } else {
+            setVentasRecientes([])
+          }
         } else {
           setVentasRecientes([])
         }
 
         if (canViewPagos) {
-          // Ultimos pagos
+          // Ultimos pagos — sin join embebido para evitar error 400 si no hay FK declarado
           const { data: pData } = await supabase
             .from('pagos')
-            .select('pagoid, montopagado, fecha, corridafinancieraid, corridafinanciera:corridafinancieraid(ventaid)')
+            .select('pagoid, montopagado, fecha, corridafinancieraid')
             .order('pagoid', { ascending: false })
             .limit(50)
 
-          const pagosConVenta = (pData || []).filter((p: any) => {
-            const cf = Array.isArray(p.corridafinanciera) ? p.corridafinanciera[0] : p.corridafinanciera
-            return cf?.ventaid != null
-          })
-          const ventaIds = [...new Set(pagosConVenta.map((p: any) => {
-            const cf = Array.isArray(p.corridafinanciera) ? p.corridafinanciera[0] : p.corridafinanciera
-            return cf?.ventaid as number
-          }))]
+          const corridaIds2 = [...new Set((pData || []).map((p: any) => p.corridafinancieraid).filter(Boolean))]
+          const { data: corridasData2 } = corridaIds2.length > 0
+            ? await supabase.from('corridafinanciera').select('corridafinancieraid, ventaid').in('corridafinancieraid', corridaIds2)
+            : { data: [] }
+
+          const corridaVentaMap = new Map<number, number>(
+            (corridasData2 || []).map((c: any) => [c.corridafinancieraid, c.ventaid])
+          )
+
+          const pagosConVenta = (pData || []).filter((p: any) => corridaVentaMap.has(p.corridafinancieraid))
+          const ventaIds = [...new Set(pagosConVenta.map((p: any) => corridaVentaMap.get(p.corridafinancieraid) as number))]
 
           if (ventaIds.length > 0) {
             const { data: ventasData } = await supabase
               .from('venta')
-              .select('ventaid, clienteid, cliente:clienteid(nombre), lote:loteid(manzana, nolote, desarrolloid)')
+              .select('ventaid, clienteid, loteid')
               .in('ventaid', ventaIds as number[])
+
+            const ventaLoteIds = [...new Set((ventasData || []).map((v: any) => v.loteid).filter(Boolean))]
+            const ventaClienteIds = [...new Set((ventasData || []).map((v: any) => v.clienteid).filter(Boolean))]
+            const [{ data: vLotesData }, { data: vClientesData }] = await Promise.all([
+              supabase.from('lote').select('loteid, manzana, nolote, desarrolloid').in('loteid', ventaLoteIds),
+              supabase.from('cliente').select('clienteid, nombre').in('clienteid', ventaClienteIds),
+            ])
+            const vLoteMap = new Map((vLotesData || []).map((l: any) => [l.loteid, l]))
+            const vClienteMap = new Map((vClientesData || []).map((c: any) => [c.clienteid, c]))
 
             const ventaMap = new Map<number, any>()
             for (const v of ventasData || []) ventaMap.set((v as any).ventaid, v)
 
             const pagosList: PagoReciente[] = []
             for (const p of pagosConVenta) {
-              const cf = Array.isArray(p.corridafinanciera) ? p.corridafinanciera[0] : p.corridafinanciera
-              const ventaid = cf?.ventaid as number
+              const ventaid = corridaVentaMap.get(p.corridafinancieraid) as number
               const venta = ventaMap.get(ventaid)
               if (!venta) continue
-              const lote = Array.isArray(venta.lote) ? venta.lote[0] : venta.lote
+              const lote = vLoteMap.get(venta.loteid)
               if (DEMO_DESARROLLOIDS.length > 0 && !DEMO_DESARROLLOIDS.includes(lote?.desarrolloid)) continue
-              const cliente = Array.isArray(venta.cliente) ? venta.cliente[0] : venta.cliente
+              const cliente = vClienteMap.get(venta.clienteid)
               pagosList.push({
                 pagoid: p.pagoid,
                 montopagado: p.montopagado,
