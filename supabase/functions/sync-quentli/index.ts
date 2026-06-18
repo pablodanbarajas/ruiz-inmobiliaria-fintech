@@ -115,16 +115,37 @@ Deno.serve(async (req: Request) => {
 
     if (customerRes.ok) {
       const customerData = await customerRes.json()
-      quentliCustomerId = customerData.id ?? customerData.customerId
+      quentliCustomerId = customerData.id ?? customerData.customerId ?? customerData.data?.id
     } else if (customerRes.status === 409) {
-      // Cliente ya existe — buscar por username
-      const listRes = await fetch(
-        `${QUENTLI_API}/v1/customers?filter[username]=${encodeURIComponent(String(clienteid))}`,
-        { headers: qHeaders },
-      )
-      if (listRes.ok) {
-        const listData = await listRes.json()
-        quentliCustomerId = listData.data?.[0]?.id ?? listData.data?.[0]?.customerId
+      // Cliente ya existe — intentar obtener el ID del cuerpo del 409
+      try {
+        const conflictData = await customerRes.json()
+        quentliCustomerId =
+          conflictData.id ??
+          conflictData.customerId ??
+          conflictData.data?.id ??
+          conflictData.data?.customerId
+      } catch { /* continuar con búsqueda */ }
+
+      // Si el 409 no devolvió el ID, buscar con distintos formatos de query
+      if (!quentliCustomerId) {
+        const searchFormats = [
+          `${QUENTLI_API}/v1/customers?username=${encodeURIComponent(String(clienteid))}`,
+          `${QUENTLI_API}/v1/customers?filter[username]=${encodeURIComponent(String(clienteid))}`,
+          `${QUENTLI_API}/v1/customers?search=${encodeURIComponent(String(clienteid))}`,
+        ]
+        for (const url of searchFormats) {
+          const listRes = await fetch(url, { headers: qHeaders })
+          if (listRes.ok) {
+            const listData = await listRes.json()
+            quentliCustomerId =
+              listData.data?.[0]?.id ??
+              listData.data?.[0]?.customerId ??
+              listData[0]?.id ??
+              listData[0]?.customerId
+            if (quentliCustomerId) break
+          }
+        }
       }
     } else {
       const errBody = await customerRes.text()
@@ -132,7 +153,8 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!quentliCustomerId) {
-      throw new Error('No se pudo obtener el ID del cliente en Quentli')
+      console.error('No se pudo obtener quentliCustomerId', { clienteid, status: customerRes.status })
+      throw new Error('No se pudo obtener el ID del cliente en Quentli — revisa los logs de la función')
     }
 
     // ── 2. Crear suscripción mensual en Quentli ────────────────
