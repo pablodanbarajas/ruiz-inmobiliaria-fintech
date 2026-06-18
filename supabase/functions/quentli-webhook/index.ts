@@ -51,22 +51,7 @@ Deno.serve(async (req: Request) => {
     })
   }
 
-  // 1. VALIDACIÓN DE SEGURIDAD: Verificar firma HMAC
-  const receivedSignature = req.headers.get('X-Quentli-Signature')
-  const quentliSecret = Deno.env.get('QUENTLI_WEBHOOK_SECRET') ?? ''
-
-  if (!receivedSignature || !quentliSecret) {
-    console.error('Missing signature header or secret', {
-      hasSignature: !!receivedSignature,
-      hasSecret: !!quentliSecret,
-    })
-    return new Response(JSON.stringify({ error: 'Missing security validation' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  // 2. Leer el body como texto (importante para validación de firma)
+  // 1. Leer el body como texto (necesario antes de cualquier validación de firma)
   let bodyText: string
   try {
     bodyText = await req.text()
@@ -77,17 +62,32 @@ Deno.serve(async (req: Request) => {
     })
   }
 
-  // 3. Verificar la firma
-  const isSignatureValid = await verifyQuentliSignature(bodyText, receivedSignature, quentliSecret)
-  if (!isSignatureValid) {
-    console.error('Invalid webhook signature', { signature: receivedSignature.substring(0, 10) + '...' })
-    return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    })
+  // 2. VALIDACIÓN DE SEGURIDAD: Verificar firma HMAC si el secreto está configurado
+  // Sin secreto → modo demo (Quentli demo no expone signing secret)
+  // Con secreto → producción, la firma es obligatoria
+  const quentliSecret = Deno.env.get('QUENTLI_WEBHOOK_SECRET') ?? ''
+
+  if (quentliSecret) {
+    const receivedSignature = req.headers.get('X-Quentli-Signature') ?? ''
+    if (!receivedSignature) {
+      return new Response(JSON.stringify({ error: 'Missing signature header' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    const isSignatureValid = await verifyQuentliSignature(bodyText, receivedSignature, quentliSecret)
+    if (!isSignatureValid) {
+      console.error('Invalid webhook signature', { signature: receivedSignature.substring(0, 10) + '...' })
+      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+  } else {
+    console.warn('QUENTLI_WEBHOOK_SECRET not set — running without signature validation (demo mode)')
   }
 
-  // 4. Parsear el JSON
+  // 3. Parsear el JSON
   let body: any
   try {
     body = JSON.parse(bodyText)
