@@ -1,14 +1,17 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { lotsService, paymentsService } from '../services';
+import { lotsService, paymentsService, developmentsService } from '../services';
 import type { ClientLot } from '../types/lot.types';
 import type { PaymentSummary } from '../types/payment.types';
+import type { PublicDevelopment } from '../types/development.types';
 
 interface DataContextValue {
   lots: ClientLot[];
   lotsLoading: boolean;
   paymentSummary: PaymentSummary | null;
   paymentsLoading: boolean;
+  developments: PublicDevelopment[];
+  developmentsLoading: boolean;
   refreshLots: () => void;
   refreshPayments: () => void;
 }
@@ -25,6 +28,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [paymentSummary, setPaymentSummary] = useState<PaymentSummary | null>(null);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [paymentsLoaded, setPaymentsLoaded] = useState(false);
+
+  const [developments, setDevelopments] = useState<PublicDevelopment[]>([]);
+  const [developmentsLoading, setDevelopmentsLoading] = useState(false);
+  const [developmentsLoaded, setDevelopmentsLoaded] = useState(false);
 
   const loadLots = useCallback((force = false) => {
     if (!session.user) return;
@@ -46,7 +53,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .finally(() => setPaymentsLoading(false));
   }, [session.user, paymentsLoaded]);
 
-  // Cargar datos en cuanto el usuario esté disponible
+  const loadDevelopments = useCallback((force = false) => {
+    if (developmentsLoaded && !force) return;
+    setDevelopmentsLoading(true);
+    developmentsService
+      .getPublicDevelopments()
+      .then((data) => { setDevelopments(data); setDevelopmentsLoaded(true); })
+      .catch(console.error)
+      .finally(() => setDevelopmentsLoading(false));
+  }, [developmentsLoaded]);
+
+  // Cargar desarrollos públicos inmediatamente (no requieren usuario)
+  useEffect(() => {
+    loadDevelopments();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cargar datos del cliente en cuanto el usuario esté disponible
   useEffect(() => {
     if (!session.user) return;
     loadLots();
@@ -64,7 +86,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [loadPayments]);
 
   return (
-    <DataContext.Provider value={{ lots, lotsLoading, paymentSummary, paymentsLoading, refreshLots, refreshPayments }}>
+    <DataContext.Provider value={{ lots, lotsLoading, paymentSummary, paymentsLoading, developments, developmentsLoading, refreshLots, refreshPayments }}>
       {children}
     </DataContext.Provider>
   );

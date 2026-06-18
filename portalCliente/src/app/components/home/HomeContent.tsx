@@ -8,15 +8,19 @@ import { DevelopmentCard } from './DevelopmentCard';
 type HomeContentProps = {
   isAuthenticated?: boolean;
   userName?: string | null;
+  initialDevelopments?: PublicDevelopment[];
+  developmentsLoading?: boolean;
 };
 
 export function HomeContent({
   isAuthenticated = false,
-  userName = null
+  userName = null,
+  initialDevelopments,
+  developmentsLoading: externalLoading,
 }: HomeContentProps) {
-  const [developments, setDevelopments] = useState<PublicDevelopment[]>([]);
-  const [allDevelopments, setAllDevelopments] = useState<PublicDevelopment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [developments, setDevelopments] = useState<PublicDevelopment[]>(initialDevelopments ?? []);
+  const [allDevelopments, setAllDevelopments] = useState<PublicDevelopment[]>(initialDevelopments ?? []);
+  const [isLoading, setIsLoading] = useState(initialDevelopments ? false : true);
   const [locationInput, setLocationInput] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
@@ -25,7 +29,14 @@ export function HomeContent({
   const locationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Esperar un frame antes de intentar cargar para evitar race conditions
+    // Si ya tenemos datos inyectados desde el contexto, no necesitamos cargar
+    if (initialDevelopments && initialDevelopments.length > 0) {
+      setAllDevelopments(initialDevelopments);
+      setDevelopments(initialDevelopments);
+      setIsLoading(false);
+      return;
+    }
+    // Fallback: cargar directamente si no vienen desde el contexto
     const timeoutId = setTimeout(() => {
       developmentsService
         .getPublicDevelopments()
@@ -40,9 +51,8 @@ export function HomeContent({
         })
         .finally(() => setIsLoading(false));
     }, 50);
-
     return () => clearTimeout(timeoutId);
-  }, []);
+  }, [initialDevelopments]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
