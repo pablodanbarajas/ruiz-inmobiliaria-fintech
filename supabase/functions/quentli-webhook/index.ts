@@ -115,6 +115,13 @@ Deno.serve(async (req: Request) => {
   const invoiceId: string = data?.invoiceId ?? ''
   const paymentType: string = data?.payment?.type ?? 'OTHER'
 
+  // Extraer corridafinancieraid del metadata (presente cuando el pago vino de "Pagar ahora")
+  const metadataList: Array<{ key: string; value: string }> = data?.metadata ?? []
+  const metadataMap = Object.fromEntries(metadataList.map((m: { key: string; value: string }) => [m.key, m.value]))
+  const corridaFromMetadata = metadataMap['corridafinancieraid']
+    ? parseInt(metadataMap['corridafinancieraid'], 10)
+    : null
+
   if (!clienteid || isNaN(clienteid) || montopagado <= 0) {
     return new Response(
       JSON.stringify({ error: 'Datos insuficientes: se requiere customer.username y amount' }),
@@ -127,6 +134,67 @@ Deno.serve(async (req: Request) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   )
 
+  // formapago: 4=Tarjeta, 2=Transferencia, 1=Efectivo
+  const formapago = paymentType === 'CARD' ? 4 : paymentType === 'TRANSFER' ? 2 : 1
+
+  // ── RUTA 1: corridafinancieraid viene en metadata (pago desde "Pagar ahora") ──
+  if (corridaFromMetadata && !isNaN(corridaFromMetadata)) {
+    // Verificar que la corrida no tenga ya un pago registrado (idempotencia)
+    const { data: pagoExistente } = await supabase
+      .from('pagos')
+      .select('pagoid')
+      .eq('corridafinancieraid', corridaFromMetadata)
+      .eq('estatus', 'P')
+      .maybeSingle()
+
+    if (pagoExistente) {
+      return new Response(
+        JSON.stringify({ ok: true, message: 'Pago ya registrado anteriormente', corridaFromMetadata }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const { data: corridaData } = await supabase
+      .from('corridafinanciera')
+      .select('corridafinancieraid, nopago, ventaid')
+      .eq('corridafinancieraid', corridaFromMetadata)
+      .single()
+
+    const { data: pago, error: pagoError } = await supabase
+      .from('pagos')
+      .insert({
+        corridafinancieraid: corridaFromMetadata,
+        fechapago: new Date().toISOString().split('T')[0],
+        montopagado,
+        formapago,
+        estatus: 'P',
+        referencia: invoiceId,
+        comentario: `Pago registrado automáticamente desde Quentli (${eventType})`,
+      })
+      .select()
+      .single()
+
+    if (pagoError) {
+      return new Response(
+        JSON.stringify({ error: `Error al insertar pago: ${pagoError.message}` }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      )
+    }
+
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        pagoid: pago.pagoid,
+        nopago: corridaData?.nopago,
+        ventaid: corridaData?.ventaid,
+        montopagado,
+        source: 'metadata',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    )
+  }
+
+  // ── RUTA 2: Pago de suscripción — buscar por cliente y monto ──
   // 1. Buscar venta activa del cliente que coincida con el monto
   const { data: ventas, error: ventaError } = await supabase
     .from('venta')
@@ -180,10 +248,6 @@ Deno.serve(async (req: Request) => {
     )
   }
 
-  // 4. Insertar registro en tabla pago
-  // formapago: 4=Tarjeta, 2=Transferencia, 1=Efectivo
-  const formapago = paymentType === 'CARD' ? 4 : paymentType === 'TRANSFER' ? 2 : 1
-
   const { data: pago, error: pagoError } = await supabase
     .from('pagos')
     .insert({
@@ -212,6 +276,7 @@ Deno.serve(async (req: Request) => {
       nopago: unpaid.nopago,
       ventaid: venta.ventaid,
       montopagado,
+      source: 'subscription',
     }),
     { status: 200, headers: { 'Content-Type': 'application/json' } },
   )
