@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
       'Content-Type': 'application/json',
     }
 
-    // ── 1. Crear cliente en Quentli ────────────────────────────
+    // ── 1. Crear cliente en Quentli (o buscarlo si ya existe) ────
     let quentliCustomerId: string | undefined
 
     const customerPayload: Record<string, any> = {
@@ -115,78 +115,80 @@ Deno.serve(async (req: Request) => {
 
     if (customerRes.ok) {
       const customerData = await customerRes.json()
-      quentliCustomerId = customerData.id ?? customerData.customerId ?? customerData.data?.id
+      // Respuesta: { customer: { id } }
+      quentliCustomerId = customerData.customer?.id ?? customerData.id
       console.log('Customer created, id:', quentliCustomerId)
     } else {
-      // Cliente ya existe o error — intentar buscarlo por username sin importar el código
+      // Cliente ya existe u otro error — buscar por username con qs filter (doc oficial)
       const errStatus = customerRes.status
       let errBody = ''
       try { errBody = await customerRes.text() } catch { /* ignorar */ }
       console.log(`Customer POST failed (${errStatus}): ${errBody.substring(0, 200)} — buscando por username`)
 
-      // Intento 1: GET directo por username como path param
-      const directRes = await fetch(
-        `${QUENTLI_API}/v1/customers/${encodeURIComponent(String(clienteid))}`,
-        { headers: qHeaders },
-      )
-      if (directRes.ok) {
-        const d = await directRes.json()
-        quentliCustomerId = d.id ?? d.customerId ?? d.data?.id ?? d.data?.customerId
-        console.log('Found via direct lookup:', quentliCustomerId)
-      }
-
-      // Intento 2: GET con query params si el directo no funcionó
-      if (!quentliCustomerId) {
-        const searchFormats = [
-          `${QUENTLI_API}/v1/customers?username=${encodeURIComponent(String(clienteid))}`,
-          `${QUENTLI_API}/v1/customers?filter[username]=${encodeURIComponent(String(clienteid))}`,
-          `${QUENTLI_API}/v1/customers?search=${encodeURIComponent(String(clienteid))}`,
-        ]
-        for (const url of searchFormats) {
-          const listRes = await fetch(url, { headers: qHeaders })
-          const bodyText = await listRes.text()
-          console.log(`search ${url} → ${listRes.status}: ${bodyText.substring(0, 200)}`)
-          if (listRes.ok) {
-            try {
-              const listData = JSON.parse(bodyText)
-              quentliCustomerId =
-                listData.data?.[0]?.id ??
-                listData.data?.[0]?.customerId ??
-                listData[0]?.id ??
-                listData[0]?.customerId
-              if (quentliCustomerId) break
-            } catch { /* ignorar */ }
-          }
-        }
+      // GET /v1/customers?filter[username][equals]=999999
+      const filterUrl = `${QUENTLI_API}/v1/customers?filter[username][equals]=${encodeURIComponent(String(clienteid))}`
+      const listRes = await fetch(filterUrl, { headers: qHeaders })
+      const listText = await listRes.text()
+      console.log(`customer search → ${listRes.status}: ${listText.substring(0, 300)}`)
+      if (listRes.ok) {
+        try {
+          const customers = JSON.parse(listText) // array según OpenAPI
+          quentliCustomerId = customers[0]?.id ?? customers.data?.[0]?.id
+          console.log('Found customer via filter, id:', quentliCustomerId)
+        } catch { /* ignorar */ }
       }
     }
 
     if (!quentliCustomerId) {
-      console.error('No se pudo obtener quentliCustomerId', { clienteid, status: customerRes.status })
-      throw new Error('No se pudo obtener el ID del cliente en Quentli — revisa los logs de la función')
+      console.error('No se pudo obtener quentliCustomerId', { clienteid })
+      throw new Error('No se pudo obtener el ID del cliente en Quentli')
     }
 
-    // ── 2. Crear suscripción mensual en Quentli ────────────────
+    // ── 2. Crear concepto de pago en Quentli ──────────────────
+    // Endpoint correcto: POST /v1/payment-concepts (no /v1/concepts)
     const montocentavos = Math.round(Number(mensualidad) * 100)
-    const fechaISO = new Date(`${fechaprimeramensualidad}T12:00:00`).toISOString()
 
-    const subscriptionPayload = {
-      input: {
-        customerId: quentliCustomerId,
-        description: `Mensualidades ${clavelote ?? ''} · Venta #${ventaid}`,
-        firstCollectionDate: fechaISO,
-        numberOfPayments: Number(plazo),
-        collectionMethod: 'SEND_REMINDER',
-        amount: montocentavos,
-        currency: 'MXN',
-      },
+    const conceptRes = await fetch(`${QUENTLI_API}/v1/payment-concepts`, {
+      method: 'POST',
+      headers: qHeaders,
+      body: JSON.stringify({
+        input: {
+          displayName: `Mensualidad ${clavelote ?? ''} · Venta #${ventaid}`,
+          amount: montocentavos,
+          currency: 'MXN',
+          oneOff: true,
+        },
+      }),
+    })
+
+    if (!conceptRes.ok) {
+      const conceptErr = await conceptRes.text()
+      throw new Error(`Error al crear concepto en Quentli: ${conceptErr}`)
     }
-    console.log('Subscription payload:', JSON.stringify(subscriptionPayload))
+    const conceptData = await conceptRes.json()
+    // Respuesta: { paymentConcept: { id } }
+    const conceptId: string = conceptData.paymentConcept?.id ?? conceptData.id
+    console.log('Concept created, id:', conceptId)
+
+    if (!conceptId) throw new Error('No se pudo obtener el conceptId de Quentli')
+
+    // ── 3. Crear suscripción mensual en Quentli ────────────────
+    // nextCollectionDate = primera fecha de cobro (doc: "Required when using recurring items")
+    const fechaISO = new Date(`${fechaprimeramensualidad}T12:00:00`).toISOString()
 
     const subscriptionRes = await fetch(`${QUENTLI_API}/v1/subscriptions`, {
       method: 'POST',
       headers: qHeaders,
-      body: JSON.stringify(subscriptionPayload),
+      body: JSON.stringify({
+        input: {
+          customerId: quentliCustomerId,
+          description: `Mensualidades ${clavelote ?? ''} · Venta #${ventaid}`,
+          nextCollectionDate: fechaISO,
+          numberOfPayments: Number(plazo),
+          collectionMethod: 'SEND_REMINDER',
+          items: [{ conceptId, quantity: 1 }],
+        },
+      }),
     })
 
     if (!subscriptionRes.ok) {
@@ -195,12 +197,15 @@ Deno.serve(async (req: Request) => {
     }
 
     const subscriptionData = await subscriptionRes.json()
+    // Respuesta: { subscription: { id } }
+    const subscriptionId = subscriptionData.subscription?.id ?? subscriptionData.id
 
     return new Response(
       JSON.stringify({
         ok: true,
         quentliCustomerId,
-        quentliSubscriptionId: subscriptionData.id,
+        quentliConceptId: conceptId,
+        quentliSubscriptionId: subscriptionId,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
