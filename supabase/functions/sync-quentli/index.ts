@@ -166,56 +166,27 @@ Deno.serve(async (req: Request) => {
       throw new Error('No se pudo obtener el ID del cliente en Quentli — revisa los logs de la función')
     }
 
-    // ── 2. Crear concepto en Quentli (requerido para la suscripción) ──
+    // ── 2. Crear suscripción mensual en Quentli ────────────────
     const montocentavos = Math.round(Number(mensualidad) * 100)
-    const conceptRes = await fetch(`${QUENTLI_API}/v1/concepts`, {
-      method: 'POST',
-      headers: qHeaders,
-      body: JSON.stringify({
-        input: {
-          displayName: `Mensualidad ${clavelote ?? ''} · Venta #${ventaid}`,
-          amount: montocentavos,
-          currency: 'MXN',
-        },
-      }),
-    })
-
-    let conceptId: string | undefined
-    if (conceptRes.ok) {
-      const conceptData = await conceptRes.json()
-      conceptId = conceptData.id ?? conceptData.conceptId ?? conceptData.data?.id
-      console.log('Concept created, id:', conceptId)
-    } else {
-      const conceptErr = await conceptRes.text()
-      console.error(`Concept creation failed (${conceptRes.status}): ${conceptErr}`)
-      throw new Error(`Error al crear concepto en Quentli: ${conceptErr}`)
-    }
-
-    if (!conceptId) {
-      throw new Error('No se pudo obtener el conceptId de Quentli')
-    }
-
-    // ── 3. Crear suscripción mensual en Quentli ────────────────
     const fechaISO = new Date(`${fechaprimeramensualidad}T12:00:00`).toISOString()
+
+    const subscriptionPayload = {
+      input: {
+        customerId: quentliCustomerId,
+        description: `Mensualidades ${clavelote ?? ''} · Venta #${ventaid}`,
+        firstCollectionDate: fechaISO,
+        numberOfPayments: Number(plazo),
+        collectionMethod: 'SEND_REMINDER',
+        amount: montocentavos,
+        currency: 'MXN',
+      },
+    }
+    console.log('Subscription payload:', JSON.stringify(subscriptionPayload))
 
     const subscriptionRes = await fetch(`${QUENTLI_API}/v1/subscriptions`, {
       method: 'POST',
       headers: qHeaders,
-      body: JSON.stringify({
-        input: {
-          customerId: quentliCustomerId,
-          description: `Mensualidades ${clavelote ?? ''} · Venta #${ventaid}`,
-          firstCollectionDate: fechaISO,
-          numberOfPayments: Number(plazo),
-          collectionMethod: 'SEND_REMINDER',
-          items: [
-            {
-              conceptId,
-              quantity: 1,
-            },
-          ],
-        },
-      }),
+      body: JSON.stringify(subscriptionPayload),
     })
 
     if (!subscriptionRes.ok) {
@@ -229,7 +200,6 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         ok: true,
         quentliCustomerId,
-        quentliConceptId: conceptId,
         quentliSubscriptionId: subscriptionData.id,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
