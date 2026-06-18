@@ -110,12 +110,12 @@ export const Dashboard = () => {
           const corridaIds = (corridasDemo || []).map((c: any) => c.corridafinancieraid)
 
           const { data: pagosDemo } = corridaIds.length
-            ? await supabase.from('pagos').select('montopagado, fecha').in('corridafinancieraid', corridaIds)
+            ? await supabase.from('pagos').select('montopagado, fechapago').in('corridafinancieraid', corridaIds)
             : { data: [] }
 
           const totalPagado = (pagosDemo || []).reduce((sum: number, p: any) => sum + (p.montopagado || 0), 0)
           const pagosDelMes = (pagosDemo || [])
-            .filter((p: any) => p.fecha >= firstOfMonth)
+            .filter((p: any) => p.fechapago >= firstOfMonth)
             .reduce((sum: number, p: any) => sum + (p.montopagado || 0), 0)
 
           setStats({
@@ -135,7 +135,7 @@ export const Dashboard = () => {
             supabase.from('pagos').select('montopagado'),
             supabase.from('lote').select('*', { count: 'exact', head: true }).eq('estatus', 'D'),
             supabase.from('venta').select('*', { count: 'exact', head: true }).eq('estatus', 'A'),
-            supabase.from('pagos').select('montopagado').gte('fecha', firstOfMonth),
+            supabase.from('pagos').select('montopagado').gte('fechapago', firstOfMonth),
           ])
 
           const totalPagado = pagosRes.data?.reduce((sum, p) => sum + (p.montopagado || 0), 0) || 0
@@ -339,7 +339,7 @@ export const Dashboard = () => {
           // Ultimos pagos — sin join embebido para evitar error 400 si no hay FK declarado
           const { data: pData } = await supabase
             .from('pagos')
-            .select('pagoid, montopagado, fecha, corridafinancieraid')
+            .select('pagoid, montopagado, fechapago, corridafinancieraid')
             .order('pagoid', { ascending: false })
             .limit(50)
 
@@ -384,7 +384,7 @@ export const Dashboard = () => {
               pagosList.push({
                 pagoid: p.pagoid,
                 montopagado: p.montopagado,
-                fecha: p.fecha,
+                fecha: p.fechapago,
                 clienteNombre: cliente?.nombre ?? `Cliente #${venta.clienteid}`,
                 loteLabel: lote ? `Mza ${lote.manzana} – L${lote.nolote}` : '—',
                 ventaid,
