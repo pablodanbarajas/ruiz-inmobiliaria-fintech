@@ -212,38 +212,30 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // ── RUTA 2: Pago de suscripción — buscar por cliente y monto ──
-  // 1. Buscar venta activa del cliente que coincida con el monto
-  const { data: ventas, error: ventaError } = await supabase
-    .from('venta')
-    .select('ventaid, mensualidad')
-    .eq('clienteid', clienteid)
-    .eq('estatus', 'A')
-
-  if (ventaError || !ventas || ventas.length === 0) {
+  // ── RUTA 2: Pago de suscripción — solo por subscriptionId (nunca por monto) ──
+  if (!ventaIdFromSub) {
+    console.error('subscriptionId no encontrado en DB', { subscriptionId, clienteid })
     return new Response(
-      JSON.stringify({ error: 'No se encontró venta activa', clienteid }),
-      { status: 404, headers: { 'Content-Type': 'application/json' } },
+      JSON.stringify({
+        error: 'No se pudo identificar la venta: subscriptionId no registrado',
+        subscriptionId,
+        hint: 'Asegúrate de que quentli_subscription_id esté guardado en la tabla venta',
+      }),
+      { status: 422, headers: { 'Content-Type': 'application/json' } },
     )
   }
 
-  // Priorizar: subscriptionId match > mensualidad match > primera venta
-  const ventaByAmount = ventas.find((v) => Math.abs((v.mensualidad ?? 0) - montopagado) < 1) ?? ventas[0]
-  const venta = ventaIdFromSub
-    ? (ventas.find((v) => v.ventaid === ventaIdFromSub) ?? ventaByAmount)
-    : ventaByAmount
-
-  // 2. Obtener corridas financieras pendientes de pago (nopago > 0)
+  // Obtener corridas financieras pendientes de pago (nopago > 0)
   const { data: corridas, error: corridaError } = await supabase
     .from('corridafinanciera')
     .select('corridafinancieraid, nopago, fecha, mensualidad')
-    .eq('ventaid', venta.ventaid)
+    .eq('ventaid', ventaIdFromSub)
     .gt('nopago', 0)
     .order('nopago', { ascending: true })
 
   if (corridaError || !corridas) {
     return new Response(
-      JSON.stringify({ error: 'Error al obtener corrida financiera', ventaid: venta.ventaid }),
+      JSON.stringify({ error: 'Error al obtener corrida financiera', ventaid: ventaIdFromSub }),
       { status: 500, headers: { 'Content-Type': 'application/json' } },
     )
   }
@@ -263,7 +255,7 @@ Deno.serve(async (req: Request) => {
 
   if (!unpaid) {
     return new Response(
-      JSON.stringify({ ok: true, message: 'Todos los pagos ya están registrados', ventaid: venta.ventaid }),
+      JSON.stringify({ ok: true, message: 'Todos los pagos ya están registrados', ventaid: ventaIdFromSub }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     )
   }
@@ -294,7 +286,7 @@ Deno.serve(async (req: Request) => {
       ok: true,
       pagoid: pago.pagoid,
       nopago: unpaid.nopago,
-      ventaid: venta.ventaid,
+      ventaid: ventaIdFromSub,
       montopagado,
       source: 'subscription',
     }),

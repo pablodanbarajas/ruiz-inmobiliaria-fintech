@@ -70,7 +70,36 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    // Datos de la venta a sincronizar
+    // Datos de la solicitud
+    const body = await req.json()
+    const { action } = body
+
+    // ── MODO CANCELAR SUSCRIPCIÓN ────────────────────────────
+    if (action === 'cancel') {
+      const { subscriptionId: subToCancel } = body
+      if (!subToCancel) {
+        return new Response(
+          JSON.stringify({ error: 'Falta subscriptionId para cancelar' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
+      }
+      const cancelRes = await fetch(`${QUENTLI_API}/v1/subscriptions/${subToCancel}`, {
+        method: 'DELETE',
+        headers: qHeaders,
+        body: JSON.stringify({ input: { customCancelReason: 'Venta cancelada en sistema' } }),
+      })
+      if (!cancelRes.ok) {
+        const cancelErr = await cancelRes.text()
+        throw new Error(`Error al cancelar suscripción en Quentli: ${cancelErr}`)
+      }
+      console.log('Suscripción cancelada en Quentli:', subToCancel)
+      return new Response(
+        JSON.stringify({ ok: true, cancelled: subToCancel }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    // ── MODO CREAR SUSCRIPCIÓN (default) ────────────────────
     const {
       clienteid,
       nombre,
@@ -81,7 +110,7 @@ Deno.serve(async (req: Request) => {
       mensualidad,
       plazo,
       fechaprimeramensualidad,
-    } = await req.json()
+    } = body
 
     if (!clienteid || !mensualidad || !plazo || !fechaprimeramensualidad) {
       return new Response(

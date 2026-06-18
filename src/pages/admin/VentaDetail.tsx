@@ -349,6 +349,34 @@ export const VentaDetail = () => {
       }
 
       setShowCancelModal(false)
+
+      // 4. Cancelar suscripción en Quentli si existe
+      if (venta.quentli_subscription_id) {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession()
+          const accessToken = sessionData.session?.access_token
+          if (accessToken) {
+            await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-quentli`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${accessToken}`,
+                  apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+                },
+                body: JSON.stringify({
+                  action: 'cancel',
+                  subscriptionId: venta.quentli_subscription_id,
+                }),
+              },
+            )
+          }
+        } catch (qErr) {
+          console.warn('No se pudo cancelar suscripción en Quentli (no bloquea):', qErr)
+        }
+      }
+
       // Refetch
       const { data: ventaData } = await supabase
         .from('venta')
