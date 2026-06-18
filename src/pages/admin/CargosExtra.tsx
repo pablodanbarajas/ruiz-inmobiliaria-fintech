@@ -26,6 +26,7 @@ interface AplicarCargoForm {
   concepto: string
   monto: string
   fecha: string
+  fecha_fin: string
 }
 
 const today = () => new Date().toISOString().split('T')[0]
@@ -71,6 +72,7 @@ export const CargosExtra = () => {
     concepto: '',
     monto: '',
     fecha: today(),
+    fecha_fin: '',
   })
   const [lotesPreview, setLotesPreview] = useState<{ loteid: number; manzana: string | null; nolote: string | null; clavelote: string | null }[]>([])
   const [loadingPreview, setLoadingPreview] = useState(false)
@@ -167,7 +169,9 @@ export const CargosExtra = () => {
     if (!aplicarForm.concepto.trim()) e.concepto = 'El concepto es requerido'
     const monto = parseFloat(aplicarForm.monto)
     if (isNaN(monto) || monto <= 0) e.monto = 'Ingresa un monto válido mayor a 0'
-    if (!aplicarForm.fecha) e.fecha = 'La fecha es requerida'
+    if (!aplicarForm.fecha) e.fecha = 'La fecha de inicio es requerida'
+    if (aplicarForm.fecha_fin && aplicarForm.fecha_fin <= aplicarForm.fecha)
+      e.fecha_fin = 'La fecha de fin debe ser posterior a la fecha de inicio'
     if (lotesPreview.length === 0) e.desarrolloid = 'No hay lotes registrados en este desarrollo'
     setFormErrors(e)
     return Object.keys(e).length === 0
@@ -203,6 +207,7 @@ export const CargosExtra = () => {
         concepto: aplicarForm.concepto.trim(),
         monto,
         fecha: aplicarForm.fecha,
+        fecha_fin: aplicarForm.fecha_fin || null,
         estatus: 'P',
       }))
 
@@ -211,7 +216,7 @@ export const CargosExtra = () => {
 
       const omitidos = existingSet.size
       setShowAplicarModal(false)
-      setAplicarForm({ desarrolloid: '', concepto: '', monto: '', fecha: today() })
+      setAplicarForm({ desarrolloid: '', concepto: '', monto: '', fecha: today(), fecha_fin: '' })
       setLotesPreview([])
       fetchCargos()
       if (omitidos > 0) {
@@ -315,6 +320,7 @@ export const CargosExtra = () => {
                     <th className="px-6 py-3">Concepto</th>
                     <th className="px-6 py-3">Monto</th>
                     <th className="px-6 py-3">Fecha inicio</th>
+                    <th className="px-6 py-3">Fecha fin</th>
                     <th className="px-6 py-3">Estatus</th>
                     <th className="px-6 py-3">Acciones</th>
                   </tr>
@@ -337,6 +343,9 @@ export const CargosExtra = () => {
                         {formatCurrency(cargo.monto)}
                       </td>
                       <td className="px-6 py-4 text-gray-600">{formatDate(cargo.fecha)}</td>
+                      <td className="px-6 py-4 text-gray-600">
+                        {cargo.fecha_fin ? formatDate(cargo.fecha_fin) : <span className="text-gray-300">Sin límite</span>}
+                      </td>
                       <td className="px-6 py-4">
                         <span
                           className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${getCargoStatusColor(cargo.estatus)}`}
@@ -526,6 +535,24 @@ export const CargosExtra = () => {
                 />
                 {formErrors.fecha && (
                   <p className="text-red-500 text-xs mt-1">{formErrors.fecha}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Fecha de fin{' '}
+                  <span className="text-gray-400 font-normal">(opcional — vacío = sin límite)</span>
+                </label>
+                <Input
+                  type="date"
+                  value={aplicarForm.fecha_fin}
+                  min={aplicarForm.fecha || undefined}
+                  onChange={(e) =>
+                    setAplicarForm({ ...aplicarForm, fecha_fin: e.target.value })
+                  }
+                  disabled={isSubmitting}
+                />
+                {formErrors.fecha_fin && (
+                  <p className="text-red-500 text-xs mt-1">{formErrors.fecha_fin}</p>
                 )}
               </div>
             </div>

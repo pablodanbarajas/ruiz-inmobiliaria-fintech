@@ -215,7 +215,8 @@ export type CargoExtra = {
   desarrolloid: number | null
   concepto: string
   monto: number
-  fecha: string               // fecha de inicio del cargo (se cobra mensualmente a partir de aquí)
+  fecha: string               // fecha de inicio del cargo
+  fecha_fin: string | null    // fecha de fin del cargo (null = sin límite)
   estatus: string | null      // P: Pendiente | C: Cobrado | X: Cancelado
   fecha_pago: string | null
   referencia: string | null

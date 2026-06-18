@@ -534,7 +534,8 @@ export const VentaDetail = () => {
   const totalCargosExtras = corridas.reduce((sum, corrida) => {
     // Cargos extra aplicables: no cancelados por error (estatus != 'X') y fecha <= fecha de corrida (solo en mensualidades)
     const cargosAplicables = corrida.nopago !== 0
-      ? cargosExtra.filter((c) => c.estatus !== 'X' && c.fecha && corrida.fecha && c.fecha <= corrida.fecha)
+      ? cargosExtra.filter((c) => c.estatus !== 'X' && c.fecha && corrida.fecha && c.fecha <= corrida.fecha
+          && (!c.fecha_fin || c.fecha_fin >= corrida.fecha))
       : []
     return sum + cargosAplicables.reduce((s, c) => s + (c.monto || 0), 0)
   }, 0)
@@ -960,6 +961,7 @@ export const VentaDetail = () => {
                     const cargosAplicables = corrida.nopago !== 0
                       ? cargosExtra.filter(
                           (c) => c.estatus !== 'X' && c.fecha && corrida.fecha && c.fecha <= corrida.fecha
+                            && (!c.fecha_fin || c.fecha_fin >= corrida.fecha)
                         )
                       : []
                     const totalCargosExtras = cargosAplicables.reduce((s, c) => s + (c.monto || 0), 0)

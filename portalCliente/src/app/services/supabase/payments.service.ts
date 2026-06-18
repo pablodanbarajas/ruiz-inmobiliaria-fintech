@@ -52,7 +52,7 @@ export const supabasePaymentsService: IPaymentsService = {
     // 4. Obtener cargos_extra para todos los lotes (excluir solo 'X' = error administrativo)
     const { data: cargosData, error: cargosError } = await supabase
       .from('cargos_extra')
-      .select('cargoid, loteid, monto, estatus, fecha')
+      .select('cargoid, loteid, monto, estatus, fecha, fecha_fin')
       .in('loteid', loteIds)
       .neq('estatus', 'X');
 
@@ -117,10 +117,11 @@ export const supabasePaymentsService: IPaymentsService = {
         const pagoCorrida = pagosPorCorrida.get(corrida.corridafinancieraid);
         const totalPagadoCorrida = pagoCorrida?.total ?? 0;
 
-        // Cargos aplicables a esta corrida (igual que admin)
+        // Cargos aplicables a esta corrida (igual que admin: fecha_inicio <= corrida.fecha <= fecha_fin)
         const cargosAplicables = corrida.nopago !== 0
           ? loteCargos.filter(
               (c: any) => c.fecha && corrida.fecha && c.fecha <= corrida.fecha
+                && (!c.fecha_fin || c.fecha_fin >= corrida.fecha)
             )
           : [];
         const cargoExtraAmount = cargosAplicables.reduce((s: number, c: any) => s + (c.monto || 0), 0);
