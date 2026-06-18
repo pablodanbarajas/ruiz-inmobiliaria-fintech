@@ -129,6 +129,21 @@ Deno.serve(async (req: Request) => {
 
       // Si el 409 no devolvió el ID, buscar con distintos formatos de query
       if (!quentliCustomerId) {
+        // Intento 1: GET por username directo (REST idiomático)
+        const directRes = await fetch(
+          `${QUENTLI_API}/v1/customers/${encodeURIComponent(String(clienteid))}`,
+          { headers: qHeaders },
+        )
+        console.log('direct lookup status:', directRes.status)
+        if (directRes.ok) {
+          const directData = await directRes.json()
+          console.log('direct lookup body:', JSON.stringify(directData).substring(0, 300))
+          quentliCustomerId =
+            directData.id ?? directData.customerId ?? directData.data?.id ?? directData.data?.customerId
+        }
+      }
+
+      if (!quentliCustomerId) {
         const searchFormats = [
           `${QUENTLI_API}/v1/customers?username=${encodeURIComponent(String(clienteid))}`,
           `${QUENTLI_API}/v1/customers?filter[username]=${encodeURIComponent(String(clienteid))}`,
@@ -136,14 +151,18 @@ Deno.serve(async (req: Request) => {
         ]
         for (const url of searchFormats) {
           const listRes = await fetch(url, { headers: qHeaders })
+          const bodyText = await listRes.text()
+          console.log(`search ${url} → ${listRes.status}: ${bodyText.substring(0, 300)}`)
           if (listRes.ok) {
-            const listData = await listRes.json()
-            quentliCustomerId =
-              listData.data?.[0]?.id ??
-              listData.data?.[0]?.customerId ??
-              listData[0]?.id ??
-              listData[0]?.customerId
-            if (quentliCustomerId) break
+            try {
+              const listData = JSON.parse(bodyText)
+              quentliCustomerId =
+                listData.data?.[0]?.id ??
+                listData.data?.[0]?.customerId ??
+                listData[0]?.id ??
+                listData[0]?.customerId
+              if (quentliCustomerId) break
+            } catch { /* ignorar parse error */ }
           }
         }
       }
