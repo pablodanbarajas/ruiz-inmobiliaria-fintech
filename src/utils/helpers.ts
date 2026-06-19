@@ -165,7 +165,7 @@ export const calcularRecargo = (fechaVencimiento: string, fechaPago?: string, di
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
   const effectiveDays = diffDays - diasTolerancia
   if (effectiveDays <= 0) return 0
-  return Math.floor(effectiveDays / 7) * 150
+  return Math.ceil(effectiveDays / 6) * 150
 }
 
 export const FORMAS_PAGO = [

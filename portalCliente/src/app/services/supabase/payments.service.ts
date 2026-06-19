@@ -9,8 +9,8 @@ function calcularRecargo(fechaVencimiento: string, diasTolerancia: number = 0): 
   hoy.setHours(12, 0, 0, 0);
   const diasAtraso = Math.floor((hoy.getTime() - vencimiento.getTime()) / (1000 * 60 * 60 * 24)) - diasTolerancia;
   if (diasAtraso <= 0) return 0;
-  const semanas = Math.floor(diasAtraso / 7);
-  return semanas * 150; // $150 por cada semana completa de mora
+  const semanas = Math.ceil(diasAtraso / 6);
+  return semanas * 150; // $150 inmediato al 1er día, +$150 cada 6 días adicionales
 }
 
 export const supabasePaymentsService: IPaymentsService = {
