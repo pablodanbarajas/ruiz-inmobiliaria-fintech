@@ -116,8 +116,6 @@ Deno.serve(async (req: Request) => {
         customer: {
           name: cliente?.nombre ?? `Cliente ${row.clienteid}`,
           externalId: String(row.clienteid),
-          ...(cliente?.email ? { email: cliente.email } : {}),
-          ...(toE164(cliente?.telefonocelular) ? { phoneNumber: toE164(cliente?.telefonocelular) } : {}),
         },
         items: [
           {
