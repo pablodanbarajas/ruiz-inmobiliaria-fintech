@@ -128,7 +128,7 @@ export const supabasePaymentsService: IPaymentsService = {
         totalCargosExtrasCount += cargoExtraAmount;
 
         const recargo = totalPagadoCorrida === 0 && corrida.fecha
-          ? calcularRecargo(corrida.fecha, venta.dias_tolerancia ?? 3)
+          ? calcularRecargo(corrida.fecha, venta.dias_tolerancia ?? 0)
           : 0;
 
         const esPagado = totalPagadoCorrida > 0;
