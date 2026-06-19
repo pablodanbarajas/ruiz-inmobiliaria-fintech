@@ -102,7 +102,6 @@ Deno.serve(async (req: Request) => {
     const recargo = Number(row.recargo_pendiente ?? 0)
     const totalCentavos = Math.round((base + extra + recargo) * 100)
 
-    const dueDate = new Date().toISOString() // Hoy → Quentli lo acepta de inmediato
     const dueDateLabel = row.due_date        // Fecha real para mostrar en descripción
 
     const apiKey = Deno.env.get('QUENTLI_API_KEY') ?? ''
@@ -111,36 +110,21 @@ Deno.serve(async (req: Request) => {
       'Content-Type': 'application/json',
     }
 
-    // ── Asegurar que el cliente existe en Quentli (upsert) ──────
-    // Si el cliente ya existe Quentli puede devolver 400 o 409 — en ambos casos ignoramos
-    const customerPayload: Record<string, any> = {
-      username: String(row.clienteid),
-      name: cliente?.nombre ?? `Cliente ${row.clienteid}`,
-    }
-    if (cliente?.email) customerPayload.email = cliente.email
-    const e164 = toE164(cliente?.telefonocelular)
-    if (e164) customerPayload.phoneNumber = e164
-
-    await fetch(`${QUENTLI_API}/v1/customers`, {
-      method: 'POST',
-      headers: qHeaders,
-      body: JSON.stringify({ input: customerPayload }),
-    })
-    // Ignoramos el resultado: si creó → bien; si ya existía (400/409) → también bien
-
+    // payment-sessions resuelve/crea el cliente automáticamente via externalId
     const body: Record<string, any> = {
       input: {
         customer: {
           name: cliente?.nombre ?? `Cliente ${row.clienteid}`,
-          username: String(row.clienteid),
+          externalId: String(row.clienteid),
+          ...(cliente?.email ? { email: cliente.email } : {}),
+          ...(toE164(cliente?.telefonocelular) ? { phoneNumber: toE164(cliente?.telefonocelular) } : {}),
         },
-        dueDate,
-        collectionMethod: 'SEND_REMINDER',
         items: [
           {
             description: `${row.payment_type ?? 'Mensualidad'} · ${row.lot_key ?? ''} (vence ${dueDateLabel})`,
             amount: totalCentavos,
             quantity: 1,
+            currency: 'MXN',
           },
         ],
         metadata: [
@@ -148,10 +132,11 @@ Deno.serve(async (req: Request) => {
           { key: 'ventaid', value: String(row.ventaid) },
           { key: 'clienteid', value: String(row.clienteid) },
         ],
+        returnUrl: `${Deno.env.get('PORTAL_URL') ?? 'https://ruiz-inmobiliaria-fintech.vercel.app/portal'}/mis-pagos`,
       },
     }
 
-    const res = await fetch(`${QUENTLI_API}/v1/invoice-payment-sessions`, {
+    const res = await fetch(`${QUENTLI_API}/v1/payment-sessions`, {
       method: 'POST',
       headers: qHeaders,
       body: JSON.stringify(body),
