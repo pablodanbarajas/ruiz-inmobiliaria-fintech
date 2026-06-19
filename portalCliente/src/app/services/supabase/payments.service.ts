@@ -3,7 +3,7 @@ import type { IPaymentsService } from '../interfaces';
 import type { Payment, PaymentSummary, PaymentStatus, LoteSummary } from '../../types/payment.types';
 
 // Helper: calcular recargo igual que el admin (calcularRecargo en helpers.ts)
-function calcularRecargo(fechaVencimiento: string, diasTolerancia: number = 3): number {
+function calcularRecargo(fechaVencimiento: string, diasTolerancia: number = 0): number {
   const vencimiento = new Date(fechaVencimiento + 'T12:00:00');
   const hoy = new Date();
   hoy.setHours(12, 0, 0, 0);
