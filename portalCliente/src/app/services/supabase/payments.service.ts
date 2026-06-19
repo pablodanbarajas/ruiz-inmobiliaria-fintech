@@ -7,10 +7,10 @@ function calcularRecargo(fechaVencimiento: string, diasTolerancia: number = 3): 
   const vencimiento = new Date(fechaVencimiento + 'T12:00:00');
   const hoy = new Date();
   hoy.setHours(12, 0, 0, 0);
-  const diasAtraso = Math.floor((hoy.getTime() - vencimiento.getTime()) / (1000 * 60 * 60 * 24));
-  if (diasAtraso <= diasTolerancia) return 0;
-  const diasMora = diasAtraso - diasTolerancia;
-  return diasMora * 50; // $50 por día de atraso
+  const diasAtraso = Math.floor((hoy.getTime() - vencimiento.getTime()) / (1000 * 60 * 60 * 24)) - diasTolerancia;
+  if (diasAtraso <= 0) return 0;
+  const periodos6dias = Math.floor(diasAtraso / 6);
+  return periodos6dias * 150; // $150 por cada bloque completo de 6 días de mora
 }
 
 export const supabasePaymentsService: IPaymentsService = {
