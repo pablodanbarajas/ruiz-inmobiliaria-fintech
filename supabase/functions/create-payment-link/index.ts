@@ -130,7 +130,7 @@ Deno.serve(async (req: Request) => {
           { key: 'ventaid', value: String(row.ventaid) },
           { key: 'clienteid', value: String(row.clienteid) },
         ],
-        returnUrl: `${Deno.env.get('PORTAL_URL') ?? 'https://ruiz-inmobiliaria-fintech.vercel.app/portal'}/mis-pagos`,
+        returnUrl: `${(Deno.env.get('PORTAL_URL') ?? 'https://ruiz-inmobiliaria-fintech.vercel.app/portal').replace(/\/set-password.*$/, '').replace(/\/$/, '')}/mis-pagos`,
       },
     }
 
