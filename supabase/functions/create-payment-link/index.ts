@@ -130,7 +130,7 @@ Deno.serve(async (req: Request) => {
           { key: 'ventaid', value: String(row.ventaid) },
           { key: 'clienteid', value: String(row.clienteid) },
         ],
-        returnUrl: `${(Deno.env.get('PORTAL_URL') ?? 'https://ruiz-inmobiliaria-fintech.vercel.app/portal').replace(/\/set-password.*$/, '').replace(/\/$/, '')}/mis-pagos`,
+        returnUrl: `${(Deno.env.get('PORTAL_URL') ?? 'https://ruiz-inmobiliaria-fintech.vercel.app/portal').replace(/\/set-password.*$/, '').replace(/\/$/, '')}/mis-pagos?corridafinancieraid=${corridafinancieraid}`,
       },
     }
 
@@ -147,7 +147,10 @@ Deno.serve(async (req: Request) => {
 
     const data = await res.json()
 
-    return new Response(JSON.stringify({ url: data.url }), {
+    // Extraer el sessionId de la URL de Quentli: https://innco.demo.quentli.com/s/ps_XXXXX?cs=...
+    const sessionId: string = data.url?.split('/s/')?.[1]?.split('?')?.[0] ?? ''
+
+    return new Response(JSON.stringify({ url: data.url, sessionId }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

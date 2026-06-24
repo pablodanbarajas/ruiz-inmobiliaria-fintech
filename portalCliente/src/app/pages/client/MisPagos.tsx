@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router';
 import { Calendar, DollarSign, FileText, Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, Home } from 'lucide-react';
 
 const PAGE_SIZE = 5;
@@ -53,7 +54,7 @@ import type { Payment, PaymentStatus, PaymentSummary, LoteSummary } from '../../
 import { SummaryCard } from '../../components/shared/SummaryCard';
 import { supabase } from '../../services/supabase/client';
 
-async function createPaymentLink(corridafinancieraid: string): Promise<string> {
+async function createPaymentLink(corridafinancieraid: string): Promise<{ url: string; sessionId: string }> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Sin sesión activa');
 
@@ -72,7 +73,29 @@ async function createPaymentLink(corridafinancieraid: string): Promise<string> {
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? 'Error al generar link de pago');
-  return data.url as string;
+  return { url: data.url as string, sessionId: data.sessionId as string ?? '' };
+}
+
+async function verifyPayment(corridafinancieraid: string, sessionId: string): Promise<{ ok: boolean; alreadyRegistered?: boolean; registered?: boolean }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sin sesión activa');
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+  const res = await fetch(`${supabaseUrl}/functions/v1/verify-payment`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: anonKey,
+    },
+    body: JSON.stringify({ corridafinancieraid: Number(corridafinancieraid), sessionId }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? 'Error al verificar pago');
+  return data;
 }
 
 function parseDate(str: string): Date {
@@ -273,14 +296,46 @@ function LoteSection({
 }
 
 export function MisPagos() {
-  const { paymentSummary: summary, paymentsLoading: isLoading } = useData();
+  const { paymentSummary: summary, paymentsLoading: isLoading, refreshPayments } = useData();
   const [payingId, setPayingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
+  const [verifyState, setVerifyState] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // Al regresar de Quentli, verificar y registrar el pago automáticamente
+  useEffect(() => {
+    const corridaId = searchParams.get('corridafinancieraid');
+    if (!corridaId) return;
+
+    const sessionId = sessionStorage.getItem(`quentli_session_${corridaId}`) ?? '';
+    sessionStorage.removeItem(`quentli_session_${corridaId}`);
+
+    // Limpiar URL sin recargar
+    navigate('/mis-pagos', { replace: true });
+
+    if (!sessionId) return;
+
+    setVerifyState('verifying');
+    verifyPayment(corridaId, sessionId)
+      .then((result) => {
+        if (result.ok) {
+          setVerifyState('success');
+          refreshPayments();
+        } else {
+          setVerifyState('idle');
+        }
+      })
+      .catch(() => setVerifyState('error'));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePagar = async (pago: Payment) => {
     try {
       setPayingId(pago.id);
-      const url = await createPaymentLink(pago.id);
+      const { url, sessionId } = await createPaymentLink(pago.id);
+      if (sessionId) {
+        sessionStorage.setItem(`quentli_session_${pago.id}`, sessionId);
+      }
       window.location.href = url;
     } catch (err: any) {
       alert(`Error al generar link de pago: ${err.message}`);
@@ -323,6 +378,26 @@ export function MisPagos() {
         <h1 className="text-xl font-bold text-gray-800 leading-tight">Mis pagos</h1>
         <p className="text-xs text-gray-500">Consulta tu calendario, historial y comprobantes</p>
       </div>
+
+      {/* Banner de verificación de pago */}
+      {verifyState === 'verifying' && (
+        <div className="mb-4 flex items-center gap-3 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg text-sm">
+          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          Verificando tu pago con Quentli...
+        </div>
+      )}
+      {verifyState === 'success' && (
+        <div className="mb-4 flex items-center gap-3 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg text-sm">
+          <CheckCircle className="w-4 h-4 text-green-600" />
+          ¡Pago registrado exitosamente! Tu estado de cuenta ha sido actualizado.
+        </div>
+      )}
+      {verifyState === 'error' && (
+        <div className="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
+          <AlertCircle className="w-4 h-4 text-red-600" />
+          No se pudo verificar el pago automáticamente. Si realizaste el pago, contáctanos.
+        </div>
+      )}
 
       {/* Cards globales */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
