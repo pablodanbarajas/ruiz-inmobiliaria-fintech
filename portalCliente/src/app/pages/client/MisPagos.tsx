@@ -278,10 +278,10 @@ function LoteSection({
                     key={pago.id}
                     pago={pago}
                     action={
-                      <button className="flex items-center gap-2 text-teal-700 hover:text-teal-800 transition-colors text-sm font-medium">
-                        <FileText className="w-4 h-4" />
-                        Ver recibo
-                      </button>
+                      <span className="flex items-center gap-1.5 text-gray-400 text-xs">
+                        <FileText className="w-3.5 h-3.5" />
+                        Recibo enviado por email
+                      </span>
                     }
                   />
                 ))}
