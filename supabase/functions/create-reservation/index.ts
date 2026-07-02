@@ -120,19 +120,20 @@ Deno.serve(async (req: Request) => {
     const today = new Date().toISOString().split('T')[0]
 
     // Crear venta con estatus='P' (Pendiente — esperando pago de apartado)
+    // fechacontrato se establece cuando el admin firma el contrato con el cliente (después del enganche)
+    // mensualidad, plazo, fechaprimeramensualidad se completan cuando el admin formaliza la venta
     const { data: venta, error: ventaError } = await serviceClient
       .from('venta')
       .insert({
         loteid,
         clienteid: cliente.clienteid,
         fecha: today,
-        fechacontrato: today,
         preciolote: lote.preciolote,
         enganche: montoEnganche,
         estatus: 'P',
         fecha_reserva: new Date().toISOString(),
         monto_apartado_pagado: 0,
-        comentarios: `Reserva creada desde portal (${desarrollo.nombre})`,
+        comentarios: `Reserva creada desde portal (${desarrollo.nombre ?? desarrollo.name})`,
       })
       .select()
       .single()

@@ -640,6 +640,35 @@ export const VentaDetail = () => {
           </div>
         </div>
 
+        {/* Banner: reserva pendiente de pago de apartado */}
+        {venta.estatus === 'P' && (
+          <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+            <span className="text-amber-500 mt-0.5">⏳</span>
+            <div>
+              <p className="font-semibold">Reserva pendiente — esperando pago de apartado</p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                El cliente tiene 24 horas para pagar el apartado desde que hizo la reserva.
+                {venta.fecha_reserva && ` Reserva realizada el ${new Date(venta.fecha_reserva).toLocaleString('es-MX')}.`}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Banner: enganche pagado, pendiente firma de contrato */}
+        {venta.estatus === 'E' && !venta.fechacontrato && (
+          <div className="mb-4 flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800">
+            <span className="text-blue-500 mt-0.5">📋</span>
+            <div>
+              <p className="font-semibold">Pendiente firma de contrato</p>
+              <p className="text-xs text-blue-600 mt-0.5">
+                El cliente pagó el apartado. Tienes <strong>7 días desde el pago del enganche</strong> para coordinar y firmar el contrato.
+                {venta.fecha_limite_enganche && ` Fecha límite de enganche: ${new Date(venta.fecha_limite_enganche + 'T12:00:00').toLocaleDateString('es-MX')}.`}
+                {' '}Contacta al cliente para agendar la firma.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Venta Details */}
         <div className="bg-white rounded-lg shadow-md p-4 md:p-8 mb-8 border-t-4 border-[#504840]">
           <h1 className="text-3xl md:text-4xl font-bold text-black mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>Venta #{venta.ventaid}</h1>
