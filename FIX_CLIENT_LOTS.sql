@@ -36,7 +36,14 @@ SELECT
   v.enganche,
   v.mensualidad,
   (SELECT MIN(cf.fecha) FROM corridafinanciera cf 
-   WHERE cf.ventaid = v.ventaid AND cf.nopago > 0) as next_due_date,
+   WHERE cf.ventaid = v.ventaid 
+     AND cf.nopago > 0
+     AND NOT EXISTS (
+       SELECT 1 FROM pagos p 
+       WHERE p.corridafinancieraid = cf.corridafinancieraid 
+         AND p.estatus IN ('P', 'R')
+     )
+  ) as next_due_date,
   v.mensualidad as next_payment_amount
 FROM cliente c
 INNER JOIN venta v ON v.clienteid = c.clienteid
