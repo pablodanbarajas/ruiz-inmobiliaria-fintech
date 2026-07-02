@@ -117,13 +117,16 @@ Deno.serve(async (req: Request) => {
       )
     }
 
+    const today = new Date().toISOString().split('T')[0]
+
     // Crear venta con estatus='P' (Pendiente — esperando pago de apartado)
     const { data: venta, error: ventaError } = await serviceClient
       .from('venta')
       .insert({
         loteid,
         clienteid: cliente.clienteid,
-        fecha: new Date().toISOString().split('T')[0],
+        fecha: today,
+        fechacontrato: today,
         preciolote: lote.preciolote,
         enganche: montoEnganche,
         estatus: 'P',
