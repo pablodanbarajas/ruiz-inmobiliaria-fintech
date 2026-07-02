@@ -44,7 +44,24 @@ SELECT
          AND p.estatus IN ('P', 'R')
      )
   ) as next_due_date,
-  v.mensualidad as next_payment_amount
+  (SELECT cf.mensualidad + COALESCE(
+     (SELECT SUM(ce.monto) FROM cargos_extra ce
+      WHERE ce.loteid = l.loteid
+        AND ce.estatus != 'X'
+        AND ce.fecha <= cf.fecha
+        AND (ce.fecha_fin IS NULL OR ce.fecha_fin >= cf.fecha)),
+     0)
+   FROM corridafinanciera cf
+   WHERE cf.ventaid = v.ventaid
+     AND cf.nopago > 0
+     AND NOT EXISTS (
+       SELECT 1 FROM pagos p
+       WHERE p.corridafinancieraid = cf.corridafinancieraid
+         AND p.estatus IN ('P', 'R')
+     )
+   ORDER BY cf.fecha ASC
+   LIMIT 1
+  ) as next_payment_amount
 FROM cliente c
 INNER JOIN venta v ON v.clienteid = c.clienteid
 INNER JOIN lote l ON l.loteid = v.loteid
