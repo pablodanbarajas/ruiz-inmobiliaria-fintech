@@ -415,17 +415,28 @@ export const Dashboard = () => {
   useEffect(() => {
     if (!canViewVentas) return
     const fetch = async () => {
+      // 1. Obtener todas las ventas activas
       const { data: ventas } = await supabase
         .from('venta')
         .select('ventaid, clienteid, loteid, fechaenganche, estatus')
         .eq('estatus', 'A')
-        .is('mensualidad', null)
         .order('ventaid', { ascending: false })
-        .limit(10)
+        .limit(100)
       if (!ventas || ventas.length === 0) return
 
-      const loteIds = [...new Set((ventas as any[]).map((v) => v.loteid).filter(Boolean))]
-      const clienteIds = [...new Set((ventas as any[]).map((v) => v.clienteid).filter(Boolean))]
+      // 2. Obtener ventaids que ya tienen corrida
+      const { data: corridasData } = await supabase
+        .from('corridafinanciera')
+        .select('ventaid')
+        .in('ventaid', (ventas as any[]).map((v) => v.ventaid))
+      const ventaidConCorrida = new Set((corridasData || []).map((c: any) => c.ventaid))
+
+      // 3. Filtrar ventas sin corrida
+      const ventasSinCorrida = (ventas as any[]).filter((v) => !ventaidConCorrida.has(v.ventaid))
+      if (ventasSinCorrida.length === 0) return
+
+      const loteIds = [...new Set(ventasSinCorrida.map((v) => v.loteid).filter(Boolean))]
+      const clienteIds = [...new Set(ventasSinCorrida.map((v) => v.clienteid).filter(Boolean))]
       const [{ data: lotesData }, { data: clientesData }] = await Promise.all([
         supabase.from('lote').select('loteid, manzana, nolote, clavelote').in('loteid', loteIds),
         supabase.from('cliente').select('clienteid, nombre').in('clienteid', clienteIds),
@@ -433,7 +444,7 @@ export const Dashboard = () => {
       const loteMap = new Map((lotesData || []).map((l: any) => [l.loteid, l]))
       const clienteMap = new Map((clientesData || []).map((c: any) => [c.clienteid, c]))
 
-      setVentasPendientesFormalizacion((ventas as any[]).map((v) => {
+      setVentasPendientesFormalizacion(ventasSinCorrida.map((v) => {
         const lote = loteMap.get(v.loteid)
         const cliente = clienteMap.get(v.clienteid)
         return {
