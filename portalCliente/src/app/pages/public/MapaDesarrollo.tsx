@@ -111,7 +111,7 @@ export function MapaDesarrollo() {
               </p>
             </div>
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );
