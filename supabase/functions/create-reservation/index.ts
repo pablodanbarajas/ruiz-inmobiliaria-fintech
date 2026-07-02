@@ -80,8 +80,16 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    const montoApartado = Number(desarrollo.montominimoapartado ?? 2000)
-    const montoEnganche = Number(desarrollo.enganche ?? 15000)
+    const montoApartado = Number(desarrollo.montominimoapartado) || Number(desarrollo.min_apartado) || 2000
+    const montoEnganche = Number(desarrollo.enganche) || 15000
+
+    console.log('Reserva:', { desarrolloid, loteid, montoApartado, montoEnganche, desarrolloRow: JSON.stringify(desarrollo) })
+
+    if (!montoApartado || montoApartado <= 0) {
+      return new Response(JSON.stringify({ error: 'El desarrollo no tiene configurado el monto de apartado (montominimoapartado)' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     // Obtener datos del lote
     const { data: lote } = await serviceClient
