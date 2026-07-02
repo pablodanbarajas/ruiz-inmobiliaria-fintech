@@ -18,14 +18,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // ── Params de URL ──────────────────────────────────────────────────
   var params       = new URLSearchParams(window.location.search);
-  var loteNombre   = params.get('lote')        || '';
-  var loteid       = params.get('loteid')      || '';
+  var loteNombre   = params.get('lote')         || '';
+  var loteid       = params.get('loteid')       || '';
   var desarrolloid = params.get('desarrolloid') || '11';
-  var manzana      = params.get('manzana')     || '';
+  var manzana      = params.get('manzana')      || '';
 
-  if (loteNombre) document.getElementById('lote-nombre').textContent = loteNombre;
-  var estadoEl = document.getElementById('lote-estado');
-  if (estadoEl && manzana) estadoEl.textContent = 'Mza ' + manzana;
+  // Texto descriptivo del lote en el pill
+  var loteDisplay = (loteNombre ? 'Lote ' + loteNombre : '') + (manzana ? ' · Mza ' + manzana : '');
+  var nombreEl = document.getElementById('lote-nombre');
+  if (nombreEl) nombreEl.textContent = loteDisplay || 'Lote seleccionado';
 
   // Redirigir si no hay sesión
   if (!getAccessToken()) {
@@ -33,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function () {
     return;
   }
 
-  // Redirigir si no hay loteid
+  // Redirigir si no hay loteid (llegó sin pasar por el mapa)
   if (!loteid) {
     window.location.href = '/portal/mapa/index.html?desarrolloid=' + desarrolloid;
     return;
@@ -146,4 +147,6 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   tick();
+
+});
 
