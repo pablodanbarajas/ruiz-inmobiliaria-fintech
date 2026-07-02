@@ -666,6 +666,9 @@ export const VentaDetail = () => {
             </div>
           </div>
         )}
+
+        {/* Banner: enganche pagado, pendiente firma de contrato */}
+        {venta.estatus === 'E' && !venta.fechacontrato && (
           <div className="mb-4 flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800">
             <span className="text-blue-500 mt-0.5">📋</span>
             <div>
