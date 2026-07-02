@@ -56,6 +56,8 @@ export const supabaseLotsService: ILotsService = {
 
     return ((data ?? []) as ClientLotRow[]).map((row) => ({
       id: String(row.lot_id),
+      ventaid: String(row.ventaid),
+      developmentId: String(row.development_id),
       key: row.lot_key,
       developmentName: row.development_name,
       location: 'Ubicación pendiente',

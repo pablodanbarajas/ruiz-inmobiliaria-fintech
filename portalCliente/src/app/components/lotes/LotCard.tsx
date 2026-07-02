@@ -1,6 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { MapPin, Ruler, DollarSign, Clock, ChevronRight, ImageOff } from 'lucide-react';
 import type { ClientLot } from '../../types/lot.types';
+import { supabase } from '../../services/supabase/client';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 interface LotCardProps {
   lote: ClientLot;
@@ -38,10 +43,48 @@ const statusConfig = {
 } as const;
 
 export function LotCard({ lote }: LotCardProps) {
-  const config = statusConfig[lote.status];
+  const config = statusConfig[lote.status] ?? statusConfig['en_pagos'];
   const progressPct = (lote.progress.currentStage / (lote.progress.stages.length - 1)) * 100;
   const [imgError, setImgError] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const navigate = useNavigate();
   const showPlaceholder = !lote.imageUrl || imgError;
+
+  const handlePrimaryAction = async () => {
+    if (lote.status === 'en_pagos' || lote.status === 'finalizado') {
+      navigate('/mis-pagos');
+      return;
+    }
+
+    if (lote.status === 'apartado_confirmado') {
+      // Pagar enganche restante via Quentli
+      try {
+        setPaying(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { navigate('/login'); return; }
+
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/create-enganche-payment`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ ventaid: Number(lote.ventaid) }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.url) throw new Error(data.error ?? 'Error al generar link de pago');
+        window.location.href = data.url;
+      } catch (err: any) {
+        alert(`Error: ${err.message}`);
+        setPaying(false);
+      }
+      return;
+    }
+
+    // apartado (P): la sesión Quentli ya expiró o está en proceso
+    alert('Para completar el pago de apartado o si necesitas ayuda, contacta a tu asesor.');
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
@@ -145,11 +188,16 @@ export function LotCard({ lote }: LotCardProps) {
 
           <div className="flex flex-col sm:flex-row gap-2">
             <button
-              className={`flex-1 ${config.buttonColor} text-white px-3 py-2 rounded-lg transition-colors text-sm font-medium`}
+              onClick={handlePrimaryAction}
+              disabled={paying}
+              className={`flex-1 ${config.buttonColor} text-white px-3 py-2 rounded-lg transition-colors text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed`}
             >
-              {config.buttonLabel}
+              {paying ? 'Generando pago...' : config.buttonLabel}
             </button>
-            <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-1 text-sm">
+            <button
+              onClick={() => navigate('/mis-pagos')}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-1 text-sm"
+            >
               Ver detalle
               <ChevronRight className="w-3.5 h-3.5" />
             </button>

@@ -27,6 +27,7 @@ export interface ClientLot {
   id: string;
   /** Clave alfanumérica visible del lote, ej: "06-042" */
   key: string;
+  ventaid: string;
   developmentId: string;
   developmentName: string;
   location: string;
