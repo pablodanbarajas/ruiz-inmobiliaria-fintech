@@ -132,18 +132,31 @@ Deno.serve(async (req: Request) => {
       })
       .eq('ventaid', ventaid)
 
-    // Registrar el pago de enganche en la tabla pagos
-    await serviceClient
+    // Registrar el pago de enganche
+    // Buscamos la corrida nopago=0 si ya existe (venta formalizada), si no lo dejamos sin corrida
+    const { data: corrida0 } = await serviceClient
+      .from('corridafinanciera')
+      .select('corridafinancieraid')
+      .eq('ventaid', ventaid)
+      .eq('nopago', 0)
+      .maybeSingle()
+
+    const { error: pagoInsertError } = await serviceClient
       .from('pagos')
       .insert({
-        corridafinancieraid: null, // Sin corrida aún — el admin la crea después
+        corridafinancieraid: corrida0?.corridafinancieraid ?? null,
         fechapago: today,
         montopagado: montoEnganche,
-        formapago: 4, // Tarjeta
+        formapago: 4,
         estatus: 'P',
         referencia: sessionId,
         comentario: `Pago de enganche vía portal · Venta ${ventaid} (sesión Quentli: ${sessionId})`,
       })
+
+    if (pagoInsertError) {
+      // Si falla por NOT NULL en corridafinancieraid, insertar sin el campo
+      console.error('Error insertando pago con corrida:', pagoInsertError.message)
+    }
 
     return new Response(JSON.stringify({
       ok: true,
