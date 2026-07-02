@@ -567,31 +567,33 @@
   </div><!-- /page -->
 
   <script>
-    // ── Datos desde URL ────────────────────────────────────────────────
-    var params = new URLSearchParams(window.location.search);
+    var SUPABASE_URL = 'https://ivbyroqxyfclzfhaixjd.supabase.co';
+    var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2Ynlyb3F4eWZjbHpmaGFpeGpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MjMxOTksImV4cCI6MjA4ODI5OTE5OX0.804JjH0MBZqfjvKLMkXmjlwXNkt7hUiiK1vFA2Zv0LI';
 
-    if (params.get('lote')) {
-      document.getElementById('lote-display').textContent = params.get('lote');
+    function getAccessToken() {
+      try {
+        var raw = localStorage.getItem('sb-' + SUPABASE_URL.split('//')[1].split('.')[0] + '-auth-token');
+        if (!raw) return null;
+        var p = JSON.parse(raw);
+        return p && p.access_token ? p.access_token : null;
+      } catch(_) { return null; }
     }
 
-    var metodoMap = { tarjeta: 'Tarjeta bancaria', transferencia: 'Transferencia SPEI', efectivo: 'Efectivo OXXO' };
-    var metodo = params.get('metodo') || 'tarjeta';
-    document.getElementById('metodo-display').textContent = metodoMap[metodo] || 'Tarjeta bancaria';
+    function fmt(n) {
+      return '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
 
-    // ── Folio simulado ─────────────────────────────────────────────────
-    var folio = 'APT-2025-' + Math.floor(1000 + Math.random() * 9000);
-    document.getElementById('folio-num').textContent  = folio;
-    document.getElementById('folio-mini').textContent = folio;
+    // ── Params de URL ────────────────────────────────────────────────
+    var params  = new URLSearchParams(window.location.search);
+    var ventaid = params.get('ventaid') || sessionStorage.getItem('apartado_ventaid') || '';
 
-    // ── Fecha y vencimiento ────────────────────────────────────────────
-    var now  = new Date();
-    var venc = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    // ── Fecha ────────────────────────────────────────────────────────
+    var now = new Date();
+    document.getElementById('fecha-display').textContent =
+      now.toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
+    document.getElementById('metodo-display').textContent = 'Tarjeta (Quentli)';
 
-    var opts = { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' };
-    document.getElementById('fecha-display').textContent    = now.toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
-    document.getElementById('vencimiento-display').textContent = venc.toLocaleDateString('es-MX', opts);
-
-    // ── Confetti ───────────────────────────────────────────────────────
+    // ── Confetti ─────────────────────────────────────────────────────
     var colors = ['#4f46e5','#22c55e','#f59e0b','#f43f5e','#06b6d4','#a855f7','#ffffff'];
     var wrap   = document.getElementById('confetti');
 
@@ -599,16 +601,16 @@
       for (var i = 0; i < 60; i++) {
         (function(i) {
           setTimeout(function () {
-            var dot       = document.createElement('div');
+            var dot = document.createElement('div');
             dot.className = 'dot';
-            var size      = 6 + Math.random() * 8;
+            var size = 6 + Math.random() * 8;
             dot.style.cssText = [
-              'left:'            + (10 + Math.random() * 80) + '%',
+              'left:' + (10 + Math.random() * 80) + '%',
               'top:-10px',
-              'width:'           + size + 'px',
-              'height:'          + size + 'px',
-              'background:'      + colors[Math.floor(Math.random() * colors.length)],
-              'border-radius:'   + (Math.random() > 0.5 ? '50%' : '2px'),
+              'width:' + size + 'px',
+              'height:' + size + 'px',
+              'background:' + colors[Math.floor(Math.random() * colors.length)],
+              'border-radius:' + (Math.random() > 0.5 ? '50%' : '2px'),
               'animation-duration:' + (1.8 + Math.random() * 1.8) + 's',
               'animation-delay:0s'
             ].join(';');
@@ -619,9 +621,80 @@
       }
     }
 
-    // Lanzar confetti al cargar
-    setTimeout(burst, 300);
-    setTimeout(burst, 900);
+    // ── Verificar pago con la edge function ──────────────────────────
+    function verificarPago() {
+      var accessToken = getAccessToken();
+      if (!ventaid || !accessToken) {
+        // Sin ventaid ni token — mostrar datos genéricos
+        mostrarDatosGenericos();
+        setTimeout(burst, 300); setTimeout(burst, 900);
+        return;
+      }
+
+      fetch(SUPABASE_URL + '/functions/v1/verify-apartado-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + accessToken,
+          'apikey': SUPABASE_KEY,
+        },
+        body: JSON.stringify({ ventaid: Number(ventaid) }),
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        sessionStorage.removeItem('apartado_ventaid');
+        if (data.ok && (data.registered || data.alreadyVerified)) {
+          // Pago confirmado — actualizar UI con datos reales
+          var folio = 'APT-' + now.getFullYear() + '-' + String(ventaid).padStart(4, '0');
+          document.getElementById('folio-num').textContent  = folio;
+          document.getElementById('folio-mini').textContent = folio;
+
+          // Monto de apartado pagado
+          var montoApartado = data.montoApartado || 0;
+          document.querySelector('.pay-summary-amount').innerHTML =
+            fmt(montoApartado) + ' <span style="font-size:1rem;opacity:0.6;font-family:\'DM Sans\',sans-serif;font-weight:400;">MXN</span>';
+
+          // Enganche pendiente en time-card
+          var montoRestante  = data.montoRestante || 0;
+          var fechaLimite    = data.fechaLimiteEnganche || '';
+          var fechaLimiteFmt = fechaLimite
+            ? new Date(fechaLimite + 'T12:00:00').toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' })
+            : '—';
+
+          document.querySelector('.time-card-title').textContent = 'Tienes 15 días para liquidar el enganche';
+          document.querySelector('.time-card-sub').innerHTML =
+            'Enganche restante: <strong>' + fmt(montoRestante) + '</strong><br>' +
+            'Vence: <strong style="color:#92400e">' + fechaLimiteFmt + '</strong>';
+
+          // Próximos pasos — actualizar paso 4 con el enganche correcto
+          var pasos = document.querySelectorAll('.next-step-text');
+          if (pasos[3]) {
+            pasos[3].innerHTML = 'El enganche restante de <strong>' + fmt(montoRestante) + ' MXN</strong> deberá liquidarse antes del ' + fechaLimiteFmt + '.';
+          }
+
+          setTimeout(burst, 300); setTimeout(burst, 900);
+        } else {
+          // Pago no confirmado aún
+          document.querySelector('.title').textContent = 'Verificando pago...';
+          document.querySelector('.subtitle').textContent = 'Si realizaste el pago, puede tomar unos minutos en reflejarse.';
+        }
+      })
+      .catch(function() {
+        mostrarDatosGenericos();
+        setTimeout(burst, 300); setTimeout(burst, 900);
+      });
+    }
+
+    function mostrarDatosGenericos() {
+      var folio = 'APT-' + now.getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
+      document.getElementById('folio-num').textContent  = folio;
+      document.getElementById('folio-mini').textContent = folio;
+      var venc = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000);
+      document.getElementById('vencimiento-display').textContent =
+        venc.toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
+    }
+
+    verificarPago();
   </script>
 </body>
 </html>

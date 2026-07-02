@@ -144,6 +144,8 @@
 <script>
   const SUPABASE_URL = 'https://ivbyroqxyfclzfhaixjd.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2Ynlyb3F4eWZjbHpmaGFpeGpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MjMxOTksImV4cCI6MjA4ODI5OTE5OX0.804JjH0MBZqfjvKLMkXmjlwXNkt7hUiiK1vFA2Zv0LI';
+  // Leer desarrolloid desde URL (pasado por MapaDesarrollo.tsx)
+  const DESARROLLOID = new URLSearchParams(window.location.search).get('desarrolloid') || '11';
 
   const sbFetch = (p) =>
     fetch(`${SUPABASE_URL}/rest/v1/${p}`, {
@@ -219,7 +221,7 @@
           return r.text();
         }),
         sbFetch('lote_mapa?select=path_id,lote_id'),
-        sbFetch('lote?select=loteid,nolote,manzana,coto,tipolote,superficie,preciolote,preciopormt2,estatus&desarrolloid=eq.11&limit=2000')
+        sbFetch('lote?select=loteid,nolote,manzana,coto,tipolote,superficie,preciolote,preciopormt2,estatus&desarrolloid=eq.' + DESARROLLOID + '&limit=2000')
       ]);
 
       const lotesById = {};
@@ -419,9 +421,11 @@
     document.getElementById('mensualidadVal').textContent = fmt.format(restante > 0 ? Math.ceil(restante / 100) : 0) + ' / mes';
 
     const p = new URLSearchParams({
-      lote: lote.nolote,
-      manzana: lote.manzana,
-      precio: fmt.format(precio)
+      lote:        lote.nolote,
+      loteid:      String(lote.loteid),
+      desarrolloid: DESARROLLOID,
+      manzana:     lote.manzana,
+      precio:      fmt.format(precio)
     });
 
     if (lote.estatus === 'R') {

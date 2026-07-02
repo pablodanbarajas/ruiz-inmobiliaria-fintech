@@ -101,7 +101,7 @@ export type Venta = {
   plazo: number | null
   fechaprimeramensualidad: string | null
   mensualidad: number | null
-  estatus: string | null
+  estatus: string | null   // 'P'=Pendiente apartado, 'E'=En enganche, 'A'=Activa, 'V'=Vendida, 'C'=Cancelada
   comentarios: string | null
   plazoenganche: number | null
   idempotencykey: string | null
@@ -109,6 +109,10 @@ export type Venta = {
   vendedor: string | null
   quentli_customer_id: string | null
   quentli_subscription_id: string | null
+  fecha_reserva: string | null          // timestamp ISO — cuando se hizo la reserva
+  monto_apartado_pagado: number | null  // monto que ya pagó de apartado
+  quentli_apartado_session_id: string | null  // session ID de Quentli para el pago de apartado
+  fecha_limite_enganche: string | null  // fecha límite para pagar el enganche (P+15 días)
 }
 
 export type CorridaFinanciera = {

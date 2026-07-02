@@ -85,7 +85,7 @@ export function MapaDesarrollo() {
            * (Vite sirve public/ desde la raíz, sin prefijo de ruta)
            */
           <iframe
-            src="/portal/mapa/index.html"
+            src={`/portal/mapa/index.html?desarrolloid=${id}`}
             className="w-full h-full border-0 block"
             title={`Mapa interactivo — ${development.name}`}
           />
