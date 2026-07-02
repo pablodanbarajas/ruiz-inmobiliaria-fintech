@@ -91,13 +91,27 @@ Deno.serve(async (req: Request) => {
     const fechaEnganche = venta.fechaenganche ?? new Date().toISOString().split('T')[0]
 
     // 1. Eliminar corridas previas (con service role — sin RLS)
-    const { error: deleteError } = await serviceClient
+    const { error: deleteError, count: deleteCount } = await serviceClient
       .from('corridafinanciera')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('ventaid', Number(ventaid))
 
     if (deleteError) {
       throw new Error(`Error al eliminar corridas: ${deleteError.message}`)
+    }
+
+    console.log(`Deleted ${deleteCount} corridas for ventaid=${ventaid}`)
+
+    // Verificar que quedaron 0 registros
+    const { data: remaining, error: selectErr } = await serviceClient
+      .from('corridafinanciera')
+      .select('corridafinancieraid, nopago')
+      .eq('ventaid', Number(ventaid))
+
+    if (selectErr) throw new Error(`Error verificando corridas: ${selectErr.message}`)
+
+    if (remaining && remaining.length > 0) {
+      throw new Error(`No se pudieron eliminar ${remaining.length} corridas: nopago=[${remaining.map((r: any) => r.nopago).join(',')}]. Posiblemente tienen pagos asociados.`)
     }
 
     // 2. Generar corrida financiera
