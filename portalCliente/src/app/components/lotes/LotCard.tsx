@@ -74,6 +74,10 @@ export function LotCard({ lote }: LotCardProps) {
         });
         const data = await res.json();
         if (!res.ok || !data.url) throw new Error(data.error ?? 'Error al generar link de pago');
+        // Guardar sessionId para verificar al regresar de Quentli
+        if (data.sessionId) {
+          sessionStorage.setItem(`enganche_session_${lote.ventaid}`, data.sessionId);
+        }
         window.location.href = data.url;
       } catch (err: any) {
         alert(`Error: ${err.message}`);

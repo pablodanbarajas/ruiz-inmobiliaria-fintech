@@ -654,8 +654,18 @@ export const VentaDetail = () => {
           </div>
         )}
 
-        {/* Banner: enganche pagado, pendiente firma de contrato */}
-        {venta.estatus === 'E' && !venta.fechacontrato && (
+        {/* Banner: enganche pagado desde portal, admin debe crear corrida */}
+        {venta.estatus === 'A' && corridas.length === 0 && (
+          <div className="mb-4 flex items-start gap-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800">
+            <span className="text-green-500 mt-0.5">✅</span>
+            <div>
+              <p className="font-semibold">Enganche pagado — pendiente formalización</p>
+              <p className="text-xs text-green-600 mt-0.5">
+                El cliente pagó el enganche desde el portal. Completa los datos de la venta (mensualidad, plazo, fecha de contrato y primera mensualidad) usando el botón <strong>Editar</strong> para generar la corrida financiera.
+              </p>
+            </div>
+          </div>
+        )}
           <div className="mb-4 flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800">
             <span className="text-blue-500 mt-0.5">📋</span>
             <div>

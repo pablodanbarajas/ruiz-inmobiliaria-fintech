@@ -1,9 +1,14 @@
-import { useState } from 'react';
-import { MapPin, Calendar, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MapPin, Calendar, CheckCircle, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useData } from '../../context/DataContext';
+import { useSearchParams, useNavigate } from 'react-router';
 import type { ClientLot, LotStatus } from '../../types/lot.types';
 import { LotCard } from '../../components/lotes/LotCard';
 import { SummaryCard } from '../../components/shared/SummaryCard';
+import { supabase } from '../../services/supabase/client';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 type FilterStatus = 'todos' | LotStatus;
 
@@ -12,8 +17,49 @@ function parseDate(str: string): Date {
 }
 
 export function MisLotes() {
-  const { lots, lotsLoading: isLoading } = useData();
+  const { lots, lotsLoading: isLoading, refreshLots } = useData();
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('todos');
+  const [verifyState, setVerifyState] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // Al regresar de Quentli enganche, verificar y registrar automáticamente
+  useEffect(() => {
+    const engancheVentaid = searchParams.get('enganche_ventaid');
+    if (!engancheVentaid) return;
+
+    const sessionId = sessionStorage.getItem(`enganche_session_${engancheVentaid}`) ?? '';
+    sessionStorage.removeItem(`enganche_session_${engancheVentaid}`);
+    navigate('/mis-lotes', { replace: true });
+
+    if (!sessionId) return;
+
+    setVerifyState('verifying');
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) { setVerifyState('error'); return; }
+
+      fetch(`${SUPABASE_URL}/functions/v1/verify-enganche-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ ventaid: Number(engancheVentaid), sessionId }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.ok) {
+            setVerifyState('success');
+            refreshLots();
+          } else {
+            setVerifyState('error');
+          }
+        })
+        .catch(() => setVerifyState('error'));
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeLots   = lots.filter((l) => l.status !== 'finalizado').length;
   const finishedLots = lots.filter((l) => l.status === 'finalizado').length;
@@ -77,6 +123,26 @@ export function MisLotes() {
         <h1 className="text-xl font-bold text-gray-800 leading-tight">Mis lotes</h1>
         <p className="text-xs text-gray-500">Consulta el estado de tus apartados y avance de compra</p>
       </div>
+
+      {/* Banner verificación enganche */}
+      {verifyState === 'verifying' && (
+        <div className="mb-4 flex items-center gap-3 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg text-sm">
+          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          Verificando tu pago de enganche con Quentli...
+        </div>
+      )}
+      {verifyState === 'success' && (
+        <div className="mb-4 flex items-center gap-3 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg text-sm">
+          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+          ¡Enganche registrado! Tu lote está en proceso de formalización. Un asesor se pondrá en contacto contigo.
+        </div>
+      )}
+      {verifyState === 'error' && (
+        <div className="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
+          <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+          No se pudo verificar el pago. Si realizaste el pago, contacta a tu asesor.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
         <SummaryCard
