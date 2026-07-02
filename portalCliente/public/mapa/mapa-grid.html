@@ -216,6 +216,14 @@
         <div class="modal-detail-label">Apartado desde</div>
         <div class="modal-detail-val" id="modal-apt">—</div>
       </div>
+      <div class="modal-detail">
+        <div class="modal-detail-label">Plazo de pago</div>
+        <div class="modal-detail-val" id="modal-plazo">100 meses</div>
+      </div>
+      <div class="modal-detail" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0">
+        <div class="modal-detail-label" style="color:#15803d">Pago mensual aprox.</div>
+        <div class="modal-detail-val" id="modal-mensual" style="color:#15803d">—</div>
+      </div>
     </div>
     <button class="modal-cta" id="modal-cta">Solicitar apartado</button>
     <div class="modal-negociar">¿Quieres negociar? <a href="/portal/soporte" target="_top">Comunícate con un asesor.</a></div>
@@ -351,6 +359,13 @@
     document.getElementById('modal-mzn').textContent   = lote.manzana || '—';
     document.getElementById('modal-eng').textContent   = montoEnganche ? fmt(montoEnganche) : '—';
     document.getElementById('modal-apt').textContent   = montoApartado ? fmt(montoApartado) : '—';
+
+    const plazo = 100;
+    const mensual = (lote.preciolote && montoEnganche)
+      ? Math.ceil((lote.preciolote - montoEnganche) / plazo)
+      : null;
+    document.getElementById('modal-plazo').textContent   = plazo + ' meses';
+    document.getElementById('modal-mensual').textContent = mensual ? fmt(mensual) + ' / mes' : '—';
 
     const cta = document.getElementById('modal-cta');
     cta.onclick = () => {
