@@ -994,12 +994,14 @@ export const VentaDetail = () => {
                       : []
                     const totalCargosExtras = cargosAplicables.reduce((s, c) => s + (c.monto || 0), 0)
 
-                    const recargo = (!totalPagadoCorrida && corrida.fecha)
-                      ? calcularRecargo(corrida.fecha)
-                      : 0
+                    // Si ya tiene pagos, el recargo es el implicito (lo que se pago menos base y cargos)
+                    // Si no tiene pagos, calcular en tiempo real
+                    const recargo = totalPagadoCorrida > 0
+                      ? Math.max(0, totalPagadoCorrida - (corrida.mensualidad || 0) - totalCargosExtras)
+                      : (!corrida.fecha ? 0 : calcularRecargo(corrida.fecha))
 
                     const totalAPagar = (corrida.mensualidad || 0) + totalCargosExtras + recargo
-                    const isCorrIdaPaid = totalPagadoCorrida >= (corrida.mensualidad || 0)
+                    const isCorrIdaPaid = totalPagadoCorrida >= totalAPagar || (totalPagadoCorrida > 0 && totalPagadoCorrida >= (corrida.mensualidad || 0) + totalCargosExtras)
                     return (
                       <tr key={corrida.corridafinancieraid} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 text-sm font-semibold text-gray-900">
@@ -1026,18 +1028,15 @@ export const VentaDetail = () => {
                         </td>
                         {/* Recargo */}
                         <td className="px-6 py-4 text-sm font-semibold">
-                          {(() => {
-                            if (isCorrIdaPaid || !corrida.fecha) return <span className="text-gray-400">—</span>
-                            const r = calcularRecargo(corrida.fecha)
-                            return r > 0
-                              ? <span className="text-orange-600">{formatCurrency(r)}</span>
-                              : <span className="text-gray-400">—</span>
-                          })()}
+                          {recargo > 0
+                            ? <span className="text-orange-600">{formatCurrency(recargo)}</span>
+                            : <span className="text-gray-400">—</span>
+                          }
                         </td>
                         {/* Total a Pagar */}
                         <td className="px-6 py-4 text-sm font-bold text-gray-900">
                           {isCorrIdaPaid
-                            ? <span className="text-green-600">{formatCurrency(corrida.mensualidad)}</span>
+                            ? <span className="text-green-600">{formatCurrency(totalPagadoCorrida)}</span>
                             : <span className={totalCargosExtras > 0 || recargo > 0 ? 'text-purple-800' : ''}>
                                 {formatCurrency(totalAPagar)}
                               </span>
