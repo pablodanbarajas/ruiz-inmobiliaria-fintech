@@ -89,6 +89,13 @@ export function MapaDesarrollo() {
             className="w-full h-full border-0 block"
             title={`Mapa interactivo — ${development.name}`}
           />
+        ) : development.minApartado ? (
+          /* Mapa en cuadrícula para desarrollos sin SVG (desarrollo de prueba, etc.) */
+          <iframe
+            src={`/portal/mapa/mapa-grid.html?desarrolloid=${id}`}
+            className="w-full h-full border-0 block"
+            title={`Lotes — ${development.name}`}
+          />
         ) : (
           <div className="flex items-center justify-center h-full bg-gray-50">
             <div className="text-center max-w-md px-8">
@@ -104,7 +111,7 @@ export function MapaDesarrollo() {
               </p>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

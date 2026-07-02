@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lotes disponibles</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #16a34a; --green-l: #dcfce7; --green-bg: rgba(76,175,130,0.08);
+      --amber: #d97706; --amber-l: #fef3c7; --amber-bg: rgba(212,146,10,0.08);
+      --red:   #dc2626; --red-l:   #fecaca;
+      --gray:  #6b7280; --gray-l:  #f3f4f6;
+      --ink:   #0f172a; --ink2: #334155; --ink3: #64748b;
+      --gold:  #eaae4c;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: #f5f5f4; color: var(--ink); }
+
+    /* ── Header ── */
+    header {
+      background: #1c1917; color: #fff; padding: 0 20px; height: 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100; border-bottom: 2px solid var(--gold);
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .back-btn {
+      display: flex; align-items: center; gap: 6px; font-size: 12px;
+      color: #d4d4d4; padding: 5px 10px; border-radius: 7px;
+      border: 1px solid #3f3f3f; background: #292524; cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .back-btn:hover { background: #3f3f3f; }
+    .header-title { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
+
+    /* ── Legend ── */
+    .legend { display: flex; align-items: center; gap: 14px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #d4d4d4; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* ── Hero ── */
+    .hero { padding: 24px 24px 12px; text-align: center; }
+    .hero h2 { font-size: 1.2rem; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+    .hero p  { font-size: 13px; color: var(--ink3); }
+
+    /* ── Filtros ── */
+    .filters { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; padding: 0 24px 16px; }
+    .filter-btn {
+      padding: 6px 14px; border-radius: 999px; border: 1.5px solid #e2e8f0;
+      background: white; font-size: 12px; font-weight: 600; cursor: pointer;
+      font-family: inherit; color: var(--ink3); transition: all 0.15s;
+    }
+    .filter-btn.active { background: var(--ink); color: white; border-color: var(--ink); }
+
+    /* ── Grid ── */
+    .grid-wrap { padding: 0 16px 24px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    /* ── Lot card ── */
+    .lot-card {
+      background: white; border-radius: 12px; border: 1.5px solid #e2e8f0;
+      padding: 12px; display: flex; flex-direction: column; gap: 6px;
+      transition: all 0.15s; position: relative; overflow: hidden;
+    }
+    .lot-card.disponible { cursor: pointer; }
+    .lot-card.disponible:hover { border-color: var(--green); box-shadow: 0 4px 16px rgba(22,163,74,0.15); transform: translateY(-1px); }
+    .lot-card.apartado  { background: var(--amber-bg); border-color: #fcd34d; opacity: 0.85; }
+    .lot-card.vendido   { background: #fef2f2; border-color: #fecaca; opacity: 0.7; }
+    .lot-card.bloqueado { background: var(--gray-l); border-color: #d1d5db; opacity: 0.6; }
+
+    .lot-key { font-size: 13px; font-weight: 700; color: var(--ink); }
+    .lot-sup { font-size: 11px; color: var(--ink3); }
+    .lot-price { font-size: 12px; font-weight: 600; color: var(--ink2); margin-top: 2px; }
+    .lot-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; width: fit-content;
+    }
+    .badge-disponible { background: var(--green-l); color: #15803d; }
+    .badge-apartado   { background: var(--amber-l); color: #92400e; }
+    .badge-vendido    { background: var(--red-l); color: #991b1b; }
+    .badge-bloqueado  { background: var(--gray-l); color: #374151; }
+
+    /* ── Stats ── */
+    .stats-bar {
+      display: flex; gap: 0; justify-content: center; flex-wrap: wrap;
+      background: white; border-bottom: 1px solid #e2e8f0; padding: 10px 16px;
+    }
+    .stat { display: flex; align-items: center; gap: 6px; padding: 0 14px; font-size: 12px; }
+    .stat + .stat { border-left: 1px solid #e2e8f0; }
+    .stat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .stat-num { font-weight: 700; color: var(--ink); }
+
+    /* ── Loading ── */
+    #loading { text-align: center; padding: 60px 20px; color: var(--ink3); font-size: 14px; }
+    .spinner {
+      width: 28px; height: 28px; border: 3px solid #e2e8f0; border-top-color: var(--green);
+      border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Modal overlay ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(15,23,42,0.5);
+      display: flex; align-items: flex-end; justify-content: center;
+      z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+      padding: 16px;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .modal {
+      background: white; border-radius: 24px 24px 0 0; width: 100%; max-width: 480px;
+      padding: 24px; transform: translateY(20px); transition: transform 0.25s;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+    .modal-close { background: none; border: none; cursor: pointer; color: var(--ink3); padding: 4px; }
+    .modal h3 { font-size: 1.1rem; font-weight: 700; color: var(--ink); }
+    .modal-sub { font-size: 12px; color: var(--ink3); margin-top: 2px; }
+    .modal-price-box {
+      background: linear-gradient(135deg, #d97706, #b45309);
+      border-radius: 14px; padding: 16px 20px; margin: 12px 0;
+    }
+    .modal-price-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.7); }
+    .modal-price-val { font-size: 1.7rem; font-weight: 700; color: white; line-height: 1.2; }
+    .modal-price-psm { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+    .modal-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+    .modal-detail { background: #f8fafc; border-radius: 10px; padding: 10px 12px; }
+    .modal-detail-label { font-size: 10px; color: var(--ink3); font-weight: 500; margin-bottom: 2px; }
+    .modal-detail-val { font-size: 13px; font-weight: 700; color: var(--ink); }
+    .modal-cta {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; background: var(--green); color: white; border: none;
+      border-radius: 14px; padding: 14px; font-family: inherit; font-size: 15px;
+      font-weight: 600; cursor: pointer; margin-top: 16px; transition: all 0.15s;
+    }
+    .modal-cta:hover { background: #15803d; }
+    .modal-negociar { text-align: center; font-size: 12px; color: var(--ink3); margin-top: 10px; }
+    .modal-negociar a { color: var(--amber); font-weight: 600; text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <button class="back-btn" onclick="history.back()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      Regresar
+    </button>
+    <div class="header-title" id="dev-title">Lotes disponibles</div>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Disponible</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Apartado</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Vendido</div>
+  </div>
+</header>
+
+<div id="loading">
+  <div class="spinner"></div>
+  Cargando lotes...
+</div>
+
+<div id="content" style="display:none">
+  <div class="stats-bar" id="stats-bar"></div>
+  <div class="hero">
+    <h2>Plano de Lotes</h2>
+    <p>Selecciona un lote disponible para ver sus características.</p>
+  </div>
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all">Todos</button>
+    <button class="filter-btn" data-filter="D">Disponibles</button>
+    <button class="filter-btn" data-filter="A">Apartados</button>
+    <button class="filter-btn" data-filter="V">Vendidos</button>
+  </div>
+  <div class="grid-wrap">
+    <div class="grid" id="lot-grid"></div>
+  </div>
+</div>
+
+<!-- Modal detalle del lote -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div>
+        <h3 id="modal-title">Lote —</h3>
+        <div class="modal-sub" id="modal-sub">—</div>
+      </div>
+      <button class="modal-close" id="modal-close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-price-box">
+      <div class="modal-price-label">Precio de lista</div>
+      <div class="modal-price-val" id="modal-price">—</div>
+      <div class="modal-price-psm" id="modal-psm"></div>
+    </div>
+    <div class="modal-detail-grid">
+      <div class="modal-detail">
+        <div class="modal-detail-label">Superficie</div>
+        <div class="modal-detail-val" id="modal-sup">—</div>
+      </div>
+      <div class="modal-detail">
+        <div class="modal-detail-label">Manzana</div>
+        <div class="modal-detail-val" id="modal-mzn">—</div>
+      </div>
+      <div class="modal-detail">
+        <div class="modal-detail-label">Enganche</div>
+        <div class="modal-detail-val" id="modal-eng">—</div>
+      </div>
+      <div class="modal-detail">
+        <div class="modal-detail-label">Apartado desde</div>
+        <div class="modal-detail-val" id="modal-apt">—</div>
+      </div>
+    </div>
+    <button class="modal-cta" id="modal-cta">Solicitar apartado</button>
+    <div class="modal-negociar">¿Quieres negociar? <a href="/portal/soporte" target="_top">Comunícate con un asesor.</a></div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://ivbyroqxyfclzfhaixjd.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2Ynlyb3F4eWZjbHpmaGFpeGpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MjMxOTksImV4cCI6MjA4ODI5OTE5OX0.804JjH0MBZqfjvKLMkXmjlwXNkt7hUiiK1vFA2Zv0LI';
+
+  const params = new URLSearchParams(window.location.search);
+  const DESARROLLOID = params.get('desarrolloid') || '20';
+
+  function sbFetch(path) {
+    return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    }).then(r => r.json());
+  }
+
+  function fmt(n) {
+    return '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
+
+  function getAccessToken() {
+    try {
+      var raw = localStorage.getItem('sb-' + SUPABASE_URL.split('//')[1].split('.')[0] + '-auth-token');
+      if (!raw) return null;
+      var p = JSON.parse(raw);
+      return p && p.access_token ? p.access_token : null;
+    } catch(_) { return null; }
+  }
+
+  const statusMap = {
+    D: { label: 'Disponible', cls: 'disponible', badge: 'badge-disponible', dot: '#22c55e' },
+    A: { label: 'Apartado',   cls: 'apartado',   badge: 'badge-apartado',   dot: '#f59e0b' },
+    V: { label: 'Vendido',    cls: 'vendido',     badge: 'badge-vendido',    dot: '#ef4444' },
+    B: { label: 'Bloqueado',  cls: 'bloqueado',   badge: 'badge-bloqueado',  dot: '#9ca3af' },
+    N: { label: 'No disponible', cls: 'bloqueado', badge: 'badge-bloqueado', dot: '#9ca3af' },
+  };
+
+  let allLotes = [];
+  let desarrollo = null;
+  let activeFilter = 'all';
+
+  async function init() {
+    try {
+      const [devs, lotes] = await Promise.all([
+        sbFetch(`desarrollo?select=desarrolloid,nombre,montominimoapartado,enganche&desarrolloid=eq.${DESARROLLOID}`),
+        sbFetch(`lote?select=loteid,nolote,manzana,coto,tipolote,superficie,preciolote,preciopormt2,estatus&desarrolloid=eq.${DESARROLLOID}&order=nolote&limit=500`)
+      ]);
+
+      desarrollo = Array.isArray(devs) ? devs[0] : null;
+      allLotes   = Array.isArray(lotes) ? lotes : [];
+
+      if (desarrollo) {
+        document.getElementById('dev-title').textContent = desarrollo.nombre || 'Lotes';
+      }
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display  = 'block';
+
+      renderStats();
+      renderGrid(allLotes);
+      initFilters();
+    } catch(e) {
+      document.getElementById('loading').innerHTML =
+        '<div style="color:#dc2626;font-size:13px">Error al cargar lotes.<br><small>' + e.message + '</small></div>';
+    }
+  }
+
+  function renderStats() {
+    const counts = { D:0, A:0, V:0, B:0, N:0 };
+    allLotes.forEach(l => { if (counts[l.estatus] !== undefined) counts[l.estatus]++; });
+    document.getElementById('stats-bar').innerHTML = `
+      <div class="stat"><div class="stat-dot" style="background:#22c55e"></div><span class="stat-num">${counts.D}</span>&nbsp;Disponibles</div>
+      <div class="stat"><div class="stat-dot" style="background:#f59e0b"></div><span class="stat-num">${counts.A}</span>&nbsp;Apartados</div>
+      <div class="stat"><div class="stat-dot" style="background:#ef4444"></div><span class="stat-num">${counts.V}</span>&nbsp;Vendidos</div>
+      <div class="stat"><div class="stat-dot" style="background:#9ca3af"></div><span class="stat-num">${counts.B + counts.N}</span>&nbsp;No disponibles</div>
+    `;
+  }
+
+  function renderGrid(lotes) {
+    const grid = document.getElementById('lot-grid');
+    if (!lotes.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#64748b;padding:40px;font-size:13px">No hay lotes en esta categoría.</div>';
+      return;
+    }
+    grid.innerHTML = lotes.map(l => {
+      const st = statusMap[l.estatus] || statusMap['B'];
+      return `
+        <div class="lot-card ${st.cls}" data-loteid="${l.loteid}" data-estatus="${l.estatus}">
+          <div class="lot-key">Lote ${l.nolote}</div>
+          <div class="lot-sup">${l.superficie ? l.superficie + ' m²' : '—'} · Mza ${l.manzana || '—'}</div>
+          <div class="lot-price">${l.preciolote ? fmt(l.preciolote) : '—'}</div>
+          <div class="lot-badge ${st.badge}">${st.label}</div>
+        </div>`;
+    }).join('');
+
+    grid.querySelectorAll('.lot-card.disponible').forEach(card => {
+      card.addEventListener('click', () => {
+        const lote = allLotes.find(l => l.loteid == card.dataset.loteid);
+        if (lote) openModal(lote);
+      });
+    });
+  }
+
+  function initFilters() {
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeFilter = btn.dataset.filter;
+        const filtered = activeFilter === 'all'
+          ? allLotes
+          : allLotes.filter(l => l.estatus === activeFilter);
+        renderGrid(filtered);
+      });
+    });
+  }
+
+  function openModal(lote) {
+    const montoApartado = desarrollo?.montominimoapartado || 0;
+    const montoEnganche = desarrollo?.enganche || 0;
+    document.getElementById('modal-title').textContent = `Lote ${lote.nolote}`;
+    document.getElementById('modal-sub').textContent   = `Manzana ${lote.manzana || '—'} · Coto ${lote.coto || '—'} · ${lote.tipolote || ''}`;
+    document.getElementById('modal-price').textContent = lote.preciolote ? fmt(lote.preciolote) : '—';
+    document.getElementById('modal-psm').textContent   = lote.preciopormt2 ? fmt(lote.preciopormt2) + ' / m²' : '';
+    document.getElementById('modal-sup').textContent   = lote.superficie ? lote.superficie + ' m²' : '—';
+    document.getElementById('modal-mzn').textContent   = lote.manzana || '—';
+    document.getElementById('modal-eng').textContent   = montoEnganche ? fmt(montoEnganche) : '—';
+    document.getElementById('modal-apt').textContent   = montoApartado ? fmt(montoApartado) : '—';
+
+    const cta = document.getElementById('modal-cta');
+    cta.onclick = () => {
+      if (!getAccessToken()) {
+        window.top.location.href = '/portal/login?redirect=/portal/desarrollos/' + DESARROLLOID + '/mapa';
+        return;
+      }
+      const p = new URLSearchParams({
+        lote: lote.nolote,
+        loteid: String(lote.loteid),
+        desarrolloid: DESARROLLOID,
+        manzana: lote.manzana || '',
+        precio: lote.preciolote ? fmt(lote.preciolote) : ''
+      });
+      window.location.href = '/portal/mapa/apartado.html?' + p.toString();
+    };
+
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+
+  document.getElementById('modal-close').addEventListener('click', () => {
+    document.getElementById('modal-overlay').classList.remove('open');
+  });
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay'))
+      document.getElementById('modal-overlay').classList.remove('open');
+  });
+
+  init();
+</script>
+</body>
+</html>
