@@ -149,6 +149,25 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Error al crear corrida: ${corridaError.message}`)
     }
 
+    // 4. Enlazar el pago de enganche (corridafinancieraid=null) a nopago=0
+    // Buscar el corridafinancieraid del nopago=0 recién creado
+    const { data: corrida0 } = await serviceClient
+      .from('corridafinanciera')
+      .select('corridafinancieraid')
+      .eq('ventaid', Number(ventaid))
+      .eq('nopago', 0)
+      .single()
+
+    if (corrida0) {
+      // Actualizar pagos sin corrida asociada que sean de enganche para esta venta
+      await serviceClient
+        .from('pagos')
+        .update({ corridafinancieraid: corrida0.corridafinancieraid })
+        .is('corridafinancieraid', null)
+        .ilike('comentario', `%Venta ${ventaid}%`)
+        .ilike('comentario', '%enganche%')
+    }
+
     // 3. Actualizar venta con plazo y mensualidad
     await serviceClient
       .from('venta')
