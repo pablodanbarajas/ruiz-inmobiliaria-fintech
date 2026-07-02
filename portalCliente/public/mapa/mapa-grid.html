@@ -263,15 +263,19 @@
   async function init() {
     try {
       const [devs, lotes] = await Promise.all([
-        sbFetch(`desarrollo?select=desarrolloid,nombre,montominimoapartado,enganche&desarrolloid=eq.${DESARROLLOID}`),
+        sbFetch(`public_developments?select=id,name,min_apartado,enganche&id=eq.${DESARROLLOID}`),
         sbFetch(`lote?select=loteid,nolote,manzana,coto,tipolote,superficie,preciolote,preciopormt2,estatus&desarrolloid=eq.${DESARROLLOID}&order=nolote&limit=500`)
       ]);
 
       desarrollo = Array.isArray(devs) ? devs[0] : null;
+      // Normalizar campos del view vs tabla directa
+      if (desarrollo) {
+        desarrollo.montominimoapartado = desarrollo.min_apartado ?? desarrollo.montominimoapartado;
+      }
       allLotes   = Array.isArray(lotes) ? lotes : [];
 
       if (desarrollo) {
-        document.getElementById('dev-title').textContent = desarrollo.nombre || 'Lotes';
+        document.getElementById('dev-title').textContent = desarrollo.name || desarrollo.nombre || 'Lotes';
       }
 
       document.getElementById('loading').style.display = 'none';
