@@ -216,38 +216,24 @@ export const VentaDetail = () => {
 
     try {
       setIsSubmitting(true)
-      const ventaId = Number(id)
-      const preciolote = venta?.preciolote ?? 0
-      const enganche = venta?.enganche ?? 0
-      const saldoInicial = preciolote - enganche
-      const mensualidad = parseFloat((saldoInicial / plazo).toFixed(2))
-      const fechaEnganche = venta?.fechaenganche ?? new Date().toISOString().split('T')[0]
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Sin sesión activa')
 
-      // Limpiar corridas previas incompletas (para evitar duplicate key)
-      await supabase.from('corridafinanciera').delete().eq('ventaid', ventaId)
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
-      const corridaRecords = []
-      // nopago=0: enganche
-      corridaRecords.push({ ventaid: ventaId, nopago: 0, fecha: fechaEnganche, mensualidad: enganche, saldo: saldoInicial })
-      // nopago=1..plazo: mensualidades
-      const fechaPrimeraDate = new Date(fechaPrimera + 'T12:00:00')
-      for (let i = 1; i <= plazo; i++) {
-        const fecha = new Date(fechaPrimeraDate)
-        fecha.setMonth(fecha.getMonth() + (i - 1))
-        const saldo = i === plazo ? 0 : Math.max(0, parseFloat((saldoInicial - mensualidad * i).toFixed(2)))
-        corridaRecords.push({ ventaid: ventaId, nopago: i, fecha: fecha.toISOString().split('T')[0], mensualidad, saldo })
-      }
+      const res = await fetch(`${supabaseUrl}/functions/v1/formalize-sale`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+        },
+        body: JSON.stringify({ ventaid: Number(id), plazo, fechaprimeramensualidad: fechaPrimera }),
+      })
 
-      const { error: corridaError } = await supabase.from('corridafinanciera').insert(corridaRecords)
-      if (corridaError) throw new Error(corridaError.message)
-
-      // Actualizar venta con plazo y mensualidad
-      await supabase.from('venta').update({ plazo, mensualidad, fechaprimeramensualidad: fechaPrimera }).eq('ventaid', ventaId)
-
-      // Cambiar lote a Vendido
-      if (venta?.loteid) {
-        await supabase.from('lote').update({ estatus: 'V' }).eq('loteid', venta.loteid).eq('estatus', 'A')
-      }
+      const data = await res.json()
+      if (!res.ok || !data.ok) throw new Error(data.error ?? 'Error al formalizar')
 
       setShowFormalizarModal(false)
       window.location.reload()
