@@ -57,6 +57,8 @@ export const VentaDetail = () => {
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
+  const [showFormalizarModal, setShowFormalizarModal] = useState(false)
+  const [formalizarData, setFormalizarData] = useState({ plazo: '100', fechaprimeramensualidad: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPagoModal, setShowPagoModal] = useState(false)
   const [selectedCorridaId, setSelectedCorridaId] = useState<number | null>(null)
@@ -181,8 +183,6 @@ export const VentaDetail = () => {
           fechacontrato: data.fechacontrato,
           fechaenganche: data.fechaenganche,
           fechaprimeramensualidad: data.fechaprimeramensualidad,
-          plazo: data.plazo || null,
-          mensualidad: data.mensualidad || null,
           estatus: data.estatus,
           comentarios: data.comentarios ?? null,
           dias_tolerancia: data.dias_tolerancia ?? null,
@@ -192,46 +192,6 @@ export const VentaDetail = () => {
 
       if (error) throw error
 
-      // Si la venta no tenía corrida y ahora tiene plazo y fechaprimeramensualidad,
-      // generar la corrida financiera automáticamente
-      if (corridas.length === 0 && data.plazo > 0 && data.fechaprimeramensualidad && data.mensualidad > 0) {
-        const ventaId = Number(id)
-        const saldoInicial = (venta?.preciolote ?? 0) - (venta?.enganche ?? 0)
-        const corridaRecords: { ventaid: number; nopago: number; fecha: string; mensualidad: number; saldo: number }[] = []
-
-        // nopago=0: enganche (ya pagado, fecha = fechaenganche)
-        corridaRecords.push({
-          ventaid: ventaId,
-          nopago: 0,
-          fecha: data.fechaenganche,
-          mensualidad: venta?.enganche ?? 0,
-          saldo: saldoInicial,
-        })
-
-        // nopago=1..plazo: mensualidades
-        const fechaPrimera = new Date(data.fechaprimeramensualidad + 'T12:00:00')
-        for (let i = 1; i <= data.plazo; i++) {
-          const fechaPago = new Date(fechaPrimera)
-          fechaPago.setMonth(fechaPago.getMonth() + (i - 1))
-          const saldoRestante = i === data.plazo ? 0 : parseFloat((saldoInicial - data.mensualidad * i).toFixed(2))
-          corridaRecords.push({
-            ventaid: ventaId,
-            nopago: i,
-            fecha: fechaPago.toISOString().split('T')[0],
-            mensualidad: data.mensualidad,
-            saldo: Math.max(0, saldoRestante),
-          })
-        }
-
-        const { error: corridaError } = await supabase.from('corridafinanciera').insert(corridaRecords)
-        if (corridaError) throw new Error(`Corrida no creada: ${corridaError.message}`)
-
-        // Cambiar lote a Vendido si estaba Apartado
-        if (venta?.loteid) {
-          await supabase.from('lote').update({ estatus: 'V' }).eq('loteid', venta.loteid).eq('estatus', 'A')
-        }
-      }
-
       setShowEditModal(false)
       const { data: ventaData } = await supabase
         .from('venta')
@@ -239,11 +199,60 @@ export const VentaDetail = () => {
         .eq('ventaid', id)
         .single()
       setVenta(ventaData as VentaWithDetails)
-      // Recargar corridas
-      window.location.reload()
     } catch (err: any) {
       console.error('Error updating venta:', err)
       alert(`Error al actualizar la venta: ${err.message}`)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // ── Formalizar venta (generar corrida para ventas del portal) ────────────
+  const handleFormalizar = async () => {
+    const plazo = parseInt(formalizarData.plazo)
+    const fechaPrimera = formalizarData.fechaprimeramensualidad
+    if (!plazo || plazo <= 0) { alert('Ingresa el plazo en meses'); return }
+    if (!fechaPrimera) { alert('Ingresa la fecha de primera mensualidad'); return }
+
+    try {
+      setIsSubmitting(true)
+      const ventaId = Number(id)
+      const preciolote = venta?.preciolote ?? 0
+      const enganche = venta?.enganche ?? 0
+      const saldoInicial = preciolote - enganche
+      const mensualidad = parseFloat((saldoInicial / plazo).toFixed(2))
+      const fechaEnganche = venta?.fechaenganche ?? new Date().toISOString().split('T')[0]
+
+      // Limpiar corridas previas incompletas (para evitar duplicate key)
+      await supabase.from('corridafinanciera').delete().eq('ventaid', ventaId)
+
+      const corridaRecords = []
+      // nopago=0: enganche
+      corridaRecords.push({ ventaid: ventaId, nopago: 0, fecha: fechaEnganche, mensualidad: enganche, saldo: saldoInicial })
+      // nopago=1..plazo: mensualidades
+      const fechaPrimeraDate = new Date(fechaPrimera + 'T12:00:00')
+      for (let i = 1; i <= plazo; i++) {
+        const fecha = new Date(fechaPrimeraDate)
+        fecha.setMonth(fecha.getMonth() + (i - 1))
+        const saldo = i === plazo ? 0 : Math.max(0, parseFloat((saldoInicial - mensualidad * i).toFixed(2)))
+        corridaRecords.push({ ventaid: ventaId, nopago: i, fecha: fecha.toISOString().split('T')[0], mensualidad, saldo })
+      }
+
+      const { error: corridaError } = await supabase.from('corridafinanciera').insert(corridaRecords)
+      if (corridaError) throw new Error(corridaError.message)
+
+      // Actualizar venta con plazo y mensualidad
+      await supabase.from('venta').update({ plazo, mensualidad, fechaprimeramensualidad: fechaPrimera }).eq('ventaid', ventaId)
+
+      // Cambiar lote a Vendido
+      if (venta?.loteid) {
+        await supabase.from('lote').update({ estatus: 'V' }).eq('loteid', venta.loteid).eq('estatus', 'A')
+      }
+
+      setShowFormalizarModal(false)
+      window.location.reload()
+    } catch (err: any) {
+      alert(`Error al formalizar: ${err.message}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -699,14 +708,22 @@ export const VentaDetail = () => {
 
         {/* Banner: enganche pagado desde portal, admin debe crear corrida */}
         {venta.estatus === 'A' && corridas.length === 0 && (
-          <div className="mb-4 flex items-start gap-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800">
-            <span className="text-green-500 mt-0.5">✅</span>
-            <div>
-              <p className="font-semibold">Enganche pagado — pendiente formalización</p>
-              <p className="text-xs text-green-600 mt-0.5">
-                El cliente pagó el enganche desde el portal. Completa los datos de la venta (mensualidad, plazo, fecha de contrato y primera mensualidad) usando el botón <strong>Editar</strong> para generar la corrida financiera.
-              </p>
+          <div className="mb-4 flex items-start justify-between gap-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800">
+            <div className="flex items-start gap-3">
+              <span className="text-green-500 mt-0.5">✅</span>
+              <div>
+                <p className="font-semibold">Enganche pagado — pendiente formalización</p>
+                <p className="text-xs text-green-600 mt-0.5">
+                  El cliente pagó el enganche desde el portal. Define el plazo y la primera mensualidad para activar el plan de pagos.
+                </p>
+              </div>
             </div>
+            <button
+              onClick={() => setShowFormalizarModal(true)}
+              className="flex-shrink-0 bg-green-700 hover:bg-green-800 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+            >
+              Formalizar venta
+            </button>
           </div>
         )}
 
@@ -1394,6 +1411,55 @@ export const VentaDetail = () => {
         </div>
       )}
 
+      {/* ── Modal: Formalizar Venta (portal) ────────── */}
+      {showFormalizarModal && (
+        <Modal isOpen={showFormalizarModal} title="Formalizar Venta" onClose={() => !isSubmitting && setShowFormalizarModal(false)}>
+          <div className="space-y-4 p-1">
+            <p className="text-sm text-gray-600">
+              Define los términos del plan de pagos. La mensualidad se calculará automáticamente.
+            </p>
+            <div className="bg-gray-50 rounded-lg p-4 grid grid-cols-3 gap-4 text-sm">
+              <div><p className="text-gray-500">Precio lote</p><p className="font-bold text-blue-600">{formatCurrency(venta.preciolote)}</p></div>
+              <div><p className="text-gray-500">Enganche pagado</p><p className="font-bold text-green-600">{formatCurrency(venta.enganche)}</p></div>
+              <div><p className="text-gray-500">Saldo a financiar</p><p className="font-bold text-orange-600">{formatCurrency((venta.preciolote ?? 0) - (venta.enganche ?? 0))}</p></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Plazo (meses) *</label>
+                <input
+                  type="number" min="1" step="1"
+                  value={formalizarData.plazo}
+                  onChange={(e) => setFormalizarData({ ...formalizarData, plazo: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha 1ª Mensualidad *</label>
+                <input
+                  type="date"
+                  value={formalizarData.fechaprimeramensualidad}
+                  onChange={(e) => setFormalizarData({ ...formalizarData, fechaprimeramensualidad: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+            </div>
+            {formalizarData.plazo && parseInt(formalizarData.plazo) > 0 && (
+              <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 text-sm text-teal-800">
+                <span className="font-semibold">Mensualidad calculada: </span>
+                {formatCurrency(((venta.preciolote ?? 0) - (venta.enganche ?? 0)) / parseInt(formalizarData.plazo))} / mes
+                {' · '}{formalizarData.plazo} meses
+              </div>
+            )}
+            <div className="flex gap-3 pt-2">
+              <Button variant="ghost" onClick={() => setShowFormalizarModal(false)} disabled={isSubmitting}>Cancelar</Button>
+              <Button onClick={handleFormalizar} disabled={isSubmitting} className="flex-1">
+                {isSubmitting ? 'Generando corrida...' : 'Generar corrida financiera'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* ── Modal: Editar Venta ────────────────────── */}
       <Modal
         isOpen={showEditModal}
@@ -1401,7 +1467,7 @@ export const VentaDetail = () => {
         onClose={() => !isSubmitting && setShowEditModal(false)}
         size="xl"
       >
-        <VentaForm venta={venta} onSubmit={handleUpdateVenta} isLoading={isSubmitting} allowFinancialEdit={corridas.length === 0} />
+        <VentaForm venta={venta} onSubmit={handleUpdateVenta} isLoading={isSubmitting} />
       </Modal>
 
 

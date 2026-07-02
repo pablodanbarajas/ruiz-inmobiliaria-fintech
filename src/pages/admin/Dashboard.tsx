@@ -66,6 +66,10 @@ export const Dashboard = () => {
   const [ventasRecientes, setVentasRecientes] = useState<VentaReciente[]>([])
   const [loadingRecent, setLoadingRecent] = useState(true)
 
+  const [ventasPendientesFormalizacion, setVentasPendientesFormalizacion] = useState<
+    { ventaid: number; clienteNombre: string; loteLabel: string; fechaEnganche: string | null }[]
+  >([])
+
   const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
   const capabilities = currentRole ? ROLE_CAPABILITIES[currentRole] : null
 
@@ -407,6 +411,42 @@ export const Dashboard = () => {
     fetchRecent()
   }, [canViewPagos, canViewVentas])
 
+  // ── Ventas pendientes de formalización (portal) ─────────────────
+  useEffect(() => {
+    if (!canViewVentas) return
+    const fetch = async () => {
+      const { data: ventas } = await supabase
+        .from('venta')
+        .select('ventaid, clienteid, loteid, fechaenganche, estatus')
+        .eq('estatus', 'A')
+        .is('mensualidad', null)
+        .order('ventaid', { ascending: false })
+        .limit(10)
+      if (!ventas || ventas.length === 0) return
+
+      const loteIds = [...new Set((ventas as any[]).map((v) => v.loteid).filter(Boolean))]
+      const clienteIds = [...new Set((ventas as any[]).map((v) => v.clienteid).filter(Boolean))]
+      const [{ data: lotesData }, { data: clientesData }] = await Promise.all([
+        supabase.from('lote').select('loteid, manzana, nolote, clavelote').in('loteid', loteIds),
+        supabase.from('cliente').select('clienteid, nombre').in('clienteid', clienteIds),
+      ])
+      const loteMap = new Map((lotesData || []).map((l: any) => [l.loteid, l]))
+      const clienteMap = new Map((clientesData || []).map((c: any) => [c.clienteid, c]))
+
+      setVentasPendientesFormalizacion((ventas as any[]).map((v) => {
+        const lote = loteMap.get(v.loteid)
+        const cliente = clienteMap.get(v.clienteid)
+        return {
+          ventaid: v.ventaid,
+          clienteNombre: cliente?.nombre ?? `Cliente #${v.clienteid}`,
+          loteLabel: lote?.clavelote ?? `Mza ${lote?.manzana}-Lote ${lote?.nolote}`,
+          fechaEnganche: v.fechaenganche,
+        }
+      }))
+    }
+    fetch()
+  }, [canViewVentas])
+
   const monthName = new Date().toLocaleString('es-MX', { month: 'long', year: 'numeric' })
 
   const StatCard = ({
@@ -747,6 +787,52 @@ export const Dashboard = () => {
             </div>
           )}
         </div>
+        )}
+
+        {/* ── Ventas pendientes de formalización (portal) ── */}
+        {canViewVentas && ventasPendientesFormalizacion.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <CheckCircle2 className="text-green-600 w-5 h-5" />
+              Pendientes de formalización (portal)
+              <span className="ml-2 bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                {ventasPendientesFormalizacion.length}
+              </span>
+            </h2>
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+              <table className="min-w-full">
+                <thead className="bg-green-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Venta</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Cliente</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Lote</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Fecha Enganche</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {ventasPendientesFormalizacion.map((v) => (
+                    <tr key={v.ventaid} className="hover:bg-green-50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">#{v.ventaid}</td>
+                      <td className="px-6 py-4 text-sm text-gray-800">{v.clienteNombre}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{v.loteLabel}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">{v.fechaEnganche ? formatDate(v.fechaEnganche) : '—'}</td>
+                      <td className="px-6 py-4">
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/admin/ventas/${v.ventaid}`)}
+                          className="inline-flex items-center gap-1 text-sm text-green-700 font-semibold hover:underline"
+                        >
+                          <CheckCircle2 size={14} />
+                          Formalizar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </div>
     </AdminLayout>
