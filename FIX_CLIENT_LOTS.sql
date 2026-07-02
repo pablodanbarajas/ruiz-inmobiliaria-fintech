@@ -19,8 +19,8 @@ SELECT
   l.estatus as lot_status,
   CASE 
     WHEN v.estatus = 'V' THEN 'finalizado'
-    WHEN v.estatus = 'P' THEN 'apartado'  -- Reserva pendiente de pago de apartado
-    WHEN v.estatus = 'E' THEN 'apartado'  -- Apartado pagado, enganche pendiente
+    WHEN v.estatus = 'P' THEN 'apartado'           -- Reserva pendiente de pago
+    WHEN v.estatus = 'E' THEN 'apartado_confirmado' -- Apartado pagado, enganche pendiente
     WHEN v.estatus = 'A' AND COALESCE(
       (SELECT COUNT(*) FROM corridafinanciera cf 
        WHERE cf.ventaid = v.ventaid AND cf.nopago > 0),
@@ -37,6 +37,8 @@ SELECT
   v.fechacontrato,
   v.enganche,
   v.mensualidad,
+  v.monto_apartado_pagado,
+  v.fecha_limite_enganche,
   (SELECT MIN(cf.fecha) FROM corridafinanciera cf 
    WHERE cf.ventaid = v.ventaid 
      AND cf.nopago > 0
