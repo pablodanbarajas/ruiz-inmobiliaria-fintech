@@ -147,7 +147,13 @@ export const supabasePaymentsService: IPaymentsService = {
             })()
           ) as PaymentStatus,
           lotKey,
-          breakdown: esPagado ? undefined : { base: corrida.mensualidad || 0, cargoExtra: cargoExtraAmount, recargo },
+          breakdown: esPagado
+            ? {
+                base: corrida.mensualidad || 0,
+                cargoExtra: cargoExtraAmount,
+                recargo: Math.max(0, totalPagadoCorrida - (corrida.mensualidad || 0) - cargoExtraAmount),
+              }
+            : { base: corrida.mensualidad || 0, cargoExtra: cargoExtraAmount, recargo },
         };
 
         if (esPagado) {
