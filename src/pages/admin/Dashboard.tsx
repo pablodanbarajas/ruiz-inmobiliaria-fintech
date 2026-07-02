@@ -415,11 +415,12 @@ export const Dashboard = () => {
   useEffect(() => {
     if (!canViewVentas) return
     const fetch = async () => {
-      // 1. Obtener todas las ventas activas
+      // 1. Solo ventas activas originadas desde el portal (tienen fecha_reserva)
       const { data: ventas } = await supabase
         .from('venta')
         .select('ventaid, clienteid, loteid, fechaenganche, estatus')
         .eq('estatus', 'A')
+        .not('fecha_reserva', 'is', null)
         .order('ventaid', { ascending: false })
         .limit(100)
       if (!ventas || ventas.length === 0) return
