@@ -19,14 +19,14 @@ SELECT
   l.estatus as lot_status,
   CASE 
     WHEN v.estatus = 'V' THEN 'finalizado'
-    WHEN v.estatus = 'P' THEN 'apartado'           -- Reserva pendiente de pago
-    WHEN v.estatus = 'E' THEN 'apartado_confirmado' -- Apartado pagado, enganche pendiente
+    WHEN v.estatus = 'P' THEN 'apartado'
+    WHEN v.estatus = 'E' THEN 'apartado_confirmado'
     WHEN v.estatus = 'A' AND COALESCE(
       (SELECT COUNT(*) FROM corridafinanciera cf 
        WHERE cf.ventaid = v.ventaid AND cf.nopago > 0),
       0
     ) > 0 THEN 'en_pagos'
-    WHEN v.estatus = 'A' THEN 'apartado'
+    WHEN v.estatus = 'A' THEN 'en_formalizacion'  -- Enganche pagado, admin activa mensualidades
     ELSE 'apartado'
   END as portal_lot_status,
   d.desarrolloid as development_id,

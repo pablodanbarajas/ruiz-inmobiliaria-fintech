@@ -27,6 +27,7 @@ type ClientLotRow = {
 
 function mapLotStatus(portalStatus: string | null): ClientLot['status'] {
   const value = (portalStatus ?? '').toLowerCase();
+  if (value === 'en_formalizacion') return 'en_formalizacion';
   if (value === 'apartado_confirmado') return 'apartado_confirmado';
   if (value === 'apartado') return 'apartado';
   if (value === 'finalizado') return 'finalizado';
@@ -37,7 +38,8 @@ function mapLotStatus(portalStatus: string | null): ClientLot['status'] {
 function mapProgressStage(portalStatus: string | null): number {
   const value = (portalStatus ?? '').toLowerCase();
   if (value === 'apartado') return 1;
-  if (value === 'apartado_confirmado') return 2; // Enganche pendiente
+  if (value === 'apartado_confirmado') return 2;
+  if (value === 'en_formalizacion') return 3; // Enganche pagado, admin configura mensualidades
   if (value === 'en_pagos') return 3;
   if (value === 'finalizado') return 4;
   return 1;
@@ -75,6 +77,10 @@ export const supabaseLotsService: ILotsService = {
             dueDate: row.fecha_limite_enganche,
             type: 'Enganche'
           };
+        }
+        // Lote en formalizacion (enganche pagado, admin configura mensualidades)
+        if (row.portal_lot_status === 'en_formalizacion') {
+          return undefined; // Sin próximo pago hasta que admin active la corrida
         }
         // Lote en mensualidades
         if (row.next_due_date) {

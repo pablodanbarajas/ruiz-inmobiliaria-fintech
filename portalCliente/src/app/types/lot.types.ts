@@ -4,7 +4,7 @@
  * MapLot: datos públicos para el mapa interactivo (sin información financiera).
  */
 
-export type LotStatus = 'apartado' | 'apartado_confirmado' | 'en_pagos' | 'finalizado';
+export type LotStatus = 'apartado' | 'apartado_confirmado' | 'en_formalizacion' | 'en_pagos' | 'finalizado';
 
 /** Datos del próximo pago asociado a un lote */
 export interface LotNextPayment {

@@ -26,6 +26,13 @@ const statusConfig = {
     buttonLabel: 'Pagar enganche',
     buttonColor: 'bg-blue-600 hover:bg-blue-700'
   },
+  en_formalizacion: {
+    label: 'Enganche pagado',
+    sublabel: 'Pendiente de activación',
+    color: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    buttonLabel: 'Contactar asesor',
+    buttonColor: 'bg-indigo-600 hover:bg-indigo-700'
+  },
   en_pagos: {
     label: 'En pagos',
     sublabel: 'Mensualidades activas',
@@ -51,6 +58,12 @@ export function LotCard({ lote }: LotCardProps) {
   const showPlaceholder = !lote.imageUrl || imgError;
 
   const handlePrimaryAction = async () => {
+    if (lote.status === 'en_formalizacion') {
+      // El enganche está pagado, esperando que el admin active las mensualidades
+      alert('Tu enganche fue recibido. Un asesor se pondrá en contacto para formalizar tu contrato y activar el plan de pagos.');
+      return;
+    }
+
     if (lote.status === 'en_pagos' || lote.status === 'finalizado') {
       navigate('/mis-pagos');
       return;
