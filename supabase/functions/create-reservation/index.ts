@@ -50,8 +50,8 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    // Expirar reservas antiguas antes de crear una nueva
-    await serviceClient.rpc('expire_reservations').catch(() => {})
+    // Expirar reservas antiguas antes de crear una nueva (ignora si la función no existe aún)
+    await serviceClient.rpc('expire_reservations')
 
     // Buscar cliente por email del usuario autenticado
     const { data: cliente } = await serviceClient
