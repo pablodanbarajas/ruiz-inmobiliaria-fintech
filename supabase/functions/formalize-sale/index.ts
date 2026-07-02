@@ -159,13 +159,12 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (corrida0) {
-      // Actualizar pagos sin corrida asociada que sean de enganche para esta venta
+      // Enlazar pagos sin corrida asociada (apartado y enganche) a nopago=0
       await serviceClient
         .from('pagos')
         .update({ corridafinancieraid: corrida0.corridafinancieraid })
         .is('corridafinancieraid', null)
-        .ilike('comentario', `%Venta ${ventaid}%`)
-        .ilike('comentario', '%enganche%')
+        .or(`comentario.ilike.%Venta ${ventaid}%`)
     }
 
     // 3. Actualizar venta con plazo y mensualidad
