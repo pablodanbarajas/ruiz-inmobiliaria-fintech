@@ -181,6 +181,8 @@ export const VentaDetail = () => {
           fechacontrato: data.fechacontrato,
           fechaenganche: data.fechaenganche,
           fechaprimeramensualidad: data.fechaprimeramensualidad,
+          plazo: data.plazo || null,
+          mensualidad: data.mensualidad || null,
           estatus: data.estatus,
           comentarios: data.comentarios ?? null,
           dias_tolerancia: data.dias_tolerancia ?? null,
@@ -190,14 +192,55 @@ export const VentaDetail = () => {
 
       if (error) throw error
 
+      // Si la venta no tenía corrida y ahora tiene plazo y fechaprimeramensualidad,
+      // generar la corrida financiera automáticamente
+      if (corridas.length === 0 && data.plazo > 0 && data.fechaprimeramensualidad && data.mensualidad > 0) {
+        const ventaId = Number(id)
+        const saldoInicial = (venta?.preciolote ?? 0) - (venta?.enganche ?? 0)
+        const corridaRecords: { ventaid: number; nopago: number; fecha: string; mensualidad: number; saldo: number }[] = []
+
+        // nopago=0: enganche (ya pagado, fecha = fechaenganche)
+        corridaRecords.push({
+          ventaid: ventaId,
+          nopago: 0,
+          fecha: data.fechaenganche,
+          mensualidad: venta?.enganche ?? 0,
+          saldo: saldoInicial,
+        })
+
+        // nopago=1..plazo: mensualidades
+        const fechaPrimera = new Date(data.fechaprimeramensualidad + 'T12:00:00')
+        for (let i = 1; i <= data.plazo; i++) {
+          const fechaPago = new Date(fechaPrimera)
+          fechaPago.setMonth(fechaPago.getMonth() + (i - 1))
+          const saldoRestante = i === data.plazo ? 0 : parseFloat((saldoInicial - data.mensualidad * i).toFixed(2))
+          corridaRecords.push({
+            ventaid: ventaId,
+            nopago: i,
+            fecha: fechaPago.toISOString().split('T')[0],
+            mensualidad: data.mensualidad,
+            saldo: Math.max(0, saldoRestante),
+          })
+        }
+
+        const { error: corridaError } = await supabase.from('corridafinanciera').insert(corridaRecords)
+        if (corridaError) throw new Error(`Corrida no creada: ${corridaError.message}`)
+
+        // Cambiar lote a Vendido si estaba Apartado
+        if (venta?.loteid) {
+          await supabase.from('lote').update({ estatus: 'V' }).eq('loteid', venta.loteid).eq('estatus', 'A')
+        }
+      }
+
       setShowEditModal(false)
-      // Refetch updated data
       const { data: ventaData } = await supabase
         .from('venta')
         .select('*, cliente:cliente(*), lote:lote(*, desarrollo:desarrollo(*))')
         .eq('ventaid', id)
         .single()
       setVenta(ventaData as VentaWithDetails)
+      // Recargar corridas
+      window.location.reload()
     } catch (err: any) {
       console.error('Error updating venta:', err)
       alert(`Error al actualizar la venta: ${err.message}`)
@@ -1358,7 +1401,7 @@ export const VentaDetail = () => {
         onClose={() => !isSubmitting && setShowEditModal(false)}
         size="xl"
       >
-        <VentaForm venta={venta} onSubmit={handleUpdateVenta} isLoading={isSubmitting} />
+        <VentaForm venta={venta} onSubmit={handleUpdateVenta} isLoading={isSubmitting} allowFinancialEdit={corridas.length === 0} />
       </Modal>
 
 

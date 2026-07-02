@@ -33,11 +33,12 @@ interface VentaFormProps {
   onSubmit: (data: VentaFormData) => Promise<void>
   isLoading?: boolean
   defaultLoteId?: number
+  allowFinancialEdit?: boolean  // Para ventas sin corrida (portal) — habilita plazo/mensualidad
 }
 
 type LoteWithDesarrollo = Lote & { desarrollo?: Desarrollo }
 
-export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId }: VentaFormProps) => {
+export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, allowFinancialEdit = false }: VentaFormProps) => {
   const isEditMode = !!venta
   const today = new Date().toISOString().split('T')[0]
 
@@ -273,7 +274,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId }:
               value={formData.loteid}
               onChange={(val) => handleLoteChange(val)}
               placeholder="Buscar por desarrollo, manzana, lote…"
-              disabled={isLoading || isEditMode}
+              disabled={isLoading || (isEditMode && !allowFinancialEdit)}
               error={errors.loteid}
             />
           </div>
@@ -286,7 +287,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId }:
               value={formData.clienteid}
               onChange={(val) => setFormData({ ...formData, clienteid: val })}
               placeholder="Buscar por nombre, email o RFC…"
-              disabled={isLoading || isEditMode}
+              disabled={isLoading || (isEditMode && !allowFinancialEdit)}
               error={errors.clienteid}
             />
           </div>
@@ -360,9 +361,14 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId }:
       <div className="bg-gray-50 rounded-lg p-4 space-y-4">
         <p className={sectionHeading}>
           Datos Financieros
-          {isEditMode && (
+          {isEditMode && !allowFinancialEdit && (
             <span className="ml-2 font-normal normal-case text-gray-400">
               (solo lectura — cancela y recrea la venta para modificar términos)
+            </span>
+          )}
+          {isEditMode && allowFinancialEdit && (
+            <span className="ml-2 font-normal normal-case text-blue-500">
+              ✓ Puedes editar plazo y otros campos para generar la corrida financiera
             </span>
           )}
         </p>
@@ -378,7 +384,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId }:
               placeholder="0.00"
               value={formData.preciolote}
               onChange={(e) => setFormData({ ...formData, preciolote: e.target.value })}
-              disabled={isLoading || isEditMode}
+              disabled={isLoading || (isEditMode && !allowFinancialEdit)}
             />
             {errors.preciolote && (
               <p className="text-red-500 text-xs mt-1">{errors.preciolote}</p>
@@ -393,7 +399,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId }:
               placeholder="0.00"
               value={formData.enganche}
               onChange={(e) => setFormData({ ...formData, enganche: e.target.value })}
-              disabled={isLoading || isEditMode}
+              disabled={isLoading || (isEditMode && !allowFinancialEdit)}
             />
             {errors.enganche && (
               <p className="text-red-500 text-xs mt-1">{errors.enganche}</p>
@@ -413,7 +419,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId }:
               placeholder="120"
               value={formData.plazo}
               onChange={(e) => setFormData({ ...formData, plazo: e.target.value })}
-              disabled={isLoading || isEditMode}
+              disabled={isLoading || (isEditMode && !allowFinancialEdit)}
             />
             {errors.plazo && <p className="text-red-500 text-xs mt-1">{errors.plazo}</p>}
           </div>
