@@ -19,6 +19,8 @@ SELECT
   l.estatus as lot_status,
   CASE 
     WHEN v.estatus = 'V' THEN 'finalizado'
+    WHEN v.estatus = 'P' THEN 'apartado'  -- Reserva pendiente de pago de apartado
+    WHEN v.estatus = 'E' THEN 'apartado'  -- Apartado pagado, enganche pendiente
     WHEN v.estatus = 'A' AND COALESCE(
       (SELECT COUNT(*) FROM corridafinanciera cf 
        WHERE cf.ventaid = v.ventaid AND cf.nopago > 0),
@@ -67,7 +69,7 @@ INNER JOIN venta v ON v.clienteid = c.clienteid
 INNER JOIN lote l ON l.loteid = v.loteid
 INNER JOIN desarrollo d ON d.desarrolloid = l.desarrolloid
 WHERE c.email = auth.jwt() ->> 'email'
-  AND v.estatus IN ('A', 'V')
+  AND v.estatus IN ('A', 'V', 'P', 'E')
 ORDER BY d.nombre, l.manzana, l.nolote;
 
 -- RLS: Solo clientes pueden ver sus lotes

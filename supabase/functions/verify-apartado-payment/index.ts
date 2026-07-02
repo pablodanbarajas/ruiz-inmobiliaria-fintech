@@ -141,6 +141,13 @@ Deno.serve(async (req: Request) => {
       .eq('referencia', sessionId)
       .maybeSingle()
 
+    // Obtener info del lote y desarrollo para enriquecer la respuesta
+    const { data: loteInfo } = await serviceClient
+      .from('lote')
+      .select('nolote, manzana, coto, superficie, preciolote, desarrollo:desarrolloid(desarrolloid, nombre)')
+      .eq('loteid', venta.loteid)
+      .maybeSingle()
+
     if (!pagoExistente) {
       // Actualizar venta a 'E' (En enganche)
       await serviceClient
@@ -152,27 +159,21 @@ Deno.serve(async (req: Request) => {
         })
         .eq('ventaid', ventaid)
 
-      // Obtener info del lote para el log
-      const { data: lote } = await serviceClient
-        .from('lote')
-        .select('nolote, manzana')
-        .eq('loteid', venta.loteid)
-        .maybeSingle()
-
       // Registrar pago (sin corridafinancieraid por ahora — aún no hay corrida)
-      // Usamos comentario especial para identificarlo como pago de apartado
       await serviceClient
         .from('pagos')
         .insert({
-          corridafinancieraid: null,  // Se asignará cuando se cree la corrida al liquidar enganche
+          corridafinancieraid: null,
           fechapago: new Date().toISOString().split('T')[0],
           montopagado: montoApartado,
-          formapago: 4, // Tarjeta
+          formapago: 4,
           estatus: 'P',
           referencia: sessionId,
-          comentario: `Pago de apartado · Lote ${lote?.nolote ?? ''} Mza ${lote?.manzana ?? ''} · Venta ${ventaid} (sesión Quentli: ${sessionId})`,
+          comentario: `Pago de apartado · Lote ${loteInfo?.nolote ?? ''} Mza ${loteInfo?.manzana ?? ''} · Venta ${ventaid} (sesión Quentli: ${sessionId})`,
         })
     }
+
+    const desarrollo = loteInfo?.desarrollo as any
 
     return new Response(JSON.stringify({
       ok: true,
@@ -181,6 +182,16 @@ Deno.serve(async (req: Request) => {
       montoEnganche,
       montoRestante,
       fechaLimiteEnganche: fechaLimiteStr,
+      lote: {
+        nolote: loteInfo?.nolote,
+        manzana: loteInfo?.manzana,
+        superficie: loteInfo?.superficie,
+        preciolote: loteInfo?.preciolote,
+      },
+      desarrollo: {
+        nombre: desarrollo?.nombre,
+        id: desarrollo?.desarrolloid,
+      },
     }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
   } catch (err: any) {

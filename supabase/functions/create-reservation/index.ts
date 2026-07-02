@@ -177,7 +177,7 @@ Deno.serve(async (req: Request) => {
           { key: 'clienteid',  value: String(cliente.clienteid) },
           { key: 'tipo',       value: 'apartado' },
         ],
-        returnUrl: `${portalUrl}/mapa/pagado.html?ventaid=${venta.ventaid}&tipo=apartado`,
+        returnUrl: `${portalUrl}/mapa/pagado.html?ventaid=${venta.ventaid}&tipo=apartado&desarrolloid=${desarrolloid}`,
       }
     }
 

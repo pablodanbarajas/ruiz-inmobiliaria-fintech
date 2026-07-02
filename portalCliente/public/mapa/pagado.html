@@ -584,8 +584,9 @@
     }
 
     // ── Params de URL ────────────────────────────────────────────────
-    var params  = new URLSearchParams(window.location.search);
-    var ventaid = params.get('ventaid') || sessionStorage.getItem('apartado_ventaid') || '';
+    var params   = new URLSearchParams(window.location.search);
+    var ventaid  = params.get('ventaid') || sessionStorage.getItem('apartado_ventaid') || '';
+    var desarrolloid = params.get('desarrolloid') || '20';
 
     // ── Fecha ────────────────────────────────────────────────────────
     var now = new Date();
@@ -649,12 +650,26 @@
           document.getElementById('folio-num').textContent  = folio;
           document.getElementById('folio-mini').textContent = folio;
 
+          // Info del lote
+          if (data.lote) {
+            var loteLabel = 'Lote ' + (data.lote.nolote || '') + ' · ' + (data.desarrollo?.nombre || '');
+            document.getElementById('lote-display').textContent = loteLabel;
+            // Actualizar filas de la card
+            var rows = document.querySelectorAll('.detail-row .detail-val');
+            // Fraccionamiento (row 0)
+            if (rows[0] && data.desarrollo?.nombre) rows[0].textContent = data.desarrollo.nombre;
+            // Superficie (row 1)
+            if (rows[1] && data.lote.superficie) rows[1].textContent = data.lote.superficie + ' m²';
+            // Precio (row 2)
+            if (rows[2] && data.lote.preciolote) rows[2].textContent = fmt(data.lote.preciolote) + ' MXN';
+          }
+
           // Monto de apartado pagado
           var montoApartado = data.montoApartado || 0;
           document.querySelector('.pay-summary-amount').innerHTML =
             fmt(montoApartado) + ' <span style="font-size:1rem;opacity:0.6;font-family:\'DM Sans\',sans-serif;font-weight:400;">MXN</span>';
 
-          // Enganche pendiente en time-card
+          // Enganche pendiente
           var montoRestante  = data.montoRestante || 0;
           var fechaLimite    = data.fechaLimiteEnganche || '';
           var fechaLimiteFmt = fechaLimite
@@ -666,10 +681,18 @@
             'Enganche restante: <strong>' + fmt(montoRestante) + '</strong><br>' +
             'Vence: <strong style="color:#92400e">' + fechaLimiteFmt + '</strong>';
 
-          // Próximos pasos — actualizar paso 4 con el enganche correcto
+          // Próximos pasos — actualizar paso 4
           var pasos = document.querySelectorAll('.next-step-text');
           if (pasos[3]) {
             pasos[3].innerHTML = 'El enganche restante de <strong>' + fmt(montoRestante) + ' MXN</strong> deberá liquidarse antes del ' + fechaLimiteFmt + '.';
+          }
+
+          // Corregir el botón "Volver al mapa de lotes"
+          var devId = data.desarrollo?.id || desarrolloid;
+          var btnVolver = document.querySelector('.btn-primary');
+          if (btnVolver) {
+            btnVolver.setAttribute('href', '/portal/desarrollos/' + devId + '/mapa');
+            btnVolver.setAttribute('target', '_top'); // Salir del iframe
           }
 
           setTimeout(burst, 300); setTimeout(burst, 900);
