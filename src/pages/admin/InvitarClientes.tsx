@@ -28,12 +28,17 @@ export const InvitarClientes = () => {
   const [selectedDesarrollo, setSelectedDesarrollo] = useState<number | null>(null)
   const [bulkSending, setBulkSending] = useState(false)
 
-  // Cargar desarrollos disponibles
+  // Cargar desarrollos disponibles y restaurar selección guardada
   useEffect(() => {
     supabase.from('desarrollo').select('desarrolloid, nombre').order('nombre').then(({ data }) => {
       const devs = data ?? []
       setDesarrollos(devs)
-      if (devs.length > 0) setSelectedDesarrollo(devs[0].desarrolloid)
+      if (devs.length > 0) {
+        const saved = localStorage.getItem('invitar_desarrollo_id')
+        const savedId = saved ? Number(saved) : null
+        const found = savedId && devs.find(d => d.desarrolloid === savedId)
+        setSelectedDesarrollo(found ? savedId : devs[0].desarrolloid)
+      }
     })
   }, [])
 
@@ -134,7 +139,11 @@ export const InvitarClientes = () => {
             <label className="text-sm font-medium text-gray-700">Desarrollo:</label>
             <select
               value={selectedDesarrollo ?? ''}
-              onChange={(e) => setSelectedDesarrollo(Number(e.target.value))}
+              onChange={(e) => {
+                const id = Number(e.target.value)
+                setSelectedDesarrollo(id)
+                localStorage.setItem('invitar_desarrollo_id', String(id))
+              }}
               className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
               {desarrollos.map(d => (
