@@ -2,17 +2,19 @@ import { useEffect, useState, useCallback } from 'react'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/Button'
-import { Mail, CheckCircle, Clock, XCircle, RefreshCw, Users, Send } from 'lucide-react'
+import { Mail, CheckCircle, Clock, XCircle, RefreshCw, Users, Send, AlertTriangle } from 'lucide-react'
 
 type InviteCandidate = {
   clienteid: number
   nombre: string | null
-  email: string
+  email: string | null
   telefonocelular: string | null
   user_id: string | null
   development_id: number
   development_name: string
   num_lotes: number
+  can_invite: boolean
+  email_issue: string | null
 }
 
 type InviteStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -114,7 +116,8 @@ export const InvitarClientes = () => {
   }
 
   const activeCount  = candidates.filter(c =>  c.user_id).length
-  const pendingCount = candidates.filter(c => !c.user_id).length
+  const pendingCount = candidates.filter(c => !c.user_id && c.can_invite).length
+  const issueCount   = candidates.filter(c => !c.user_id && !c.can_invite).length
 
   return (
     <AdminLayout>
@@ -154,6 +157,12 @@ export const InvitarClientes = () => {
             <Clock className="w-4 h-4" />
             {pendingCount} sin invitar
           </span>
+          {issueCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-sm font-medium">
+              <AlertTriangle className="w-4 h-4" />
+              {issueCount} con problema de email
+            </span>
+          )}
           <button
             onClick={fetchCandidates}
             className="inline-flex items-center gap-1.5 text-gray-500 hover:text-gray-700 text-sm transition-colors"
@@ -171,8 +180,7 @@ export const InvitarClientes = () => {
               <Send className="w-4 h-4" />
               {bulkSending ? 'Enviando...' : `Invitar todos sin acceso (${pendingCount})`}
             </Button>
-          )}
-        </div>
+          )}        </div>
 
         {/* Tabla */}
         {loading ? (
@@ -205,7 +213,7 @@ export const InvitarClientes = () => {
                       <td className="px-4 py-3 font-medium text-gray-900">
                         {c.nombre ?? '—'}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{c.email}</td>
+                      <td className="px-4 py-3 text-gray-600">{c.email ?? <span className="italic text-red-400">Sin email</span>}</td>
                       <td className="px-4 py-3 text-gray-600 hidden md:table-cell">
                         {c.telefonocelular ?? '—'}
                       </td>
@@ -221,14 +229,21 @@ export const InvitarClientes = () => {
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
                             <Mail className="w-3 h-3" /> Enviada
                           </span>
+                        ) : !c.can_invite ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-medium">
+                            <AlertTriangle className="w-3 h-3" /> No se puede invitar
+                          </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
                             <Clock className="w-3 h-3" /> Sin acceso
                           </span>
                         )}
+                        {c.email_issue && !c.user_id && (
+                          <p className="text-xs text-red-500 mt-0.5">{c.email_issue}</p>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {!c.user_id && (
+                        {!c.user_id && c.can_invite && (
                           <div className="flex flex-col items-end gap-1">
                             <Button
                               size="sm"
