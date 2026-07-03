@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/Button'
-import { Mail, CheckCircle, Clock, XCircle, RefreshCw, Users } from 'lucide-react'
+import { Mail, CheckCircle, Clock, XCircle, RefreshCw, Users, Send } from 'lucide-react'
 
 type InviteCandidate = {
   clienteid: number
@@ -18,73 +18,99 @@ type InviteCandidate = {
 type InviteStatus = 'idle' | 'loading' | 'success' | 'error'
 type StatusMap = Record<number, { status: InviteStatus; message?: string }>
 
-const DESARROLLO_ID = 20
-
 export const InvitarClientes = () => {
   const [candidates, setCandidates] = useState<InviteCandidate[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [statusMap, setStatusMap] = useState<StatusMap>({})
+  const [desarrollos, setDesarrollos] = useState<{ desarrolloid: number; nombre: string }[]>([])
+  const [selectedDesarrollo, setSelectedDesarrollo] = useState<number | null>(null)
+  const [bulkSending, setBulkSending] = useState(false)
+
+  // Cargar desarrollos disponibles
+  useEffect(() => {
+    supabase.from('desarrollo').select('desarrolloid, nombre').order('nombre').then(({ data }) => {
+      const devs = data ?? []
+      setDesarrollos(devs)
+      if (devs.length > 0) setSelectedDesarrollo(devs[0].desarrolloid)
+    })
+  }, [])
 
   const fetchCandidates = useCallback(async () => {
+    if (!selectedDesarrollo) return
     setLoading(true)
     try {
       const { data, error } = await supabase
         .from('portal_invite_candidates')
         .select('*')
-        .eq('development_id', DESARROLLO_ID)
+        .eq('development_id', selectedDesarrollo)
         .order('nombre', { ascending: true })
 
       if (error) throw error
       setCandidates((data ?? []) as InviteCandidate[])
+      setStatusMap({})
     } catch (err) {
       console.error('Error cargando candidatos:', err)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedDesarrollo])
 
   useEffect(() => {
     fetchCandidates()
   }, [fetchCandidates])
 
+  const sendInvite = async (cliente: InviteCandidate) => {
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+    if (!token) throw new Error('Sesión no encontrada')
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-client`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ email: cliente.email }),
+      }
+    )
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error ?? 'Error al invitar')
+  }
+
   const handleInvite = async (cliente: InviteCandidate) => {
     setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'loading' } }))
     try {
-      const { data: sessionData } = await supabase.auth.getSession()
-      const token = sessionData.session?.access_token
-      if (!token) throw new Error('Sesión no encontrada')
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-client`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({ email: cliente.email }),
-        }
-      )
-
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error ?? 'Error al invitar')
-
-      setStatusMap(prev => ({
-        ...prev,
-        [cliente.clienteid]: { status: 'success', message: 'Invitación enviada' },
-      }))
-      // Recargar lista después de un momento para reflejar cambios
+      await sendInvite(cliente)
+      setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'success', message: 'Invitación enviada' } }))
       setTimeout(fetchCandidates, 2000)
     } catch (err: any) {
-      setStatusMap(prev => ({
-        ...prev,
-        [cliente.clienteid]: {
-          status: 'error',
-          message: err.message ?? 'Error desconocido',
-        },
-      }))
+      setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'error', message: err.message ?? 'Error desconocido' } }))
     }
+  }
+
+  const handleInviteAll = async () => {
+    const sinAcceso = candidates.filter(c => !c.user_id)
+    if (sinAcceso.length === 0) return
+    if (!confirm(`¿Enviar invitación a ${sinAcceso.length} clientes sin acceso?`)) return
+
+    setBulkSending(true)
+    // Enviar de 5 en 5 para no saturar
+    for (const cliente of sinAcceso) {
+      setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'loading' } }))
+      try {
+        await sendInvite(cliente)
+        setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'success' } }))
+      } catch (err: any) {
+        setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'error', message: err.message } }))
+      }
+      // Pausa de 300ms entre envios para evitar rate limit
+      await new Promise(r => setTimeout(r, 300))
+    }
+    setBulkSending(false)
+    setTimeout(fetchCandidates, 1500)
   }
 
   const activeCount  = candidates.filter(c =>  c.user_id).length
@@ -99,10 +125,23 @@ export const InvitarClientes = () => {
             <Users className="w-6 h-6" />
             Portal Clientes — Invitaciones
           </h1>
-          <p className="text-gray-500 mt-1 text-sm">
-            Desarrollo de Prueba &middot;{' '}
-            {candidates.length} cliente{candidates.length !== 1 ? 's' : ''} con lotes activos
-          </p>
+
+          {/* Selector de desarrollo */}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <label className="text-sm font-medium text-gray-700">Desarrollo:</label>
+            <select
+              value={selectedDesarrollo ?? ''}
+              onChange={(e) => setSelectedDesarrollo(Number(e.target.value))}
+              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              {desarrollos.map(d => (
+                <option key={d.desarrolloid} value={d.desarrolloid}>{d.nombre}</option>
+              ))}
+            </select>
+            <p className="text-gray-500 text-sm">
+              {candidates.length} cliente{candidates.length !== 1 ? 's' : ''} con lotes activos
+            </p>
+          </div>
         </div>
 
         {/* Contadores */}
@@ -117,11 +156,22 @@ export const InvitarClientes = () => {
           </span>
           <button
             onClick={fetchCandidates}
-            className="ml-auto inline-flex items-center gap-1.5 text-gray-500 hover:text-gray-700 text-sm transition-colors"
+            className="inline-flex items-center gap-1.5 text-gray-500 hover:text-gray-700 text-sm transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Actualizar
           </button>
+          {pendingCount > 0 && (
+            <Button
+              size="sm"
+              onClick={handleInviteAll}
+              disabled={bulkSending}
+              className="gap-1.5 bg-teal-700 hover:bg-teal-800 text-white"
+            >
+              <Send className="w-4 h-4" />
+              {bulkSending ? 'Enviando...' : `Invitar todos sin acceso (${pendingCount})`}
+            </Button>
+          )}
         </div>
 
         {/* Tabla */}
