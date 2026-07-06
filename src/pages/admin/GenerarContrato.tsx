@@ -399,10 +399,10 @@ C. {{cliente_nombre}}<br/>
 TESTIGO 1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TESTIGO 2</font></font></p>`
 
 // ── Sustitución de variables ──────────────────────────────────────────────
-function reemplazarVariables(template: string, vars: Record<string, string>): string {
+function reemplazarVariables(template: string, vars: Record<string, string | undefined>): string {
   let result = template
   for (const [key, value] of Object.entries(vars)) {
-    result = result.replaceAll(`{{${key}}}`, value)
+    result = result.replaceAll(`{{${key}}}`, value ?? '')
   }
   return result
 }
@@ -456,18 +456,25 @@ export const GenerarContrato = () => {
         // 4. Calcular variables
         const saldoFinanciado = (ventaData.preciolote || 0) - (ventaData.enganche || 0)
         const hoy = new Date()
-        const mesPrimera = ventaData.fechaprimeramensualidad
-          ? MESES_ES[new Date(ventaData.fechaprimeramensualidad + 'T12:00:00').getMonth()]
+
+        // Mes de primera mensualidad (con fallback robusto a fecha inválida)
+        const primeraFechaDate = ventaData.fechaprimeramensualidad
+          ? new Date(ventaData.fechaprimeramensualidad + 'T12:00:00')
+          : null
+        const mesPrimera = (primeraFechaDate && !isNaN(primeraFechaDate.getTime()))
+          ? (MESES_ES[primeraFechaDate.getMonth()] ?? '')
           : ''
 
-        // Fecha de firma (fechacontrato o hoy)
-        const fechaFirma = ventaData.fechacontrato
-          ? new Date(ventaData.fechacontrato + 'T12:00:00').toLocaleDateString('es-MX', {
-              day: 'numeric', month: 'long', year: 'numeric',
-            }).toUpperCase()
-          : hoy.toLocaleDateString('es-MX', {
-              day: 'numeric', month: 'long', year: 'numeric',
-            }).toUpperCase()
+        // Fecha de firma (fechacontrato o hoy; con fallback si la fecha almacenada es inválida)
+        const fechaContratoBruta = ventaData.fechacontrato
+          ? new Date(ventaData.fechacontrato + 'T12:00:00')
+          : null
+        const fechaFirmaDate = (fechaContratoBruta && !isNaN(fechaContratoBruta.getTime()))
+          ? fechaContratoBruta
+          : hoy
+        const fechaFirma = fechaFirmaDate
+          .toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
+          .toUpperCase()
 
         // Domicilio del cliente
         const domicilioParts = [
