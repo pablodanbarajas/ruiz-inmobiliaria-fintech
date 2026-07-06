@@ -13,6 +13,7 @@ import { Clientes } from '@/pages/admin/Clientes'
 import { ClienteDetail } from '@/pages/admin/ClienteDetail'
 import { Ventas } from '@/pages/admin/Ventas'
 import { VentaDetail } from '@/pages/admin/VentaDetail'
+import { GenerarContrato } from '@/pages/admin/GenerarContrato'
 import { Pagos } from '@/pages/admin/Pagos'
 import { PagoDetail } from '@/pages/admin/PagoDetail'
 import { Convenios } from '@/pages/admin/Convenios'
@@ -119,6 +120,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={[...ROLES_EDITAR_VENTAS]}>
               <VentaDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/ventas/:id/contrato"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'contratos']}>
+              <GenerarContrato />
             </ProtectedRoute>
           }
         />

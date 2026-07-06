@@ -20,6 +20,7 @@ import {
   formatCurrency,
   formatDate,
   FORMAS_PAGO,
+  calcularRecargo,
 } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { syncExpiredConvenios } from '@/services/convenios'
@@ -200,7 +201,7 @@ export const Pagos = () => {
           .limit(10000),
         supabase
           .from('corridafinanciera')
-          .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre)))')
+          .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, dias_tolerancia, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre)))')
           .gt('nopago', 0)
           .eq('venta.estatus', 'A'),
         supabase
@@ -228,14 +229,23 @@ export const Pagos = () => {
       }
 
       const pendingRows: PendingRow[] = []
+      const todayStr = new Date().toISOString().split('T')[0]
       for (const corrida of (corridasRes.data || []) as any[]) {
         const corridaId = corrida.corridafinancieraid as number
         const pagosCorrida = pagosPorCorrida.get(corridaId) || []
         const totalPagado = pagosCorrida.reduce((sum, p) => sum + getPagoAplicado(p), 0)
-        const pendiente = Math.max(0, Number(corrida.mensualidad || 0) - totalPagado)
-        if (pendiente <= 0) continue
 
         const venta = pickFirst(corrida.venta) as any
+        const diasTolVenta = venta?.dias_tolerancia ?? 0
+        // Recargo: si hay pagos previos usar el máximo recargo registrado; si no, calcular dinámicamente
+        const maxStoredRecargo = pagosCorrida.reduce((max, p) => Math.max(max, Number((p as any).recargo ?? 0)), 0)
+        const recargoReq = pagosCorrida.length > 0
+          ? maxStoredRecargo
+          : (corrida.nopago !== 0 && corrida.fecha ? calcularRecargo(corrida.fecha, todayStr, diasTolVenta) : 0)
+
+        const pendiente = Math.max(0, Number(corrida.mensualidad || 0) + recargoReq - totalPagado)
+        if (pendiente <= 0) continue
+
         const cliente = pickFirst(venta?.cliente) as Cliente | undefined
         const lote = pickFirst(venta?.lote) as (Lote & { desarrollo?: Desarrollo | Desarrollo[] }) | undefined
         const desarrollo = pickFirst(lote?.desarrollo) as Desarrollo | undefined

@@ -277,3 +277,57 @@ export const getConvenioStatusColor = (status: string | null | undefined): strin
     default: return 'bg-gray-100 text-gray-800'
   }
 }
+
+// ── Número a letras (Español) ──────────────────────────────────────────────
+
+const _unidades = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE',
+  'DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE',
+  'VEINTE', 'VEINTIUNO', 'VEINTIDÓS', 'VEINTITRÉS', 'VEINTICUATRO', 'VEINTICINCO', 'VEINTISÉIS', 'VEINTISIETE', 'VEINTIOCHO', 'VEINTINUEVE']
+
+const _decenas = ['', '', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA']
+
+const _centenas = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS',
+  'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS']
+
+function _cifrasEnLetras(n: number): string {
+  if (n === 0) return 'CERO'
+  if (n < 0) return 'MENOS ' + _cifrasEnLetras(-n)
+  if (n < 30) return _unidades[n]
+  if (n < 100) {
+    const d = Math.floor(n / 10)
+    const u = n % 10
+    return u === 0 ? _decenas[d] : _decenas[d] + ' Y ' + _unidades[u]
+  }
+  if (n === 100) return 'CIEN'
+  if (n < 1000) {
+    const c = Math.floor(n / 100)
+    const rest = n % 100
+    return rest === 0 ? _centenas[c] : _centenas[c] + ' ' + _cifrasEnLetras(rest)
+  }
+  if (n < 2000) {
+    const rest = n % 1000
+    return 'MIL' + (rest === 0 ? '' : ' ' + _cifrasEnLetras(rest))
+  }
+  if (n < 1000000) {
+    const miles = Math.floor(n / 1000)
+    const rest = n % 1000
+    return _cifrasEnLetras(miles) + ' MIL' + (rest === 0 ? '' : ' ' + _cifrasEnLetras(rest))
+  }
+  if (n < 2000000) {
+    const rest = n % 1000000
+    return 'UN MILLÓN' + (rest === 0 ? '' : ' ' + _cifrasEnLetras(rest))
+  }
+  const millones = Math.floor(n / 1000000)
+  const rest = n % 1000000
+  return _cifrasEnLetras(millones) + ' MILLONES' + (rest === 0 ? '' : ' ' + _cifrasEnLetras(rest))
+}
+
+/**
+ * Convierte un monto numérico a texto en español para contratos.
+ * Ej: 85000.50 → "OCHENTA Y CINCO MIL"  (los centavos se omiten si son 0)
+ */
+export const numeroALetras = (monto: number | null | undefined): string => {
+  if (monto == null || isNaN(monto)) return ''
+  const entero = Math.floor(Math.abs(monto))
+  return _cifrasEnLetras(entero)
+}

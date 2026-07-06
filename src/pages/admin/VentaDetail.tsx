@@ -675,6 +675,15 @@ export const VentaDetail = () => {
                 Cancelar Venta
               </Button>
             )}
+            {(venta.estatus === 'A' || venta.estatus === 'E') && (
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/admin/ventas/${id}/contrato`)}
+                className="inline-flex items-center gap-2"
+              >
+                Generar Contrato
+              </Button>
+            )}
           </div>
         </div>
 
@@ -1082,14 +1091,22 @@ export const VentaDetail = () => {
                       : []
                     const totalCargosExtras = cargosAplicables.reduce((s, c) => s + (c.monto || 0), 0)
 
-                    // Si ya tiene pagos, el recargo es el implicito (lo que se pago menos base y cargos)
-                    // Si no tiene pagos, calcular en tiempo real
-                    const recargo = totalPagadoCorrida > 0
-                      ? Math.max(0, totalPagadoCorrida - (corrida.mensualidad || 0) - totalCargosExtras)
-                      : (!corrida.fecha ? 0 : calcularRecargo(corrida.fecha))
+                    // Recargo requerido: si ya hubo pagos, usar el máximo recargo registrado en ellos
+                    // (el recargo crece hasta que se liquida todo, incluyendo el mismo recargo).
+                    // Si aún no hay pagos, calcular en tiempo real desde la fecha de vencimiento.
+                    const pagosCorrida = corrida.pagos?.filter(p => p.estatus !== 'C') ?? []
+                    const maxStoredRecargo = pagosCorrida.reduce((max, p) => Math.max(max, p.recargo ?? 0), 0)
+                    const recargoRequired = pagosCorrida.length > 0
+                      ? maxStoredRecargo
+                      : (corrida.nopago !== 0 && corrida.fecha
+                          ? calcularRecargo(corrida.fecha, today, venta.dias_tolerancia ?? 0)
+                          : 0)
 
-                    const totalAPagar = (corrida.mensualidad || 0) + totalCargosExtras + recargo
-                    const isCorrIdaPaid = totalPagadoCorrida >= totalAPagar || (totalPagadoCorrida > 0 && totalPagadoCorrida >= (corrida.mensualidad || 0) + totalCargosExtras)
+                    const basePagable = (corrida.mensualidad || 0) + totalCargosExtras
+                    const totalAPagar = basePagable + recargoRequired
+                    const isCorrIdaPaid = totalPagadoCorrida >= totalAPagar
+                    // For display: show the recargo requirement (pending or paid)
+                    const recargo = recargoRequired
                     return (
                       <tr key={corrida.corridafinancieraid} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 text-sm font-semibold text-gray-900">

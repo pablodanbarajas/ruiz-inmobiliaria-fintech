@@ -53,6 +53,7 @@ interface CorridaWithPagos extends CorridaFinanciera {
   pagos?: Pago[]
   totalPagado?: number
   isPaid?: boolean
+  recargoRequired?: number
 }
 
 const today = () => new Date().toISOString().split('T')[0]
@@ -233,12 +234,21 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
               .eq('corridafinancieraid', c.corridafinancieraid)
               .neq('estatus', 'C')
 
-              const total = (pagosData || []).reduce((s: number, p: Pago) => s + getPagoAplicado(p), 0)
+              const pagosList = pagosData || []
+              const total = pagosList.reduce((s: number, p: Pago) => s + getPagoAplicado(p), 0)
+              const maxStoredRecargo = pagosList.reduce((max: number, p: Pago) => Math.max(max, p.recargo ?? 0), 0)
+              const todayStr = new Date().toISOString().split('T')[0]
+              const diasTol = ventaData?.dias_tolerancia ?? 0
+              const recargoRequired = pagosList.length > 0
+                ? maxStoredRecargo
+                : (c.nopago !== 0 && c.fecha ? calcularRecargo(c.fecha, todayStr, diasTol) : 0)
+              const totalRequired = (c.mensualidad || 0) + recargoRequired
             return {
               ...c,
-              pagos: pagosData || [],
+              pagos: pagosList,
               totalPagado: total,
-              isPaid: total >= (c.mensualidad || 0),
+              isPaid: total >= totalRequired,
+              recargoRequired,
             }
           })
         )
@@ -268,13 +278,14 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
       if (data) {
         const { data: ventaInfo } = await supabase
           .from('venta')
-          .select('lote:lote(desarrolloid)')
+          .select('dias_tolerancia, lote:lote(desarrolloid)')
           .eq('ventaid', data.ventaid)
           .maybeSingle()
 
-        type VentaLoteType = { lote: { desarrolloid: number } | null } | null
+        type VentaLoteType = { dias_tolerancia: number | null; lote: { desarrolloid: number } | null } | null
         const ventaData = ventaInfo as VentaLoteType
         setDesarrolloCuentaId(ventaData?.lote?.desarrolloid ?? null)
+        const diasTolInitial = ventaData?.dias_tolerancia ?? 0
 
         const { data: pagosData } = await supabase
           .from('pagos')
@@ -282,21 +293,28 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
           .eq('corridafinancieraid', initialCorridaId)
           .neq('estatus', 'C')
 
-        const total = (pagosData || []).reduce((s: number, p: Pago) => s + getPagoAplicado(p), 0)
+        const pagosList = pagosData || []
+        const total = pagosList.reduce((s: number, p: Pago) => s + getPagoAplicado(p), 0)
         // Cargos extra aplicables a esta corrida
         const cargosAplicables = data.nopago !== 0
           ? cargosExtra.filter(c => c.estatus !== 'X' && c.fecha != null && data.fecha != null && c.fecha <= data.fecha)
           : []
         const totalCargosExtra = cargosAplicables.reduce((s, c) => s + (c.monto || 0), 0)
-        const totalAPagar = (data.mensualidad || 0) + totalCargosExtra
+        const maxStoredRecargo = pagosList.reduce((max: number, p: Pago) => Math.max(max, p.recargo ?? 0), 0)
+        const todayStr = new Date().toISOString().split('T')[0]
+        const recargoRequired = pagosList.length > 0
+          ? maxStoredRecargo
+          : (data.nopago !== 0 && data.fecha ? calcularRecargo(data.fecha, todayStr, diasTolInitial) : 0)
+        const totalAPagar = (data.mensualidad || 0) + totalCargosExtra + recargoRequired
         const corridaInfo: CorridaWithPagos = {
           ...data,
-          pagos: pagosData || [],
+          pagos: pagosList,
           totalPagado: total,
           isPaid: total >= totalAPagar,
+          recargoRequired,
         }
         setSelectedCorrida(corridaInfo)
-        // Auto-fill monto with remaining balance (including cargos extra); recargo effect will update it further
+        // Auto-fill monto with remaining balance (including cargos extra + recargo); recargo effect will refine it
         if (!pago) {
           const remaining = totalAPagar - total
           if (remaining > 0) {
@@ -555,7 +573,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
                     <tbody className="divide-y divide-gray-100">
                       {corridas.map((c) => {
                         const isSelected = selectedCorrida?.corridafinancieraid === c.corridafinancieraid
-                        const pendiente = (c.mensualidad || 0) - (c.totalPagado || 0)
+                        const pendiente = (c.mensualidad || 0) + (c.recargoRequired || 0) - (c.totalPagado || 0)
                         return (
                           <tr
                             key={c.corridafinancieraid}
