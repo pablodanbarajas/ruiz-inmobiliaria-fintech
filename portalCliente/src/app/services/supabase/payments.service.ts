@@ -42,7 +42,7 @@ export const supabasePaymentsService: IPaymentsService = {
     const corridaIds = corridas.map((c) => c.corridafinancieraid);
     const { data: pagosData, error: pagosError } = await supabase
       .from('pagos')
-      .select('pagoid, corridafinancieraid, montopagado, servicios_extra, estatus, fechapago')
+      .select('pagoid, corridafinancieraid, montopagado, servicios_extra, estatus, fechapago, recargo')
       .in('corridafinancieraid', corridaIds)
       .neq('estatus', 'C');
 
@@ -127,25 +127,37 @@ export const supabasePaymentsService: IPaymentsService = {
         const cargoExtraAmount = cargosAplicables.reduce((s: number, c: any) => s + (c.monto || 0), 0);
         totalCargosExtrasCount += cargoExtraAmount;
 
-        const recargo = totalPagadoCorrida === 0 && corrida.fecha
-          ? calcularRecargo(corrida.fecha, venta.dias_tolerancia ?? 0)
-          : 0;
+        // Recargo requerido: si hubo pagos usar el máximo registrado en ellos, si no calcular dinámicamente
+        const pagosCorrida = ventaPagos.filter((p) => p.corridafinancieraid === corrida.corridafinancieraid);
+        const maxStoredRecargo = pagosCorrida.reduce((max, p) => Math.max(max, p.recargo ?? 0), 0);
+        const recargo = pagosCorrida.length > 0
+          ? maxStoredRecargo
+          : (corrida.nopago !== 0 && corrida.fecha ? calcularRecargo(corrida.fecha, venta.dias_tolerancia ?? 0) : 0);
 
-        const esPagado = totalPagadoCorrida > 0;
+        const totalRequired = (corrida.mensualidad || 0) + cargoExtraAmount + recargo;
+        const esPagado = totalPagadoCorrida >= totalRequired;
+        const esParcial = !esPagado && totalPagadoCorrida > 0;
+        const saldoPendiente = Math.max(0, totalRequired - totalPagadoCorrida);
+
+        let status: PaymentStatus;
+        if (esPagado) {
+          status = 'pagado';
+        } else if (esParcial) {
+          // Pago parcial: siempre se muestra como atrasado porque si pagó algo ya pasó la fecha
+          status = 'parcial';
+        } else {
+          status = new Date(corrida.fecha + 'T12:00:00') < new Date() ? 'atrasado' : (() => {
+            const diff = Math.ceil((new Date(corrida.fecha + 'T12:00:00').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+            return diff <= 7 ? 'por_vencer' : 'pendiente';
+          })() as PaymentStatus;
+        }
 
         const payment: Payment = {
           id: String(corrida.corridafinancieraid),
           date: corrida.fecha,
           reason: `Mensualidad · ${lotKey}`,
-          amount: esPagado
-            ? totalPagadoCorrida
-            : (corrida.mensualidad || 0) + cargoExtraAmount + recargo,
-          status: esPagado ? 'pagado' : (
-            new Date(corrida.fecha + 'T12:00:00') < new Date() ? 'atrasado' : (() => {
-              const diff = Math.ceil((new Date(corrida.fecha + 'T12:00:00').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-              return diff <= 7 ? 'por_vencer' : 'pendiente';
-            })()
-          ) as PaymentStatus,
+          amount: esPagado ? totalPagadoCorrida : saldoPendiente,
+          status,
           lotKey,
           breakdown: esPagado
             ? {
@@ -154,6 +166,7 @@ export const supabasePaymentsService: IPaymentsService = {
                 recargo: Math.max(0, totalPagadoCorrida - (corrida.mensualidad || 0) - cargoExtraAmount),
               }
             : { base: corrida.mensualidad || 0, cargoExtra: cargoExtraAmount, recargo },
+          ...(esParcial ? { pagadoParcial: totalPagadoCorrida } : {}),
         };
 
         if (esPagado) {

@@ -103,10 +103,11 @@ function parseDate(str: string): Date {
 }
 
 const statusConfig: Record<PaymentStatus, { label: string; color: string; icon: typeof Clock }> = {
-  pendiente:  { label: 'Pendiente',   color: 'bg-blue-100 text-blue-700',   icon: Clock },
-  atrasado:   { label: 'Atrasado',    color: 'bg-red-100 text-red-700',     icon: AlertCircle },
-  por_vencer: { label: 'Por vencer',  color: 'bg-orange-100 text-orange-700', icon: Clock },
-  pagado:     { label: 'Pagado',      color: 'bg-green-100 text-green-700', icon: CheckCircle }
+  pendiente:  { label: 'Pendiente',      color: 'bg-blue-100 text-blue-700',    icon: Clock },
+  atrasado:   { label: 'Atrasado',       color: 'bg-red-100 text-red-700',      icon: AlertCircle },
+  por_vencer: { label: 'Por vencer',     color: 'bg-orange-100 text-orange-700', icon: Clock },
+  pagado:     { label: 'Pagado',         color: 'bg-green-100 text-green-700',  icon: CheckCircle },
+  parcial:    { label: 'Pago parcial',   color: 'bg-amber-100 text-amber-700',  icon: AlertCircle },
 };
 
 function fmt(n: number) {
@@ -124,6 +125,7 @@ function PaymentRow({
   const Icon = config.icon;
   const bd = pago.breakdown;
   const hasExtras = bd && (bd.cargoExtra > 0 || bd.recargo > 0);
+  const esParcial = pago.status === 'parcial' && pago.pagadoParcial != null;
 
   return (
     <tr className="hover:bg-gray-50 transition-colors">
@@ -136,25 +138,45 @@ function PaymentRow({
       </td>
       <td className="px-6 py-4 text-sm text-gray-800">{pago.reason}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm">
-        <span className="font-semibold text-gray-800">
-          ${pago.amount.toLocaleString('es-MX')}
-        </span>
-        {hasExtras && bd && (
-          <div className="mt-1 space-y-0.5">
-            <div className="text-xs text-gray-400">
-              Mensualidad: ${bd.base.toLocaleString('es-MX')}
+        {esParcial ? (
+          <div>
+            <span className="font-semibold text-amber-700">
+              Falta: ${pago.amount.toLocaleString('es-MX')}
+            </span>
+            <div className="mt-1 space-y-0.5">
+              <div className="text-xs text-gray-500">
+                Ya pagado: ${pago.pagadoParcial!.toLocaleString('es-MX')}
+              </div>
+              {bd && bd.recargo > 0 && (
+                <div className="text-xs text-red-500 font-medium">
+                  Recargo pendiente: ${bd.recargo.toLocaleString('es-MX')}
+                </div>
+              )}
             </div>
-            {bd.cargoExtra > 0 && (
-              <div className="text-xs text-purple-600 font-medium">
-                + Cargos extra: ${bd.cargoExtra.toLocaleString('es-MX')}
-              </div>
-            )}
-            {bd.recargo > 0 && (
-              <div className="text-xs text-red-500 font-medium">
-                + Recargo por mora: ${bd.recargo.toLocaleString('es-MX')}
-              </div>
-            )}
           </div>
+        ) : (
+          <>
+            <span className="font-semibold text-gray-800">
+              ${pago.amount.toLocaleString('es-MX')}
+            </span>
+            {hasExtras && bd && (
+              <div className="mt-1 space-y-0.5">
+                <div className="text-xs text-gray-400">
+                  Mensualidad: ${bd.base.toLocaleString('es-MX')}
+                </div>
+                {bd.cargoExtra > 0 && (
+                  <div className="text-xs text-purple-600 font-medium">
+                    + Cargos extra: ${bd.cargoExtra.toLocaleString('es-MX')}
+                  </div>
+                )}
+                {bd.recargo > 0 && (
+                  <div className="text-xs text-red-500 font-medium">
+                    + Recargo por mora: ${bd.recargo.toLocaleString('es-MX')}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </td>
       <td className="px-6 py-4 whitespace-nowrap">

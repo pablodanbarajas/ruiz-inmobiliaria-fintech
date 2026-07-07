@@ -1148,7 +1148,10 @@ export const VentaDetail = () => {
                           }
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
-                          {formatCurrency(corrida.saldo)}
+                          {isCorrIdaPaid
+                            ? <span className="text-green-600 text-xs font-semibold">Liquidado</span>
+                            : <span className="font-semibold text-red-600">{formatCurrency(Math.max(0, totalAPagar - totalPagadoCorrida))}</span>
+                          }
                         </td>
                         <td className="px-6 py-4">
                           {corrida.pagos && corrida.pagos.length > 0 ? (
