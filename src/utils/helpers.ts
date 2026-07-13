@@ -105,12 +105,18 @@ export const getLoteStatusColor = (status: string | null | undefined): string =>
 
 /**
  * Get venta (sale) status label
- * A: Activa | C: Cancelada
+ * P: Reserva pendiente | E: En enganche | A: Activa | V: Vendida/Finalizada | C: Cancelada
  */
 export const getVentaStatusLabel = (status: string | null | undefined): string => {
   switch (status?.toUpperCase()) {
+    case 'P':
+      return 'Reserva pendiente'
+    case 'E':
+      return 'En enganche'
     case 'A':
       return 'Activa'
+    case 'V':
+      return 'Finalizada'
     case 'C':
       return 'Cancelada'
     default:
@@ -123,8 +129,14 @@ export const getVentaStatusLabel = (status: string | null | undefined): string =
  */
 export const getVentaStatusColor = (status: string | null | undefined): string => {
   switch (status?.toUpperCase()) {
+    case 'P': // Reserva pendiente
+      return 'bg-purple-500 text-white'
+    case 'E': // En enganche
+      return 'bg-blue-500 text-white'
     case 'A': // Activa
       return 'bg-[#eaae4c] text-black'
+    case 'V': // Finalizada
+      return 'bg-[#504840] text-white'
     case 'C': // Cancelada
       return 'bg-red-600 text-white'
     default:
