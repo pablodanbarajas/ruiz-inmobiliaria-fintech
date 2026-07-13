@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { SearchCombobox } from '@/components/ui/SearchCombobox'
+import type { ComboOption } from '@/components/ui/SearchCombobox'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import type { Convenio } from '@/types/database'
 import { MOTIVOS_CONVENIO, calcularRecargo, formatCurrency } from '@/utils/helpers'
@@ -45,6 +47,8 @@ interface VentaOption {
   label: string
   clienteid: number | null
   mensualidad: number | null
+  manzana: string | null
+  nolote: string | null
 }
 
 export const ConvenioForm = ({
@@ -104,7 +108,9 @@ export const ConvenioForm = ({
             ventaid: v.ventaid,
             clienteid: v.clienteid,
             mensualidad: v.mensualidad,
-            label: `#${v.ventaid} — ${v.cliente?.nombre ?? 'Sin cliente'} | Mza ${v.lote?.manzana ?? '-'} Lote ${v.lote?.nolote ?? '-'}`,
+            manzana: v.lote?.manzana ?? null,
+            nolote: v.lote?.nolote ?? null,
+            label: `#${v.ventaid} — ${v.cliente?.nombre ?? 'Sin cliente'}`,
           }))
         )
         setVentaLoading(false)
@@ -286,21 +292,24 @@ export const ConvenioForm = ({
           {ventaLoading ? (
             <p className="text-sm text-gray-400">Cargando ventas...</p>
           ) : (
-            <select
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] ${errors.ventaid ? 'border-red-500' : 'border-gray-300'}`}
-              value={selectedVentaId ?? ''}
-              onChange={(e) => {
-                const v = ventaOptions.find((o) => o.ventaid === Number(e.target.value))
+            <SearchCombobox
+              options={ventaOptions.map((o): ComboOption => ({
+                value: String(o.ventaid),
+                label: o.label,
+                sublabel: o.manzana && o.nolote
+                  ? `Manzana ${o.manzana} · Lote ${o.nolote}`
+                  : undefined,
+              }))}
+              value={selectedVentaId != null ? String(selectedVentaId) : ''}
+              onChange={(val) => {
+                const v = ventaOptions.find((o) => String(o.ventaid) === val)
                 setSelectedVentaId(v?.ventaid ?? null)
                 setSelectedClienteId(v?.clienteid ?? null)
                 setVentaMensualidad(Number(v?.mensualidad || 0))
               }}
-            >
-              <option value="">Selecciona una venta...</option>
-              {ventaOptions.map((o) => (
-                <option key={o.ventaid} value={o.ventaid}>{o.label}</option>
-              ))}
-            </select>
+              placeholder="Buscar por cliente, No. venta, lote..."
+              error={errors.ventaid}
+            />
           )}
           {errors.ventaid && <p className="text-xs text-red-500 mt-1">{errors.ventaid}</p>}
         </div>
