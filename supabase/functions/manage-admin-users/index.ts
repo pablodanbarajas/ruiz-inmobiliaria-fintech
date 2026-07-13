@@ -140,6 +140,47 @@ Deno.serve(async (req: Request) => {
     }
 
     const body = await req.json().catch(() => null)
+    const action = body?.action  // 'create' | undefined (update)
+
+    // ── CREATE: invite new admin user ────────────────────────────
+    if (action === 'create') {
+      const email = body?.email?.trim()
+      const role = body?.role
+
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return new Response(JSON.stringify({ error: 'Email inválido' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      if (!isAssignableRole(role)) {
+        return new Response(JSON.stringify({ error: 'Rol inválido' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      // Invite user — creates auth account and sends email
+      const adminPanelUrl = Deno.env.get('ADMIN_PANEL_URL') ?? 'https://ruiz-inmobiliaria-fintech.vercel.app/login'
+      const { data: invited, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        redirectTo: adminPanelUrl,
+      })
+      if (inviteError) {
+        return new Response(JSON.stringify({ error: inviteError.message }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      // Assign role immediately
+      const { error: roleError } = await supabaseAdmin
+        .from('user_roles')
+        .upsert({ user_id: invited.user.id, role }, { onConflict: 'user_id' })
+      if (roleError) throw roleError
+
+      return new Response(JSON.stringify({ ok: true, userId: invited.user.id, email, role }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // ── UPDATE: change role for existing user ────────────────────
     const userId = body?.userId
     const role = body?.role
 

@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { getCached, setCached } from '@/lib/queryCache'
+import { Modal } from '@/components/ui/Modal'
+import { getCached, setCached, invalidateCache } from '@/lib/queryCache'
+import { RefreshCw, Save, ShieldCheck, Users, UserPlus } from 'lucide-react'
 import {
   ASSIGNABLE_ADMIN_ROLES,
   CAPABILITY_LABELS,
@@ -11,7 +13,6 @@ import {
   type AdminPanelRole,
 } from '@/config/roles'
 import { supabase } from '@/lib/supabaseClient'
-import { RefreshCw, Save, ShieldCheck, Users } from 'lucide-react'
 
 type AdminUserRecord = {
   user_id: string
@@ -31,6 +32,11 @@ export const UsuariosAdmin = () => {
   const [filter, setFilter] = useState('')
   const [draftRoles, setDraftRoles] = useState<Record<string, AdminPanelRole | ''>>({})
   const [saveMap, setSaveMap] = useState<SaveMap>({})
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [newRole, setNewRole] = useState<AdminPanelRole | ''>('')
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
 
   const fetchUsers = async (bypass = false) => {
     const ck = 'usuarios:admin'
@@ -130,7 +136,40 @@ export const UsuariosAdmin = () => {
     }
   }
 
+  const handleCreateUser = async () => {
+    if (!newEmail.trim() || !newRole) { setCreateError('Email y rol son requeridos'); return }
+    setCreating(true)
+    setCreateError('')
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      if (!token) throw new Error('Sesión no encontrada')
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-admin-users`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+          body: JSON.stringify({ action: 'create', email: newEmail.trim(), role: newRole }),
+        }
+      )
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error ?? 'Error al crear usuario')
+
+      invalidateCache('usuarios:')
+      setShowCreateModal(false)
+      setNewEmail('')
+      setNewRole('')
+      await fetchUsers(true)
+    } catch (err: any) {
+      setCreateError(err.message ?? 'Error desconocido')
+    } finally {
+      setCreating(false)
+    }
+  }
+
   return (
+    <>
     <AdminLayout>
       <div className="w-full">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -142,10 +181,16 @@ export const UsuariosAdmin = () => {
               Asignacion de roles para usuarios de administracion (no clientes del portal)
             </p>
           </div>
-          <Button onClick={() => fetchUsers(true)} variant="outline" className="inline-flex items-center gap-2">
-            <RefreshCw size={16} />
-            Recargar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => { setShowCreateModal(true); setCreateError('') }} className="inline-flex items-center gap-2">
+              <UserPlus size={16} />
+              Agregar Usuario
+            </Button>
+            <Button onClick={() => fetchUsers(true)} variant="outline" className="inline-flex items-center gap-2">
+              <RefreshCw size={16} />
+              Recargar
+            </Button>
+          </div>
         </div>
 
         <div className="mb-6 bg-white rounded-lg shadow-md border-t-4 border-[#504840] p-6">
@@ -285,5 +330,67 @@ export const UsuariosAdmin = () => {
         </div>
       </div>
     </AdminLayout>
+
+    {/* ── Modal: Agregar usuario admin ──────────────── */}
+    <Modal
+      isOpen={showCreateModal}
+      title="Agregar Usuario Administrador"
+      onClose={() => !creating && setShowCreateModal(false)}
+    >
+      <div className="space-y-5">
+        <p className="text-sm text-gray-500">
+          Se enviará una invitación al email indicado. El usuario deberá hacer clic en el enlace para establecer su contraseña.
+        </p>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Email <span className="text-red-500">*</span>
+          </label>
+          <Input
+            type="email"
+            placeholder="usuario@empresa.com"
+            value={newEmail}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewEmail(e.target.value)}
+            disabled={creating}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Rol <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={newRole}
+            onChange={(e) => setNewRole(e.target.value as AdminPanelRole | '')}
+            disabled={creating}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] disabled:bg-gray-100"
+          >
+            <option value="">— Selecciona un rol —</option>
+            {ASSIGNABLE_ADMIN_ROLES.map((r) => (
+              <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+            ))}
+          </select>
+        </div>
+
+        {createError && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{createError}</p>
+        )}
+
+        <div className="flex justify-end gap-3 pt-2">
+          <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={creating}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleCreateUser}
+            disabled={creating || !newEmail || !newRole}
+            className="inline-flex items-center gap-2"
+          >
+            <UserPlus size={15} />
+            {creating ? 'Enviando invitación...' : 'Crear y enviar invitación'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+    </>
   )
 }
