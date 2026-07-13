@@ -228,6 +228,10 @@ GRANT SELECT ON public.vista_pagos_cliente TO authenticated;
 -- PASO 5: Vista portal_invite_candidates (uso exclusivo admin)
 -- Lista clientes con lotes activos por desarrollo.
 -- El admin la filtra por development_id en la UI.
+-- Incluye email_confirmed_at para distinguir entre:
+--   user_id IS NULL                            → Sin invitar
+--   user_id IS NOT NULL, email_confirmed_at NULL → Invitación pendiente
+--   user_id IS NOT NULL, email_confirmed_at NOT NULL → Acceso activo
 -- ─────────────────────────────────────────────────────────────
 CREATE OR REPLACE VIEW public.portal_invite_candidates AS
 SELECT
@@ -236,18 +240,33 @@ SELECT
   c.email,
   c.telefonocelular,
   c.user_id,
+  au.email_confirmed_at,
+  au.invited_at,
   d.desarrolloid        AS development_id,
   d.nombre              AS development_name,
-  COUNT(DISTINCT l.loteid) AS num_lotes
+  COUNT(DISTINCT l.loteid) AS num_lotes,
+  -- can_invite: email válido y sin acceso confirmado
+  (
+    c.email IS NOT NULL
+    AND LENGTH(TRIM(c.email)) > 3
+    AND TRIM(c.email) LIKE '%@%'
+  ) AS can_invite,
+  CASE
+    WHEN c.email IS NULL OR TRIM(c.email) = '' THEN 'Sin email'
+    WHEN TRIM(c.email) NOT LIKE '%@%' THEN 'Email inválido'
+    ELSE NULL
+  END AS email_issue
 FROM public.cliente       c
 JOIN public.venta         v  ON v.clienteid    = c.clienteid
                              AND v.estatus     IS DISTINCT FROM 'C'
 JOIN public.lote          l  ON l.loteid       = v.loteid
 JOIN public.desarrollo    d  ON d.desarrolloid = l.desarrolloid
+LEFT JOIN auth.users      au ON au.id          = c.user_id::uuid
 WHERE c.email IS NOT NULL
   AND TRIM(c.email) <> ''
 GROUP BY
   c.clienteid, c.nombre, c.email, c.telefonocelular, c.user_id,
+  au.email_confirmed_at, au.invited_at,
   d.desarrolloid, d.nombre;
 
 GRANT SELECT ON public.portal_invite_candidates TO authenticated;

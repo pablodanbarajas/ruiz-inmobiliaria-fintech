@@ -3,6 +3,7 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/Button'
 import { Mail, CheckCircle, Clock, XCircle, RefreshCw, Users, Send, AlertTriangle } from 'lucide-react'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 type InviteCandidate = {
   clienteid: number
@@ -10,6 +11,8 @@ type InviteCandidate = {
   email: string | null
   telefonocelular: string | null
   user_id: string | null
+  email_confirmed_at: string | null
+  invited_at: string | null
   development_id: number
   development_name: string
   num_lotes: number
@@ -31,7 +34,10 @@ export const InvitarClientes = () => {
   // Cargar desarrollos disponibles y restaurar selección guardada
   useEffect(() => {
     supabase.from('desarrollo').select('desarrolloid, nombre').order('nombre').then(({ data }) => {
-      const devs = data ?? []
+      const all = data ?? []
+      const devs = DEMO_DESARROLLOIDS.length > 0
+        ? all.filter(d => DEMO_DESARROLLOIDS.includes(d.desarrolloid))
+        : all
       setDesarrollos(devs)
       if (devs.length > 0) {
         const saved = localStorage.getItem('invitar_desarrollo_id')
@@ -120,9 +126,10 @@ export const InvitarClientes = () => {
     setTimeout(fetchCandidates, 1500)
   }
 
-  const activeCount  = candidates.filter(c =>  c.user_id).length
-  const pendingCount = candidates.filter(c => !c.user_id && c.can_invite).length
-  const issueCount   = candidates.filter(c => !c.user_id && !c.can_invite).length
+  const activeCount   = candidates.filter(c => c.user_id && c.email_confirmed_at).length
+  const pendingInvite = candidates.filter(c => c.user_id && !c.email_confirmed_at).length
+  const pendingCount  = candidates.filter(c => !c.user_id && c.can_invite).length
+  const issueCount    = candidates.filter(c => !c.user_id && !c.can_invite).length
 
   return (
     <AdminLayout>
@@ -158,6 +165,12 @@ export const InvitarClientes = () => {
 
         {/* Contadores */}
         <div className="flex flex-wrap gap-3 mb-6">
+          {pendingInvite > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">
+              <Mail className="w-4 h-4" />
+              {pendingInvite} invitación{pendingInvite !== 1 ? 'es' : ''} pendiente{pendingInvite !== 1 ? 's' : ''}
+            </span>
+          )}
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-sm font-medium">
             <CheckCircle className="w-4 h-4" />
             {activeCount} con acceso activo
@@ -230,9 +243,13 @@ export const InvitarClientes = () => {
                         {c.num_lotes}
                       </td>
                       <td className="px-4 py-3">
-                        {c.user_id ? (
+                        {c.user_id && c.email_confirmed_at ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
                             <CheckCircle className="w-3 h-3" /> Activo
+                          </span>
+                        ) : c.user_id && !c.email_confirmed_at ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium" title={c.invited_at ? `Invitado el ${new Date(c.invited_at).toLocaleDateString('es-MX')}` : undefined}>
+                            <Mail className="w-3 h-3" /> Pendiente de aceptar
                           </span>
                         ) : isDone ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
