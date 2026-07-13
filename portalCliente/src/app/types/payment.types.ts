@@ -8,7 +8,7 @@
  *     (debe procesarse exclusivamente en backend/edge function, nunca en frontend)
  */
 
-export type PaymentStatus = 'pendiente' | 'atrasado' | 'por_vencer' | 'pagado' | 'parcial';
+export type PaymentStatus = 'pendiente' | 'atrasado' | 'por_vencer' | 'pagado';
 
 export interface Payment {
   id: string;
@@ -19,13 +19,13 @@ export interface Payment {
   status: PaymentStatus;
   /** Clave del lote relacionado, ej: "06-042" */
   lotKey?: string;
-  /** Para pagos parciales: monto ya pagado en esta corrida */
-  pagadoParcial?: number;
   /** Desglose del monto total para mostrar al cliente */
   breakdown?: {
     base: number;       // mensualidad base
     cargoExtra: number; // suma de cargos extra activos
     recargo: number;    // recargo por mora
+    /** Monto ya abonado si el pago fue parcial (corrida aún pendiente) */
+    pagadoParcial?: number;
   };
 }
 
