@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { getCached, setCached } from '@/lib/queryCache'
 import {
   ASSIGNABLE_ADMIN_ROLES,
   CAPABILITY_LABELS,
@@ -31,7 +32,9 @@ export const UsuariosAdmin = () => {
   const [draftRoles, setDraftRoles] = useState<Record<string, AdminPanelRole | ''>>({})
   const [saveMap, setSaveMap] = useState<SaveMap>({})
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (bypass = false) => {
+    const ck = 'usuarios:admin'
+    if (!bypass) { const c = getCached<AdminUserRecord[]>(ck); if (c) { setUsers(c); setLoading(false); return } }
     setLoading(true)
     try {
       const { data: sessionData } = await supabase.auth.getSession()
@@ -53,6 +56,7 @@ export const UsuariosAdmin = () => {
       if (!response.ok) throw new Error(result.error ?? 'Error cargando usuarios')
 
       const list = (result.users ?? []) as AdminUserRecord[]
+      setCached('usuarios:admin', list)
       setUsers(list)
 
       const initialDrafts: Record<string, AdminPanelRole | ''> = {}
@@ -138,7 +142,7 @@ export const UsuariosAdmin = () => {
               Asignacion de roles para usuarios de administracion (no clientes del portal)
             </p>
           </div>
-          <Button onClick={fetchUsers} variant="outline" className="inline-flex items-center gap-2">
+          <Button onClick={() => fetchUsers(true)} variant="outline" className="inline-flex items-center gap-2">
             <RefreshCw size={16} />
             Recargar
           </Button>

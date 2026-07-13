@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import { AdminLayout } from '@/components/layout/AdminLayout'
+import { getCached, setCached } from '@/lib/queryCache'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
@@ -104,7 +105,9 @@ export const CargosExtra = () => {
   const [isCancelling, setIsCancelling] = useState(false)
 
   // ── Fetch master list ─────────────────────────────────────────
-  const fetchCargos = async () => {
+  const fetchCargos = async (bypass = false) => {
+    const ck = `cargos:${JSON.stringify(filters)}:${currentPage}`
+    if (!bypass) { const c = getCached<CargoExtraWithDetails[]>(ck); if (c) { setCargos(c); setLoading(false); return } }
     try {
       setLoading(true)
       const { data, error } = await supabase
@@ -140,7 +143,9 @@ export const CargosExtra = () => {
 
       setTotalItems(list.length)
       const start = (currentPage - 1) * itemsPerPage
-      setCargos(list.slice(start, start + itemsPerPage))
+      const page = list.slice(start, start + itemsPerPage)
+      setCached(ck, page)
+      setCargos(page)
     } catch (err) {
       console.error('Error fetching cargos extra:', err)
     } finally {

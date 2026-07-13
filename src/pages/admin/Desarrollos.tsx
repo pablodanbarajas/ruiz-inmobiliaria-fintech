@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getCached, setCached } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
 import { Input } from '@/components/ui/Input'
@@ -34,7 +35,9 @@ export const Desarrollos = () => {
   const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
   const canEditDesarrollos = !!currentRole && ROLE_CAPABILITIES[currentRole].editar_desarrollos
 
-  const fetchDesarrollos = async () => {
+  const fetchDesarrollos = async (bypass = false) => {
+    const ck = `desarrollos:${searchTerm}:${statusFilter}`
+    if (!bypass) { const c = getCached<DesarrolloWithTipo[]>(ck); if (c) { setDesarrollos(c); setLoading(false); return } }
     try {
       setLoading(true)
       let query = supabase.from('desarrollo').select('*').order('nombre', { ascending: true })
@@ -61,6 +64,7 @@ export const Desarrollos = () => {
         )
       }
 
+      setCached(ck, filteredData)
       setDesarrollos(filteredData)
     } catch (error) {
       console.error('Error fetching desarrollos:', error)

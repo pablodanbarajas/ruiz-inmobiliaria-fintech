@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getCached, setCached, invalidateCache } from '@/lib/queryCache'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
@@ -39,7 +40,9 @@ export const Convenios = () => {
     }
   }, [filters, prevFilters])
 
-  const fetchConvenios = async () => {
+  const fetchConvenios = async (bypass = false) => {
+    const ck = 'convenios:all'
+    if (!bypass) { const c = getCached<ConvenioWithDetails[]>(ck); if (c) { setConvenios(c); setLoading(false); return } }
     try {
       setLoading(true)
       await syncExpiredConvenios()
@@ -72,7 +75,9 @@ export const Convenios = () => {
 
       setTotalItems(list.length)
       const start = (currentPage - 1) * itemsPerPage
-      setConvenios(list.slice(start, start + itemsPerPage))
+      const page = list.slice(start, start + itemsPerPage)
+      setCached('convenios:all', page)
+      setConvenios(page)
     } catch (err) {
       console.error('Error fetching convenios:', err)
     } finally {
@@ -106,8 +111,8 @@ export const Convenios = () => {
       })
       if (error) throw error
       setShowCreateModal(false)
-      fetchConvenios()
-    } catch (err: any) {
+      invalidateCache('convenios:')
+      fetchConvenios(true)    } catch (err: any) {
       alert(`Error al registrar convenio: ${err.message}`)
     } finally {
       setIsSubmitting(false)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getCached, setCached } from '@/lib/queryCache'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Input } from '@/components/ui/Input'
@@ -66,6 +67,9 @@ export const Traspasos = () => {
 
   useEffect(() => {
     const fetchTraspasos = async () => {
+      const ck = `traspasos:${JSON.stringify(filters)}:${currentPage}`
+      const cached = getCached<TraspasoWithDetails[]>(ck)
+      if (cached) { setTraspasos(cached); setLoading(false); return }
       try {
         setLoading(true)
         const { data, error } = await supabase
@@ -107,7 +111,9 @@ export const Traspasos = () => {
 
         setTotalItems(list.length)
         const start = (currentPage - 1) * PAGE_SIZE
-        setTraspasos(list.slice(start, start + PAGE_SIZE))
+        const page = list.slice(start, start + PAGE_SIZE)
+        setCached(ck, page)
+        setTraspasos(page)
       } catch (err) {
         console.error('Error fetching traspasos:', err)
       } finally {

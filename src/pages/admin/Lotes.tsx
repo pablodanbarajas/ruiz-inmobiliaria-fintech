@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getCached, setCached } from '@/lib/queryCache'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
@@ -69,6 +70,9 @@ export const Lotes = () => {
 
   useEffect(() => {
     const fetchLotes = async () => {
+      const ck = `lotes:${JSON.stringify(filters)}:${currentPage}`
+      const cached = getCached<any[]>(ck)
+      if (cached) { setLotes(cached); setLoading(false); return }
       try {
         setLoading(true)
         let query = supabase
@@ -112,7 +116,7 @@ export const Lotes = () => {
         const startIndex = (currentPage - 1) * itemsPerPage
         const endIndex = startIndex + itemsPerPage
         const paginatedData = filteredData.slice(startIndex, endIndex)
-
+        setCached(ck, paginatedData)
         setLotes(paginatedData)
       } catch (error) {
         console.error('Error fetching lotes:', error)
