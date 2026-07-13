@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { supabase } from '@/lib/supabaseClient'
+import { getCached, setCached } from '@/lib/queryCache'
 import { Button } from '@/components/ui/Button'
 import { Mail, CheckCircle, Clock, XCircle, RefreshCw, Users, Send, AlertTriangle } from 'lucide-react'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
@@ -50,6 +51,9 @@ export const InvitarClientes = () => {
 
   const fetchCandidates = useCallback(async () => {
     if (!selectedDesarrollo) return
+    const ck = `invitar:${selectedDesarrollo}`
+    const cached = getCached<InviteCandidate[]>(ck)
+    if (cached) { setCandidates(cached); setStatusMap({}); setLoading(false); return }
     setLoading(true)
     try {
       const { data, error } = await supabase
@@ -59,7 +63,9 @@ export const InvitarClientes = () => {
         .order('nombre', { ascending: true })
 
       if (error) throw error
-      setCandidates((data ?? []) as InviteCandidate[])
+      const list = (data ?? []) as InviteCandidate[]
+      setCached(ck, list)
+      setCandidates(list)
       setStatusMap({})
     } catch (err) {
       console.error('Error cargando candidatos:', err)
@@ -98,6 +104,7 @@ export const InvitarClientes = () => {
     try {
       await sendInvite(cliente)
       setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'success', message: 'Invitación enviada' } }))
+      if (selectedDesarrollo) setCached(`invitar:${selectedDesarrollo}`, null as any)
       setTimeout(fetchCandidates, 2000)
     } catch (err: any) {
       setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'error', message: err.message ?? 'Error desconocido' } }))
@@ -123,6 +130,7 @@ export const InvitarClientes = () => {
       await new Promise(r => setTimeout(r, 300))
     }
     setBulkSending(false)
+    if (selectedDesarrollo) setCached(`invitar:${selectedDesarrollo}`, null as any)
     setTimeout(fetchCandidates, 1500)
   }
 

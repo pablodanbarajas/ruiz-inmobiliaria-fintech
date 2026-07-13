@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabaseClient'
+import { getCached, setCached, invalidateCache } from '@/lib/queryCache'
 import type { CuentaBancaria, Desarrollo } from '@/types/database'
 import { Edit2, Plus, Trash2, RefreshCw } from 'lucide-react'
 
@@ -36,7 +37,12 @@ export const CuentasBancarias = () => {
   const [editing, setEditing] = useState<CuentaBancaria | null>(null)
   const [form, setForm] = useState<CuentaFormState>(emptyForm)
 
-  const loadData = async () => {
+  const loadData = async (bypass = false) => {
+    const ck = 'cuentas:all'
+    if (!bypass) {
+      const c = getCached<{ cuentas: CuentaBancaria[]; desarrollos: Desarrollo[] }>(ck)
+      if (c) { setCuentas(c.cuentas); setDesarrollos(c.desarrollos); setLoading(false); return }
+    }
     setLoading(true)
     try {
       const [cuentasRes, desarrollosRes] = await Promise.all([
@@ -55,6 +61,7 @@ export const CuentasBancarias = () => {
 
       setCuentas((cuentasRes.data || []) as CuentaBancaria[])
       setDesarrollos((desarrollosRes.data || []) as Desarrollo[])
+      setCached('cuentas:all', { cuentas: (cuentasRes.data || []) as CuentaBancaria[], desarrollos: (desarrollosRes.data || []) as Desarrollo[] })
     } catch (error) {
       console.error('Error cargando cuentas bancarias:', error)
       setCuentas([])
@@ -122,7 +129,8 @@ export const CuentasBancarias = () => {
       setShowModal(false)
       setEditing(null)
       setForm(emptyForm)
-      await loadData()
+      invalidateCache('cuentas:')
+      await loadData(true)
     } catch (error: any) {
       alert(`Error guardando cuenta: ${error.message}`)
     } finally {
@@ -138,7 +146,8 @@ export const CuentasBancarias = () => {
       setIsSubmitting(true)
       const { error } = await supabase.from('cuentas_bancarias').delete().eq('cuenta_bancaria_id', cuenta.cuenta_bancaria_id)
       if (error) throw error
-      await loadData()
+      invalidateCache('cuentas:')
+      await loadData(true)
     } catch (error: any) {
       alert(`Error eliminando cuenta: ${error.message}`)
     } finally {
@@ -157,7 +166,7 @@ export const CuentasBancarias = () => {
             <p className="text-[#9e9f92] mt-2">Catálogo de cuentas para pagos por transferencia</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={loadData} className="inline-flex items-center gap-2">
+            <Button variant="outline" onClick={() => { invalidateCache('cuentas:'); loadData(true) }} className="inline-flex items-center gap-2">
               <RefreshCw size={16} /> Recargar
             </Button>
             <Button onClick={openCreate} className="inline-flex items-center gap-2">

@@ -5,6 +5,7 @@ import {
   Home, Plus, CreditCard, UserPlus, ArrowLeftRight, TrendingUp,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { getCached, setCached } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { formatCurrency, formatDate } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
@@ -87,6 +88,9 @@ export const Dashboard = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
+      const ck = 'dashboard:stats'
+      const cached = getCached<Stats>(ck)
+      if (cached) { setStats(cached); setLoading(false); return }
       try {
         const now = new Date()
         const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
@@ -154,6 +158,15 @@ export const Dashboard = () => {
             lotesDisponibles: lotesDisponiblesRes.count || 0,
             ventasActivas: ventasActivasRes.count || 0,
           })
+          setCached('dashboard:stats', {
+            totalClientes: clientesRes.count || 0,
+            totalDesarrollos: desarrollosRes.count || 0,
+            totalVentas: ventasRes.count || 0,
+            totalPagado,
+            pagosDelMes,
+            lotesDisponibles: lotesDisponiblesRes.count || 0,
+            ventasActivas: ventasActivasRes.count || 0,
+          })
         }
       } catch (error) {
         console.error('Error fetching stats:', error)
@@ -174,6 +187,9 @@ export const Dashboard = () => {
     }
 
     const fetchRiesgo = async () => {
+      const ck = 'dashboard:riesgo'
+      const cached = getCached<VentaEnRiesgo[]>(ck)
+      if (cached) { setVentasEnRiesgo(cached); setLoadingRiesgo(false); return }
       try {
         setLoadingRiesgo(true)
         const today = new Date().toISOString().split('T')[0]
@@ -273,6 +289,7 @@ export const Dashboard = () => {
         })
 
         resultados.sort((a, b) => b.corridasVencidas - a.corridasVencidas)
+        setCached('dashboard:riesgo', resultados)
         setVentasEnRiesgo(resultados)
       } catch (err) {
         console.error('Error fetching ventas en riesgo:', err)
@@ -294,6 +311,11 @@ export const Dashboard = () => {
     }
 
     const fetchRecent = async () => {
+      const ck_pagos = 'dashboard:pagos_recientes'
+      const ck_ventas = 'dashboard:ventas_recientes'
+      const cp = getCached<PagoReciente[]>(ck_pagos)
+      const cv = getCached<VentaReciente[]>(ck_ventas)
+      if (cp && cv) { setPagosRecientes(cp); setVentasRecientes(cv); setLoadingRecent(false); return }
       try {
         setLoadingRecent(true)
 
@@ -319,8 +341,7 @@ export const Dashboard = () => {
               ? (vData as any[]).filter((v) => DEMO_DESARROLLOIDS.includes(loteMap.get(v.loteid)?.desarrolloid))
               : (vData as any[])
 
-            setVentasRecientes(
-              ventasFiltradas.slice(0, 6).map((v: any) => {
+            const list = ventasFiltradas.slice(0, 6).map((v: any) => {
                 const lote = loteMap.get(v.loteid)
                 const cliente = clienteMap.get(v.clienteid)
                 return {
@@ -331,7 +352,8 @@ export const Dashboard = () => {
                   loteLabel: lote ? `Mza ${lote.manzana} – L${lote.nolote}${lote.clavelote ? ` (${lote.clavelote})` : ''}` : '—',
                 }
               })
-            )
+            setCached('dashboard:ventas_recientes', list)
+            setVentasRecientes(list)
           } else {
             setVentasRecientes([])
           }
@@ -395,6 +417,7 @@ export const Dashboard = () => {
               })
               if (pagosList.length >= 6) break
             }
+            setCached('dashboard:pagos_recientes', pagosList)
             setPagosRecientes(pagosList)
           } else {
             setPagosRecientes([])
