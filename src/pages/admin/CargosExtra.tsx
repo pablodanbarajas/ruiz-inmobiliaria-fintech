@@ -27,6 +27,15 @@ interface AplicarCargoForm {
   monto: string
   fecha: string
   fecha_fin: string
+  aplicarATodos: boolean
+  lotesSeleccionados: number[]
+}
+
+interface CancelarForm {
+  desarrolloid: string
+  concepto: string
+  aplicarATodos: boolean
+  lotesSeleccionados: number[]
 }
 
 const today = () => new Date().toISOString().split('T')[0]
@@ -73,11 +82,26 @@ export const CargosExtra = () => {
     monto: '',
     fecha: today(),
     fecha_fin: '',
+    aplicarATodos: true,
+    lotesSeleccionados: [],
   })
   const [lotesPreview, setLotesPreview] = useState<{ loteid: number; manzana: string | null; nolote: string | null; clavelote: string | null }[]>([])
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+
+  // ── Cancelar masivo modal state ───────────────────────────────
+  const [showCancelarModal, setShowCancelarModal] = useState(false)
+  const [cancelForm, setCancelForm] = useState<CancelarForm>({
+    desarrolloid: '',
+    concepto: '',
+    aplicarATodos: true,
+    lotesSeleccionados: [],
+  })
+  const [conceptosPendientes, setConceptosPendientes] = useState<string[]>([])
+  const [lotesCancelables, setLotesCancelables] = useState<{ cargoid: number; loteid: number; manzana: string | null; nolote: string | null }[]>([])
+  const [loadingCancelables, setLoadingCancelables] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
 
   // ── Fetch master list ─────────────────────────────────────────
   const fetchCargos = async () => {
@@ -145,7 +169,7 @@ export const CargosExtra = () => {
   // Reset page on filter change
   useEffect(() => { setCurrentPage(1) }, [filters])
 
-  // ── Preview lotes when desarrollo selected ──────────────────
+  // ── Preview lotes when desarrollo selected (apply modal) ─────
   useEffect(() => {
     const desarrolloid = parseInt(aplicarForm.desarrolloid)
     if (!desarrolloid) { setLotesPreview([]); return }
@@ -157,10 +181,53 @@ export const CargosExtra = () => {
       .eq('desarrolloid', desarrolloid)
       .order('manzana')
       .then(({ data }) => {
-        setLotesPreview((data || []) as any)
+        const lotes = (data || []) as any[]
+        setLotesPreview(lotes)
+        // Reset selection — default all checked
+        setAplicarForm((f) => ({ ...f, lotesSeleccionados: lotes.map((l) => l.loteid) }))
         setLoadingPreview(false)
       })
   }, [aplicarForm.desarrolloid])
+
+  // ── Load conceptos pendientes when cancel modal desarrollo changes ──
+  useEffect(() => {
+    const desarrolloid = parseInt(cancelForm.desarrolloid)
+    if (!desarrolloid) { setConceptosPendientes([]); setLotesCancelables([]); return }
+    supabase
+      .from('cargos_extra')
+      .select('concepto')
+      .eq('desarrolloid', desarrolloid)
+      .eq('estatus', 'P')
+      .then(({ data }) => {
+        const unique = [...new Set((data || []).map((r: any) => r.concepto as string))].sort()
+        setConceptosPendientes(unique)
+        setCancelForm((f) => ({ ...f, concepto: '', lotesSeleccionados: [], aplicarATodos: true }))
+      })
+  }, [cancelForm.desarrolloid])
+
+  // ── Load lotes cancelables when concepto changes ─────────────
+  useEffect(() => {
+    const desarrolloid = parseInt(cancelForm.desarrolloid)
+    if (!desarrolloid || !cancelForm.concepto) { setLotesCancelables([]); return }
+    setLoadingCancelables(true)
+    supabase
+      .from('cargos_extra')
+      .select('cargoid, loteid, lote:lote(manzana, nolote)')
+      .eq('desarrolloid', desarrolloid)
+      .eq('concepto', cancelForm.concepto)
+      .eq('estatus', 'P')
+      .then(({ data }) => {
+        const rows = (data || []).map((r: any) => ({
+          cargoid: r.cargoid,
+          loteid: r.loteid,
+          manzana: r.lote?.manzana ?? null,
+          nolote: r.lote?.nolote ?? null,
+        }))
+        setLotesCancelables(rows)
+        setCancelForm((f) => ({ ...f, lotesSeleccionados: rows.map((r) => r.cargoid), aplicarATodos: true }))
+        setLoadingCancelables(false)
+      })
+  }, [cancelForm.concepto, cancelForm.desarrolloid])
 
   // ── Validate + submit apply-to-desarrollo ────────────────────
   const validateAplicar = () => {
@@ -177,12 +244,37 @@ export const CargosExtra = () => {
     return Object.keys(e).length === 0
   }
 
+  const handleCancelarMasivo = async () => {
+    const ids = cancelForm.aplicarATodos
+      ? lotesCancelables.map((r) => r.cargoid)
+      : cancelForm.lotesSeleccionados
+    if (ids.length === 0) return
+    if (!window.confirm(`¿Cancelar ${ids.length} cargo${ids.length !== 1 ? 's' : ''} de "${cancelForm.concepto}"? Esta acción no se puede deshacer.`)) return
+    setIsCancelling(true)
+    try {
+      const { error } = await supabase
+        .from('cargos_extra')
+        .update({ estatus: 'X' })
+        .in('cargoid', ids)
+      if (error) throw error
+      setShowCancelarModal(false)
+      setCancelForm({ desarrolloid: '', concepto: '', aplicarATodos: true, lotesSeleccionados: [] })
+      fetchCargos()
+    } catch (err: any) {
+      alert(`Error al cancelar: ${err.message}`)
+    } finally {
+      setIsCancelling(false)
+    }
+  }
+
   const handleAplicarCargo = async () => {
     if (!validateAplicar()) return
     try {
       setIsSubmitting(true)
       const monto = parseFloat(parseFloat(aplicarForm.monto).toFixed(2))
-      const loteIds = lotesPreview.map((l) => l.loteid)
+      const loteIds = aplicarForm.aplicarATodos
+        ? lotesPreview.map((l) => l.loteid)
+        : aplicarForm.lotesSeleccionados
 
       // Deduplication: skip lotes that already have a non-cancelled cargo with this concepto
       const { data: existing } = await supabase
@@ -216,7 +308,7 @@ export const CargosExtra = () => {
 
       const omitidos = existingSet.size
       setShowAplicarModal(false)
-      setAplicarForm({ desarrolloid: '', concepto: '', monto: '', fecha: today(), fecha_fin: '' })
+      setAplicarForm({ desarrolloid: '', concepto: '', monto: '', fecha: today(), fecha_fin: '', aplicarATodos: true, lotesSeleccionados: [] })
       setLotesPreview([])
       fetchCargos()
       if (omitidos > 0) {
@@ -260,13 +352,23 @@ export const CargosExtra = () => {
               Cargos adicionales por servicios aplicados a ventas por desarrollo
             </p>
           </div>
-          <Button
-            onClick={() => setShowAplicarModal(true)}
-            className="inline-flex items-center gap-2"
-          >
-            <Plus size={16} />
-            Aplicar cargo a desarrollo
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowCancelarModal(true)}
+              className="inline-flex items-center gap-2 text-red-600 border-red-300 hover:bg-red-50"
+            >
+              <XCircle size={16} />
+              Cancelar cargos
+            </Button>
+            <Button
+              onClick={() => setShowAplicarModal(true)}
+              className="inline-flex items-center gap-2"
+            >
+              <Plus size={16} />
+              Aplicar cargo a desarrollo
+            </Button>
+          </div>
         </div>
 
         {/* ── Filters ───────────────────────────────────────── */}
@@ -458,9 +560,9 @@ export const CargosExtra = () => {
               )}
             </div>
 
-            {/* Preview ventas */}
+            {/* Lote selection */}
             {aplicarForm.desarrolloid && (
-              <div className="rounded-lg border border-gray-200 bg-white p-3">
+              <div className="rounded-lg border border-gray-200 bg-white p-3 space-y-3">
                 {loadingPreview ? (
                   <p className="text-sm text-gray-500">Cargando lotes…</p>
                 ) : lotesPreview.length === 0 ? (
@@ -469,14 +571,68 @@ export const CargosExtra = () => {
                     No hay lotes registrados en este desarrollo
                   </div>
                 ) : (
-                  <div className="flex items-center gap-3 text-sm text-gray-700">
-                    <CheckCircle2 size={16} className="text-green-600 shrink-0" />
-                    <span>
-                      <span className="font-semibold text-[#504840]">{lotesPreview.length} lote{lotesPreview.length !== 1 ? 's' : ''}</span>{' '}
-                      en este desarrollo recibirán el cargo.
-                      Los que ya lo tengan serán omitidos automáticamente.
-                    </span>
-                  </div>
+                  <>
+                    {/* Toggle todos / seleccionar */}
+                    <div className="flex items-center gap-4 text-sm">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={aplicarForm.aplicarATodos}
+                          onChange={() => setAplicarForm((f) => ({ ...f, aplicarATodos: true, lotesSeleccionados: lotesPreview.map((l) => l.loteid) }))}
+                          className="accent-[#eaae4c]"
+                        />
+                        <span className="font-medium">Todos los lotes ({lotesPreview.length})</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={!aplicarForm.aplicarATodos}
+                          onChange={() => setAplicarForm((f) => ({ ...f, aplicarATodos: false }))}
+                          className="accent-[#eaae4c]"
+                        />
+                        <span className="font-medium">Seleccionar lotes específicos</span>
+                      </label>
+                    </div>
+
+                    {/* Checkbox list when specific */}
+                    {!aplicarForm.aplicarATodos && (
+                      <div className="max-h-48 overflow-y-auto border border-gray-100 rounded p-2 space-y-1">
+                        <label className="flex items-center gap-2 text-xs text-gray-500 pb-1 border-b border-gray-100 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="accent-[#eaae4c]"
+                            checked={aplicarForm.lotesSeleccionados.length === lotesPreview.length}
+                            onChange={(e) => setAplicarForm((f) => ({
+                              ...f,
+                              lotesSeleccionados: e.target.checked ? lotesPreview.map((l) => l.loteid) : [],
+                            }))}
+                          />
+                          Seleccionar todos
+                        </label>
+                        {lotesPreview.map((l) => (
+                          <label key={l.loteid} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 px-1 rounded">
+                            <input
+                              type="checkbox"
+                              className="accent-[#eaae4c]"
+                              checked={aplicarForm.lotesSeleccionados.includes(l.loteid)}
+                              onChange={(e) => setAplicarForm((f) => ({
+                                ...f,
+                                lotesSeleccionados: e.target.checked
+                                  ? [...f.lotesSeleccionados, l.loteid]
+                                  : f.lotesSeleccionados.filter((id) => id !== l.loteid),
+                              }))}
+                            />
+                            Mza {l.manzana} · Lote {l.nolote}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+
+                    <p className="text-xs text-gray-500">
+                      {(aplicarForm.aplicarATodos ? lotesPreview.length : aplicarForm.lotesSeleccionados.length)} lote{(aplicarForm.aplicarATodos ? lotesPreview.length : aplicarForm.lotesSeleccionados.length) !== 1 ? 's' : ''} seleccionado{(aplicarForm.aplicarATodos ? lotesPreview.length : aplicarForm.lotesSeleccionados.length) !== 1 ? 's' : ''}.
+                      Los que ya tengan este cargo serán omitidos automáticamente.
+                    </p>
+                  </>
                 )}
               </div>
             )}
@@ -558,20 +714,22 @@ export const CargosExtra = () => {
             </div>
 
             {/* Cost summary */}
-            {lotesPreview.length > 0 && parseFloat(aplicarForm.monto) > 0 && (
-              <div className="bg-[#eaae4c]/10 border border-[#eaae4c] rounded-lg p-3 flex items-center justify-between text-sm">
-                <span className="text-gray-700">
-                  Máximo a registrar:{' '}
-                  <span className="font-bold text-[#504840]">
-                    {lotesPreview.length} lotes × {formatCurrency(parseFloat(aplicarForm.monto))}
+            {(() => {
+              const count = aplicarForm.aplicarATodos ? lotesPreview.length : aplicarForm.lotesSeleccionados.length
+              return count > 0 && parseFloat(aplicarForm.monto) > 0 ? (
+                <div className="bg-[#eaae4c]/10 border border-[#eaae4c] rounded-lg p-3 flex items-center justify-between text-sm">
+                  <span className="text-gray-700">
+                    A registrar:{' '}
+                    <span className="font-bold text-[#504840]">
+                      {count} lote{count !== 1 ? 's' : ''} × {formatCurrency(parseFloat(aplicarForm.monto))}
+                    </span>
                   </span>
-                </span>
-                <span className="font-bold text-[#504840]">
-                  ={' '}
-                  {formatCurrency(lotesPreview.length * parseFloat(aplicarForm.monto))}
-                </span>
-              </div>
-            )}
+                  <span className="font-bold text-[#504840]">
+                    = {formatCurrency(count * parseFloat(aplicarForm.monto))}
+                  </span>
+                </div>
+              ) : null
+            })()}
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
@@ -584,13 +742,156 @@ export const CargosExtra = () => {
             </Button>
             <Button
               onClick={handleAplicarCargo}
-              disabled={isSubmitting || lotesPreview.length === 0}
+              disabled={isSubmitting || (aplicarForm.aplicarATodos ? lotesPreview.length === 0 : aplicarForm.lotesSeleccionados.length === 0)}
               className="inline-flex items-center gap-2"
             >
               <Plus size={15} />
-              {isSubmitting
-                ? 'Aplicando…'
-                : `Aplicar a ${lotesPreview.length} lote${lotesPreview.length !== 1 ? 's' : ''}`}
+              {isSubmitting ? 'Aplicando…' : (() => {
+                const n = aplicarForm.aplicarATodos ? lotesPreview.length : aplicarForm.lotesSeleccionados.length
+                return `Aplicar a ${n} lote${n !== 1 ? 's' : ''}`
+              })()}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Modal: Cancelar cargos masivo ─────────────────── */}
+      <Modal
+        isOpen={showCancelarModal}
+        title="Cancelar cargos extra"
+        onClose={() => !isCancelling && setShowCancelarModal(false)}
+        size="xl"
+      >
+        <div className="space-y-5">
+          {/* Desarrollo */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Desarrollo <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={cancelForm.desarrolloid}
+              onChange={(e) => setCancelForm((f) => ({ ...f, desarrolloid: e.target.value, concepto: '', lotesSeleccionados: [], aplicarATodos: true }))}
+              disabled={isCancelling}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] disabled:bg-gray-100"
+            >
+              <option value="">— Selecciona un desarrollo —</option>
+              {desarrollos.map((d) => (
+                <option key={d.desarrolloid} value={d.desarrolloid}>
+                  {d.nombre}{d.clavedesarrollo ? ` (${d.clavedesarrollo})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Concepto */}
+          {cancelForm.desarrolloid && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Concepto (cargo) <span className="text-red-500">*</span>
+              </label>
+              {conceptosPendientes.length === 0 ? (
+                <p className="text-sm text-gray-400">No hay cargos pendientes en este desarrollo.</p>
+              ) : (
+                <select
+                  value={cancelForm.concepto}
+                  onChange={(e) => setCancelForm((f) => ({ ...f, concepto: e.target.value, lotesSeleccionados: [], aplicarATodos: true }))}
+                  disabled={isCancelling}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] disabled:bg-gray-100"
+                >
+                  <option value="">— Selecciona un concepto —</option>
+                  {conceptosPendientes.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          {/* Lote selection */}
+          {cancelForm.concepto && (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-3">
+              {loadingCancelables ? (
+                <p className="text-sm text-gray-500">Cargando lotes…</p>
+              ) : lotesCancelables.length === 0 ? (
+                <p className="text-sm text-amber-700">No se encontraron cargos pendientes con este concepto.</p>
+              ) : (
+                <>
+                  <div className="flex items-center gap-4 text-sm">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={cancelForm.aplicarATodos}
+                        onChange={() => setCancelForm((f) => ({ ...f, aplicarATodos: true, lotesSeleccionados: lotesCancelables.map((r) => r.cargoid) }))}
+                        className="accent-[#eaae4c]"
+                      />
+                      <span className="font-medium">Todos los lotes ({lotesCancelables.length})</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={!cancelForm.aplicarATodos}
+                        onChange={() => setCancelForm((f) => ({ ...f, aplicarATodos: false, lotesSeleccionados: [] }))}
+                        className="accent-[#eaae4c]"
+                      />
+                      <span className="font-medium">Seleccionar lotes específicos</span>
+                    </label>
+                  </div>
+
+                  {!cancelForm.aplicarATodos && (
+                    <div className="max-h-48 overflow-y-auto border border-gray-100 rounded bg-white p-2 space-y-1">
+                      <label className="flex items-center gap-2 text-xs text-gray-500 pb-1 border-b border-gray-100 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="accent-[#eaae4c]"
+                          checked={cancelForm.lotesSeleccionados.length === lotesCancelables.length}
+                          onChange={(e) => setCancelForm((f) => ({
+                            ...f,
+                            lotesSeleccionados: e.target.checked ? lotesCancelables.map((r) => r.cargoid) : [],
+                          }))}
+                        />
+                        Seleccionar todos
+                      </label>
+                      {lotesCancelables.map((r) => (
+                        <label key={r.cargoid} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 px-1 rounded">
+                          <input
+                            type="checkbox"
+                            className="accent-[#eaae4c]"
+                            checked={cancelForm.lotesSeleccionados.includes(r.cargoid)}
+                            onChange={(e) => setCancelForm((f) => ({
+                              ...f,
+                              lotesSeleccionados: e.target.checked
+                                ? [...f.lotesSeleccionados, r.cargoid]
+                                : f.lotesSeleccionados.filter((id) => id !== r.cargoid),
+                            }))}
+                          />
+                          Mza {r.manzana} · Lote {r.nolote}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="bg-red-50 border border-red-200 rounded p-2 text-sm text-red-700">
+                    Se cancelarán{' '}
+                    <strong>{cancelForm.aplicarATodos ? lotesCancelables.length : cancelForm.lotesSeleccionados.length}</strong>
+                    {' '}cargo{(cancelForm.aplicarATodos ? lotesCancelables.length : cancelForm.lotesSeleccionados.length) !== 1 ? 's' : ''} de &quot;{cancelForm.concepto}&quot;.
+                    Esta acción no se puede deshacer.
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setShowCancelarModal(false)} disabled={isCancelling}>
+              Cerrar
+            </Button>
+            <Button
+              onClick={handleCancelarMasivo}
+              disabled={isCancelling || !cancelForm.concepto || (cancelForm.aplicarATodos ? lotesCancelables.length === 0 : cancelForm.lotesSeleccionados.length === 0)}
+              className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+            >
+              <XCircle size={15} />
+              {isCancelling ? 'Cancelando…' : 'Confirmar cancelación'}
             </Button>
           </div>
         </div>

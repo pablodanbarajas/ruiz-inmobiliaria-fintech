@@ -12,7 +12,7 @@ import { ConvenioForm } from '@/components/forms/ConvenioForm'
 import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
 import { AlertaCancelacion } from '@/components/AlertaCancelacion'
 import { ContratoFirmado } from '@/components/ContratoFirmado'
-import { ChevronLeft, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, CheckCircle2, Wrench, ArrowLeftRight } from 'lucide-react'
+import { ChevronLeft, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, ArrowLeftRight } from 'lucide-react'
 import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Convenio, Devolucion, DevolucionParcialidad, CargoExtra, Traspaso } from '@/types/database'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
@@ -1258,110 +1258,6 @@ export const VentaDetail = () => {
           )}
         </div>
       </div>
-
-      {/* ── Cargos Extra ───────────────────────────────── */}
-      {cargosExtra.length > 0 && (
-        <div className="bg-white rounded-lg shadow overflow-hidden mt-8 mb-8">
-          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Wrench size={20} className="text-[#504840]" />
-              <h2 className="text-xl font-semibold text-gray-900">Cargos Extra</h2>
-              <span className="text-sm text-gray-500">
-                ({cargosExtra.filter((c) => c.estatus === 'P').length} pendiente
-                {cargosExtra.filter((c) => c.estatus === 'P').length !== 1 ? 's' : ''})
-              </span>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr className="text-left text-xs text-gray-500 uppercase tracking-wider">
-                  <th className="px-6 py-3">Concepto</th>
-                  <th className="px-6 py-3">Monto</th>
-                  <th className="px-6 py-3">Fecha inicio</th>
-                  <th className="px-6 py-3">Estatus</th>
-                  <th className="px-6 py-3">Fecha de pago</th>
-                  {venta?.estatus !== 'C' && <th className="px-6 py-3">Acciones</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {cargosExtra.map((cargo) => (
-                  <tr key={cargo.cargoid} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900">{cargo.concepto}</td>
-                    <td className="px-6 py-4 font-semibold text-[#504840]">{formatCurrency(cargo.monto)}</td>
-                    <td className="px-6 py-4 text-gray-600">{formatDate(cargo.fecha)}</td>
-                    <td className="px-6 py-4">
-                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
-                        cargo.estatus === 'C' ? 'bg-green-100 text-green-800' :
-                        cargo.estatus === 'X' ? 'bg-red-100 text-red-600' :
-                        'bg-amber-100 text-amber-800'
-                      }`}>
-                        {cargo.estatus === 'C' ? 'Cobrado' : cargo.estatus === 'X' ? 'Cancelado' : 'Pendiente'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-gray-500 text-xs">
-                      {cargo.fecha_pago ? formatDate(cargo.fecha_pago) : '—'}
-                    </td>
-                    {venta?.estatus !== 'C' && (
-                      <td className="px-6 py-4">
-                        {cargo.estatus === 'P' && (
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              className="p-1 text-green-600 hover:bg-green-50 inline-flex items-center gap-1 text-xs"
-                              onClick={async () => {
-                                const { error } = await supabase
-                                  .from('cargos_extra')
-                                  .update({ estatus: 'C', fecha_pago: new Date().toISOString().split('T')[0] })
-                                  .eq('cargoid', cargo.cargoid)
-                                if (!error) {
-                                  const { data } = await supabase.from('cargos_extra').select('*').eq('loteid', venta?.loteid).order('fecha')
-                                  setCargosExtra((data || []) as CargoExtra[])
-                                }
-                              }}
-                            >
-                              <CheckCircle2 size={14} />
-                              Cobrado
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              className="p-1 text-red-500 hover:bg-red-50 inline-flex items-center gap-1 text-xs"
-                              onClick={async () => {
-                                const { error } = await supabase
-                                  .from('cargos_extra')
-                                  .update({ estatus: 'X' })
-                                  .eq('cargoid', cargo.cargoid)
-                                if (!error) {
-                                  const { data } = await supabase.from('cargos_extra').select('*').eq('loteid', venta?.loteid).order('fecha')
-                                  setCargosExtra((data || []) as CargoExtra[])
-                                }
-                              }}
-                            >
-                              <XCircle size={14} />
-                              Cancelar
-                            </Button>
-                          </div>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {/* Summary row */}
-          {cargosExtra.some((c) => c.estatus === 'P') && (
-            <div className="px-8 py-4 bg-amber-50 border-t border-amber-100 flex items-center justify-between text-sm">
-              <span className="text-amber-800 font-medium">
-                Total pendiente de cobro:
-              </span>
-              <span className="font-bold text-amber-900">
-                {formatCurrency(cargosExtra.filter((c) => c.estatus === 'P').reduce((s, c) => s + c.monto, 0))}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ── Historial de Traspasos ─────────────────────── */}
       {traspasos.length > 0 && (
