@@ -773,80 +773,88 @@ export const Dashboard = () => {
 
         {/* ── Ventas en riesgo de cancelación ── */}
         {canViewRiesgo && (
-        <div id="riesgo-section" className="mt-8 bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-200 flex items-center gap-3 bg-red-50">
-            <AlertTriangle size={22} className="text-red-600" />
-            <h2 className="text-xl font-bold text-red-800">Ventas en riesgo de cancelación</h2>
-            {!loadingRiesgo && ventasEnRiesgo.length > 0 && (
-              <span className="ml-auto bg-red-100 text-red-700 text-sm font-bold px-3 py-0.5 rounded-full">
-                {ventasEnRiesgo.length}
-              </span>
-            )}
-          </div>
-
+        <div id="riesgo-section" className="mt-8">
           {loadingRiesgo ? (
-            <div className="px-8 py-10 text-center text-gray-500">
-              <div className="inline-block h-6 w-6 border-4 border-[#eaae4c] border-t-transparent rounded-full animate-spin mb-3" />
-              <p>Verificando atrasos...</p>
+            <div className="bg-white rounded-lg shadow-md p-6 flex items-center gap-3 text-gray-400">
+              <div className="h-5 w-5 border-4 border-[#eaae4c] border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm">Verificando atrasos...</span>
             </div>
           ) : ventasEnRiesgo.length === 0 ? (
-            <div className="px-8 py-10 text-center text-green-700 font-medium flex items-center justify-center gap-2">
-              <CheckCircle2 size={18} />
-              No hay ventas con 3 o más mensualidades vencidas
+            <div className="bg-green-50 border border-green-200 rounded-lg px-5 py-3 flex items-center gap-3">
+              <CheckCircle2 size={18} className="text-green-600 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-green-800">Sin ventas en riesgo</p>
+                <p className="text-xs text-green-600 mt-0.5">No hay ventas con 3 o más mensualidades vencidas</p>
+              </div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-red-800 border-b border-red-900">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Venta</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Cliente</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Lote</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Pagos vencidos</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Etapa</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Último aviso</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-white"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {ventasEnRiesgo.map((v) => (
-                    <tr key={v.ventaid} className="hover:bg-red-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">#{v.ventaid}</td>
-                      <td className="px-6 py-4 text-sm text-gray-800">{v.clienteNombre}</td>
-                      <td className="px-6 py-4 text-sm text-gray-700">{v.loteLabel}</td>
-                      <td className="px-6 py-4">
-                        <span className="inline-block bg-red-100 text-red-700 text-sm font-bold px-2 py-0.5 rounded-full">
-                          {v.corridasVencidas}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          v.etapa === 'Sin avisos'
-                            ? 'bg-red-100 text-red-700'
-                            : v.etapa.includes('vencido') || v.etapa.includes('cancelación')
-                            ? 'bg-gray-800 text-white'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}>
-                          {v.etapa}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {v.ultimoAviso ? formatDate(v.ultimoAviso) : '—'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/admin/ventas/${v.ventaid}`)}
-                          className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
-                        >
-                          <Eye size={14} />
-                          Ver
-                        </button>
-                      </td>
+            <div className="bg-white rounded-lg shadow-md overflow-hidden border-l-4 border-red-600">
+              {/* Header */}
+              <div className="bg-red-600 px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle size={20} className="text-white" />
+                  <h2 className="text-lg font-bold text-white">Ventas en riesgo de cancelación</h2>
+                </div>
+                <span className="bg-white text-red-600 text-sm font-bold px-3 py-1 rounded-full">
+                  {ventasEnRiesgo.length} {ventasEnRiesgo.length === 1 ? 'venta' : 'ventas'}
+                </span>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-red-50 border-b-2 border-red-200">
+                    <tr>
+                      <th className="px-5 py-3 text-left text-xs font-bold text-red-800 uppercase tracking-wider">Cliente</th>
+                      <th className="px-5 py-3 text-left text-xs font-bold text-red-800 uppercase tracking-wider">Lote</th>
+                      <th className="px-5 py-3 text-center text-xs font-bold text-red-800 uppercase tracking-wider">Pagos vencidos</th>
+                      <th className="px-5 py-3 text-left text-xs font-bold text-red-800 uppercase tracking-wider">Etapa</th>
+                      <th className="px-5 py-3 text-left text-xs font-bold text-red-800 uppercase tracking-wider">Último aviso</th>
+                      <th className="px-5 py-3 w-16" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-red-50">
+                    {ventasEnRiesgo.map((v) => (
+                      <tr key={v.ventaid} className="hover:bg-red-50 transition-colors">
+                        <td className="px-5 py-3">
+                          <p className="font-semibold text-gray-900">{v.clienteNombre}</p>
+                          <p className="text-xs text-gray-400">Venta #{v.ventaid}</p>
+                        </td>
+                        <td className="px-5 py-3 text-gray-700">{v.loteLabel}</td>
+                        <td className="px-5 py-3 text-center">
+                          <span className="inline-block bg-red-600 text-white text-sm font-bold w-8 h-8 rounded-full leading-8 text-center">
+                            {v.corridasVencidas}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className={`inline-block px-2 py-1 rounded-md text-xs font-semibold ${
+                            v.etapa === 'Sin avisos'
+                              ? 'bg-red-100 text-red-700'
+                              : v.etapa.includes('vencido') || v.etapa.includes('cancelación')
+                              ? 'bg-gray-800 text-white'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {v.etapa}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-gray-500 text-xs">
+                          {v.ultimoAviso ? formatDate(v.ultimoAviso) : <span className="text-red-400 font-medium">Sin avisos</span>}
+                        </td>
+                        <td className="px-5 py-3">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/admin/ventas/${v.ventaid}`)}
+                            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                          >
+                            <Eye size={13} />
+                            Ver
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
