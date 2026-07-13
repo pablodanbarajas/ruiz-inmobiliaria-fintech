@@ -7,7 +7,7 @@ import {
 import { supabase } from '@/lib/supabaseClient'
 import { getCached, setCached } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
-import { formatCurrency, formatDate } from '@/utils/helpers'
+import { formatCurrency, formatDate, getVentaStatusLabel, getVentaStatusColor } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, ROLE_LABELS, type AdminPanelRole } from '@/config/roles'
@@ -736,12 +736,8 @@ export const Dashboard = () => {
                           {formatCurrency(v.precio)}
                         </span>
                       )}
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                        v.estatus === 'A' ? 'bg-green-100 text-green-700' :
-                        v.estatus === 'C' ? 'bg-red-100 text-red-600' :
-                        'bg-gray-100 text-gray-500'
-                      }`}>
-                        {v.estatus === 'A' ? 'Activa' : v.estatus === 'C' ? 'Cancelada' : v.estatus}
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getVentaStatusColor(v.estatus)}`}>
+                        {getVentaStatusLabel(v.estatus)}
                       </span>
                     </div>
                   </li>
