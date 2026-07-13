@@ -344,6 +344,7 @@ export function MisPagos() {
     try {
       setPayingId(pago.id);
       const { url, sessionId } = await createPaymentLink(pago.id);
+      if (!url.startsWith('https://')) throw new Error('URL de pago inválida');
       if (sessionId) {
         sessionStorage.setItem(`quentli_session_${pago.id}`, sessionId);
       }

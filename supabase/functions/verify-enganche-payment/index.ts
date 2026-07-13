@@ -43,8 +43,14 @@ Deno.serve(async (req: Request) => {
     }
 
     const { ventaid, sessionId } = await req.json()
-    if (!ventaid || !sessionId) {
-      return new Response(JSON.stringify({ error: 'ventaid y sessionId son requeridos' }), {
+    const ventaId = Number(ventaid)
+    if (!Number.isInteger(ventaId) || ventaId <= 0) {
+      return new Response(JSON.stringify({ error: 'ventaid debe ser un entero válido' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    if (!sessionId || typeof sessionId !== 'string') {
+      return new Response(JSON.stringify({ error: 'sessionId es requerido' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -65,7 +71,7 @@ Deno.serve(async (req: Request) => {
     const { data: venta, error: ventaErr } = await serviceClient
       .from('venta')
       .select('ventaid, estatus, enganche, monto_apartado_pagado, loteid, clienteid')
-      .eq('ventaid', Number(ventaid))
+      .eq('ventaid', ventaId)
       .eq('clienteid', cliente.clienteid)
       .single()
 

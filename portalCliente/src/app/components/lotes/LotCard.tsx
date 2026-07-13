@@ -87,6 +87,7 @@ export function LotCard({ lote }: LotCardProps) {
         });
         const data = await res.json();
         if (!res.ok || !data.url) throw new Error(data.error ?? 'Error al generar link de pago');
+        if (!data.url.startsWith('https://')) throw new Error('URL de pago inválida');
         // Guardar sessionId para verificar al regresar de Quentli
         if (data.sessionId) {
           sessionStorage.setItem(`enganche_session_${lote.ventaid}`, data.sessionId);
@@ -116,6 +117,7 @@ export function LotCard({ lote }: LotCardProps) {
       });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error(data.error ?? 'Error al generar link de pago de apartado');
+      if (!data.url.startsWith('https://')) throw new Error('URL de pago inválida');
       if (data.sessionId) {
         sessionStorage.setItem(`apartado_session_${lote.ventaid}`, data.sessionId);
       }

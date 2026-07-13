@@ -40,32 +40,12 @@ Deno.serve(async (req: Request) => {
     }
 
     const { ventaid } = await req.json()
-    if (!ventaid) {
-      return new Response(JSON.stringify({ error: 'ventaid es requerido' }), {
+    const ventaId = Number(ventaid)
+    if (!Number.isInteger(ventaId) || ventaId <= 0) {
+      return new Response(JSON.stringify({ error: 'ventaid debe ser un entero válido' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
-
-    // Buscar cliente por email
-    const { data: cliente } = await serviceClient
-      .from('cliente')
-      .select('clienteid, nombre')
-      .eq('email', user.email!)
-      .maybeSingle()
-
-    if (!cliente) {
-      return new Response(JSON.stringify({ error: 'Cliente no encontrado' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    // Obtener la venta (verificar que pertenece al cliente y está en fase 'E')
-    const { data: venta, error: ventaErr } = await serviceClient
-      .from('venta')
-      .select('ventaid, estatus, enganche, monto_apartado_pagado, loteid, clienteid, fecha_limite_enganche')
-      .eq('ventaid', Number(ventaid))
-      .eq('clienteid', cliente.clienteid)
-      .single()
 
     if (ventaErr || !venta) {
       return new Response(JSON.stringify({ error: 'Venta no encontrada o sin acceso' }), {

@@ -55,8 +55,14 @@ Deno.serve(async (req: Request) => {
 
     const { ventaid, plazo, fechaprimeramensualidad } = await req.json()
 
-    if (!ventaid || !plazo || !fechaprimeramensualidad) {
-      return new Response(JSON.stringify({ error: 'ventaid, plazo y fechaprimeramensualidad son requeridos' }), {
+    const ventaId = Number(ventaid)
+    if (!Number.isInteger(ventaId) || ventaId <= 0) {
+      return new Response(JSON.stringify({ error: 'ventaid debe ser un entero válido' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    if (!plazo || !fechaprimeramensualidad) {
+      return new Response(JSON.stringify({ error: 'plazo y fechaprimeramensualidad son requeridos' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -72,7 +78,7 @@ Deno.serve(async (req: Request) => {
     const { data: venta, error: ventaErr } = await serviceClient
       .from('venta')
       .select('ventaid, preciolote, enganche, fechaenganche, loteid, estatus')
-      .eq('ventaid', Number(ventaid))
+      .eq('ventaid', ventaId)
       .single()
 
     if (ventaErr || !venta) {
@@ -91,7 +97,7 @@ Deno.serve(async (req: Request) => {
     const { error: deleteError, count: deleteCount } = await serviceClient
       .from('corridafinanciera')
       .delete({ count: 'exact' })
-      .eq('ventaid', Number(ventaid))
+      .eq('ventaid', ventaId)
 
     if (deleteError) {
       throw new Error(`Error al eliminar corridas: ${deleteError.message}`)
@@ -103,7 +109,7 @@ Deno.serve(async (req: Request) => {
     const { data: remaining, error: selectErr } = await serviceClient
       .from('corridafinanciera')
       .select('corridafinancieraid, nopago')
-      .eq('ventaid', Number(ventaid))
+      .eq('ventaid', ventaId)
 
     if (selectErr) throw new Error(`Error verificando corridas: ${selectErr.message}`)
 
@@ -151,7 +157,7 @@ Deno.serve(async (req: Request) => {
     const { data: corrida0 } = await serviceClient
       .from('corridafinanciera')
       .select('corridafinancieraid')
-      .eq('ventaid', Number(ventaid))
+      .eq('ventaid', ventaId)
       .eq('nopago', 0)
       .single()
 
@@ -168,7 +174,7 @@ Deno.serve(async (req: Request) => {
     await serviceClient
       .from('venta')
       .update({ plazo: plazoNum, mensualidad, fechaprimeramensualidad })
-      .eq('ventaid', Number(ventaid))
+      .eq('ventaid', ventaId)
 
     // 4. Cambiar lote a Vendido
     if (venta.loteid) {

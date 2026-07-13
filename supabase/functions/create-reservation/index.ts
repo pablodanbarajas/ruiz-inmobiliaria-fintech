@@ -37,8 +37,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const { loteid, desarrolloid } = await req.json()
-    if (!loteid || !desarrolloid) {
-      return new Response(JSON.stringify({ error: 'loteid y desarrolloid son requeridos' }), {
+    const loteId = Number(loteid)
+    const desarrolloId = Number(desarrolloid)
+    if (!Number.isInteger(loteId) || loteId <= 0 || !Number.isInteger(desarrolloId) || desarrolloId <= 0) {
+      return new Response(JSON.stringify({ error: 'loteid y desarrolloid deben ser enteros válidos' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -64,7 +66,7 @@ Deno.serve(async (req: Request) => {
     const { data: desarrollo } = await serviceClient
       .from('desarrollo')
       .select('desarrolloid, nombre, montominimoapartado, enganche')
-      .eq('desarrolloid', desarrolloid)
+      .eq('desarrolloid', desarrolloId)
       .single()
 
     if (!desarrollo) {
