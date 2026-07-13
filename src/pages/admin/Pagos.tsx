@@ -198,17 +198,43 @@ export const Pagos = () => {
 
       const todayStr = new Date().toISOString().split('T')[0]
 
+      // Pre-fetch ventaIds for DEMO developments so corridafinanciera query
+      // is scoped to only those developments (avoids fetching 1000-row pages from other developments)
+      let demoVentaIds: number[] | null = null
+      if (DEMO_DESARROLLOIDS.length > 0) {
+        const { data: ventasActivas } = await supabase
+          .from('venta')
+          .select('ventaid, loteid, lote:lote(desarrolloid)')
+          .eq('estatus', 'A')
+          .limit(5000)
+        demoVentaIds = (ventasActivas || [])
+          .filter((v: any) => {
+            const devId = Array.isArray(v.lote) ? v.lote[0]?.desarrolloid : v.lote?.desarrolloid
+            return DEMO_DESARROLLOIDS.includes(devId)
+          })
+          .map((v: any) => v.ventaid as number)
+      }
+
+      let corridasQuery = supabase
+        .from('corridafinanciera')
+        .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, dias_tolerancia, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre)))')
+        .gt('nopago', 0)
+        .lt('fecha', todayStr)
+        .limit(5000)
+
+      if (demoVentaIds !== null) {
+        corridasQuery = demoVentaIds.length > 0
+          ? corridasQuery.in('ventaid', demoVentaIds)
+          : corridasQuery.eq('ventaid', -1) // no results if no matching ventas
+      }
+
       const [pagosRes, corridasRes, desarrollosRes] = await Promise.all([
         supabase
           .from('pagos')
           .select('pagoid, fechapago, montopagado, servicios_extra, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera(corridafinancieraid, venta:venta(ventaid, clienteid, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
           .order('fechapago', { ascending: false })
           .limit(10000),
-        supabase
-          .from('corridafinanciera')
-          .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, dias_tolerancia, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre)))')
-          .gt('nopago', 0)
-          .lt('fecha', todayStr),
+        corridasQuery,
         supabase
           .from('desarrollo')
           .select('desarrolloid, nombre')
