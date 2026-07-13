@@ -220,12 +220,10 @@ export const Pagos = () => {
         } else {
           demoVentaIds = []
         }
-        console.log('[Pendientes] demoVentaIds count:', demoVentaIds.length)
       }
-
       let corridasQuery = supabase
         .from('corridafinanciera')
-        .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, dias_tolerancia, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre)))')
+        .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, dias_tolerancia, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre))), pagos:pagos(pagoid, montopagado, servicios_extra, estatus, recargo)')
         .gt('nopago', 0)
         .lt('fecha', todayStr)
         .limit(5000)
@@ -268,36 +266,29 @@ export const Pagos = () => {
       }
 
       const pendingRows: PendingRow[] = []
-      console.log('[Pendientes] corridasRes total rows:', corridasRes.data?.length ?? 0)
-      if (corridasRes.data?.length) {
-        const sample = corridasRes.data[0] as any
-        console.log('[Pendientes] sample corrida:', JSON.stringify(sample).slice(0, 300))
-      }
-      let skippedEstatus = 0, skippedPendiente = 0, skippedDesarrollo = 0
       for (const corrida of (corridasRes.data || []) as any[]) {
         const venta = pickFirst(corrida.venta) as any
-        // Solo ventas activas
-        if (venta?.estatus !== 'A') { skippedEstatus++; continue }
+        if (venta?.estatus !== 'A') continue
 
-        const corridaId = corrida.corridafinancieraid as number
-        const pagosCorrida = pagosPorCorrida.get(corridaId) || []
-        const totalPagado = pagosCorrida.reduce((sum, p) => sum + getPagoAplicado(p), 0)
+        // Use embedded pagos — avoids the 10k-row global pagos limit issue
+        const pagosCorrida = ((corrida.pagos || []) as any[]).filter((p: any) => p.estatus !== 'C')
+        const totalPagado = pagosCorrida.reduce((sum: number, p: any) => sum + getPagoAplicado(p as any), 0)
 
         const diasTolVenta = venta?.dias_tolerancia ?? 0
-        const maxStoredRecargo = pagosCorrida.reduce((max, p) => Math.max(max, Number((p as any).recargo ?? 0)), 0)
+        const maxStoredRecargo = pagosCorrida.reduce((max: number, p: any) => Math.max(max, Number(p.recargo ?? 0)), 0)
         const recargoReq = pagosCorrida.length > 0
           ? maxStoredRecargo
           : (corrida.nopago !== 0 && corrida.fecha ? calcularRecargo(corrida.fecha, todayStr, diasTolVenta) : 0)
 
         const pendiente = Math.max(0, Number(corrida.mensualidad || 0) + recargoReq - totalPagado)
-        if (pendiente <= 0) { skippedPendiente++; continue }
+        if (pendiente <= 0) continue
 
         const cliente = pickFirst(venta?.cliente) as Cliente | undefined
         const lote = pickFirst(venta?.lote) as (Lote & { desarrollo?: Desarrollo | Desarrollo[] }) | undefined
         const desarrollo = pickFirst(lote?.desarrollo) as Desarrollo | undefined
         const desarrolloid = (desarrollo?.desarrolloid ?? lote?.desarrolloid ?? null) as number | null
 
-        if (DEMO_DESARROLLOIDS.length > 0 && desarrolloid && !DEMO_DESARROLLOIDS.includes(desarrolloid)) { skippedDesarrollo++; continue }
+        if (DEMO_DESARROLLOIDS.length > 0 && desarrolloid && !DEMO_DESARROLLOIDS.includes(desarrolloid)) continue
 
         pendingRows.push({
           clienteid: cliente?.clienteid || 0,
@@ -308,7 +299,6 @@ export const Pagos = () => {
           montoPendiente: pendiente,
         })
       }
-      console.log(`[Pendientes] skippedEstatus=${skippedEstatus} skippedPendiente=${skippedPendiente} skippedDesarrollo=${skippedDesarrollo} added=${pendingRows.length}`)
 
       setPendientes(pendingRows)
     } catch (error) {
