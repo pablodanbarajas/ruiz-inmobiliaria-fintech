@@ -196,6 +196,8 @@ export const Pagos = () => {
     try {
       setLoading(true)
 
+      const todayStr = new Date().toISOString().split('T')[0]
+
       const [pagosRes, corridasRes, desarrollosRes] = await Promise.all([
         supabase
           .from('pagos')
@@ -206,7 +208,7 @@ export const Pagos = () => {
           .from('corridafinanciera')
           .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, dias_tolerancia, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre)))')
           .gt('nopago', 0)
-          .eq('venta.estatus', 'A'),
+          .lt('fecha', todayStr),
         supabase
           .from('desarrollo')
           .select('desarrolloid, nombre')
@@ -232,13 +234,15 @@ export const Pagos = () => {
       }
 
       const pendingRows: PendingRow[] = []
-      const todayStr = new Date().toISOString().split('T')[0]
       for (const corrida of (corridasRes.data || []) as any[]) {
+        const venta = pickFirst(corrida.venta) as any
+        // Solo ventas activas
+        if (venta?.estatus !== 'A') continue
+
         const corridaId = corrida.corridafinancieraid as number
         const pagosCorrida = pagosPorCorrida.get(corridaId) || []
         const totalPagado = pagosCorrida.reduce((sum, p) => sum + getPagoAplicado(p), 0)
 
-        const venta = pickFirst(corrida.venta) as any
         const diasTolVenta = venta?.dias_tolerancia ?? 0
         // Recargo: si hay pagos previos usar el máximo recargo registrado; si no, calcular dinámicamente
         const maxStoredRecargo = pagosCorrida.reduce((max, p) => Math.max(max, Number((p as any).recargo ?? 0)), 0)
