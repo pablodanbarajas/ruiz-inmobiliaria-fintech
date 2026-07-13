@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getCached, setCached } from '@/lib/queryCache'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
@@ -54,6 +55,13 @@ export const Clientes = () => {
   // Fetch all clientes once on mount
   useEffect(() => {
     const fetchAllClientes = async () => {
+      const CACHE_KEY = 'clientes:all'
+      const cached = getCached<Cliente[]>(CACHE_KEY)
+      if (cached) {
+        setAllClientsCache(cached)
+        setLoading(false)
+        return
+      }
       try {
         setLoading(true)
         
@@ -110,6 +118,7 @@ export const Clientes = () => {
         }
 
         setAllClientsCache(finalCache)
+        setCached('clientes:all', finalCache)
       } catch (error) {
         console.error('Error fetching clientes:', error)
         setAllClientsCache([])

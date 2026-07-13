@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getCached, setCached } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
 import { Input } from '@/components/ui/Input'
@@ -78,6 +79,9 @@ export const Ventas = () => {
 
   useEffect(() => {
     const fetchVentas = async () => {
+      const cacheKey = `ventas:${JSON.stringify(filters)}:${currentPage}`
+      const cached = getCached<VentaWithDetails[]>(cacheKey)
+      if (cached) { setVentas(cached); setLoading(false); return }
       try {
         setLoading(true)
         let query = supabase
@@ -111,7 +115,9 @@ export const Ventas = () => {
         setTotalItems(filteredData.length)
         const startIndex = (currentPage - 1) * itemsPerPage
         const endIndex = startIndex + itemsPerPage
-        setVentas(filteredData.slice(startIndex, endIndex))
+        const page = filteredData.slice(startIndex, endIndex)
+        setCached(cacheKey, page)
+        setVentas(page)
       } catch (error) {
         console.error('Error fetching ventas:', error)
       } finally {

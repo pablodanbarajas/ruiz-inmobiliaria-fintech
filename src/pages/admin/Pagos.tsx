@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getCached, setCached, invalidateCache } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
 import { Input } from '@/components/ui/Input'
@@ -196,7 +197,18 @@ export const Pagos = () => {
     fetchClientes()
   }, [])
 
-  const fetchPagosAndPendientes = async () => {
+  const fetchPagosAndPendientes = async (bypassCache = false) => {
+    const CACHE_KEY = 'pagos:all'
+    if (!bypassCache) {
+      const cached = getCached<{ pagos: PagoWithDetails[]; pendientes: PendingRow[]; desarrollos: Desarrollo[] }>(CACHE_KEY)
+      if (cached) {
+        setAllPagos(cached.pagos)
+        setPendientes(cached.pendientes)
+        setDesarrollos(cached.desarrollos)
+        setLoading(false)
+        return
+      }
+    }
     try {
       setLoading(true)
 
@@ -307,6 +319,7 @@ export const Pagos = () => {
       }
 
       setPendientes(pendingRows)
+      setCached('pagos:all', { pagos: pagosRows, pendientes: pendingRows, desarrollos: desarrollosRes.data as Desarrollo[] })
     } catch (error) {
       console.error('Error fetching pagos:', error)
       setAllPagos([])
@@ -618,7 +631,7 @@ export const Pagos = () => {
               <p className="text-[#9e9f92] mt-2">Registro de pagos, análisis y reportes</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" onClick={fetchPagosAndPendientes} className="inline-flex items-center gap-2">
+              <Button variant="outline" onClick={() => { invalidateCache('pagos:'); fetchPagosAndPendientes(true) }} className="inline-flex items-center gap-2">
                 <Filter size={16} /> Recargar
               </Button>
               
