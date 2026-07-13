@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { PagoForm } from '@/components/forms/PagoForm'
 import type { PagoFormData } from '@/components/forms/PagoForm'
-import { Eye, ChevronLeft, ChevronRight, Plus, Download, Filter, ChevronDown, Receipt, Clock, BarChart3, Users, Calendar, Building2 } from 'lucide-react'
+import { Eye, ChevronLeft, ChevronRight, Plus, Download, Filter, ChevronDown, Receipt, Clock, BarChart3, Users, Calendar, Building2, Printer } from 'lucide-react'
+import { ReciboPago } from '@/components/ReciboPago'
+import type { ReciboPagoData } from '@/components/ReciboPago'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
@@ -152,6 +154,7 @@ export const Pagos = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeTab, setActiveTab] = useState<'pagos' | 'pendientes' | 'reportes'>('pagos')
   const [showExportMenu, setShowExportMenu] = useState(false)
+  const [reciboData, setReciboData] = useState<ReciboPagoData | null>(null)
 
   const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
   const canRegistrarPagos = !!currentRole && ROLE_CAPABILITIES[currentRole].registrar_pagos
@@ -886,17 +889,57 @@ export const Pagos = () => {
                   {
                     key: 'actions',
                     label: 'Acciones',
-                    render: (row: PagoWithDetails) => (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(`/admin/pagos/${row.pagoid}`)}
-                        className="inline-flex items-center gap-1"
-                      >
-                        <Eye size={16} />
-                        Ver
-                      </Button>
-                    ),
+                    render: (row: PagoWithDetails) => {
+                      const ctx = getPagoContext(row)
+                      return (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/admin/pagos/${row.pagoid}`)}
+                            className="inline-flex items-center gap-1"
+                          >
+                            <Eye size={16} />
+                            Ver
+                          </Button>
+                          {row.estatus === 'P' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setReciboData({
+                                pagoid: row.pagoid,
+                                montopagado: row.montopagado,
+                                servicios_extra: row.servicios_extra,
+                                recargo: row.recargo,
+                                fechapago: row.fechapago,
+                                formapago: row.formapago,
+                                estatus: row.estatus,
+                                referencia: row.referencia,
+                                cobrador: row.cobrador,
+                                comentario: row.comentario,
+                                corridafinancieraid: row.corridafinancieraid,
+                                nopago: row.corridafinanciera?.nopago,
+                                mensualidad: row.corridafinanciera?.mensualidad,
+                                saldo: row.corridafinanciera?.saldo,
+                                ventaid: ctx.venta?.ventaid,
+                                preciolote: ctx.venta?.preciolote,
+                                fechaventa: ctx.venta?.fecha,
+                                clienteNombre: ctx.cliente?.nombre,
+                                clienteEmail: ctx.cliente?.email,
+                                clienteTelefono: (ctx.cliente as any)?.telefono,
+                                manzana: ctx.lote?.manzana,
+                                nolote: ctx.lote?.nolote,
+                                desarrollo: ctx.desarrollo?.nombre,
+                              })}
+                              className="inline-flex items-center gap-1 text-[#504840] hover:text-[#3d3630]"
+                            >
+                              <Printer size={15} />
+                              Recibo
+                            </Button>
+                          )}
+                        </div>
+                      )
+                    },
                   },
                 ]}
                 data={filteredPagosForPagination}
@@ -1093,6 +1136,15 @@ export const Pagos = () => {
         >
           <PagoForm onSubmit={handleCreatePago} isLoading={isSubmitting} />
         </Modal>
+      )}
+
+      {/* ── Modal: Recibo de Pago ─────────────────────── */}
+      {reciboData && (
+        <ReciboPago
+          isOpen={!!reciboData}
+          onClose={() => setReciboData(null)}
+          data={reciboData}
+        />
       )}
     </>
   )

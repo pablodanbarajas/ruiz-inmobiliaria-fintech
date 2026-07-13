@@ -11,7 +11,9 @@ import type { PagoFormData } from '@/components/forms/PagoForm'
 import { ConvenioForm } from '@/components/forms/ConvenioForm'
 import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
 import { AlertaCancelacion } from '@/components/AlertaCancelacion'
-import { ChevronLeft, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, CheckCircle2, Wrench, ArrowLeftRight } from 'lucide-react'
+import { ChevronLeft, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, CheckCircle2, Wrench, ArrowLeftRight, Printer } from 'lucide-react'
+import { ReciboPago } from '@/components/ReciboPago'
+import type { ReciboPagoData } from '@/components/ReciboPago'
 import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Convenio, Devolucion, DevolucionParcialidad, CargoExtra, Traspaso } from '@/types/database'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
@@ -78,6 +80,7 @@ export const VentaDetail = () => {
   const [traspasoNotas, setTraspasoNotas] = useState('')
   const [traspasoClientes, setTraspasoClientes] = useState<ComboOption[]>([])
   const canManageConvenios = role === 'admin'
+  const [reciboData, setReciboData] = useState<ReciboPagoData | null>(null)
 
   useEffect(() => {
     const fetchVentaDetail = async () => {
@@ -1174,9 +1177,48 @@ export const VentaDetail = () => {
                         </td>
                         <td className="px-6 py-4">
                           {isCorrIdaPaid ? (
-                            <span className="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-                              Pagado
-                            </span>
+                            <div className="flex flex-col gap-1">
+                              <span className="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                Pagado
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const pagosPagados = corrida.pagos?.filter(p => p.estatus !== 'C') ?? []
+                                  const ultimoPago = pagosPagados[pagosPagados.length - 1]
+                                  if (!ultimoPago) return
+                                  setReciboData({
+                                    pagoid: ultimoPago.pagoid,
+                                    montopagado: ultimoPago.montopagado,
+                                    servicios_extra: ultimoPago.servicios_extra,
+                                    recargo: ultimoPago.recargo,
+                                    fechapago: ultimoPago.fechapago,
+                                    formapago: ultimoPago.formapago,
+                                    estatus: ultimoPago.estatus,
+                                    referencia: ultimoPago.referencia,
+                                    cobrador: ultimoPago.cobrador,
+                                    comentario: ultimoPago.comentario,
+                                    corridafinancieraid: corrida.corridafinancieraid,
+                                    nopago: corrida.nopago,
+                                    mensualidad: corrida.mensualidad,
+                                    saldo: corrida.saldo,
+                                    ventaid: venta.ventaid,
+                                    preciolote: venta.preciolote,
+                                    fechaventa: venta.fecha,
+                                    clienteNombre: venta.cliente?.nombre,
+                                    clienteEmail: venta.cliente?.email,
+                                    clienteTelefono: (venta.cliente as any)?.telefono,
+                                    manzana: venta.lote?.manzana,
+                                    nolote: venta.lote?.nolote,
+                                    desarrollo: venta.lote?.desarrollo?.nombre,
+                                  })
+                                }}
+                                className="inline-flex items-center gap-1 text-xs text-[#504840] hover:text-[#3d3630] hover:underline"
+                              >
+                                <Printer size={11} />
+                                Recibo
+                              </button>
+                            </div>
                           ) : venta.estatus !== 'C' ? (
                             <Button
                               variant="outline"
@@ -1688,6 +1730,15 @@ export const VentaDetail = () => {
           </div>
         </div>
       </Modal>
+
+      {/* ── Modal: Recibo de Pago ────────────────────────── */}
+      {reciboData && (
+        <ReciboPago
+          isOpen={!!reciboData}
+          onClose={() => setReciboData(null)}
+          data={reciboData}
+        />
+      )}
     </AdminLayout>
   )
 }

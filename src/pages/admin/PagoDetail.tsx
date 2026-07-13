@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { PagoForm } from '@/components/forms/PagoForm'
 import type { PagoFormData } from '@/components/forms/PagoForm'
-import { ChevronLeft, Edit2, XCircle, AlertTriangle } from 'lucide-react'
+import { ChevronLeft, Edit2, XCircle, AlertTriangle, Printer } from 'lucide-react'
+import { ReciboPago } from '@/components/ReciboPago'
 import type { Pago, CorridaFinanciera, Venta, Cliente, Lote, CuentaBancaria } from '@/types/database'
 import { formatDate, formatCurrency, getPagoStatusLabel, getPagoStatusColor, getPagoFormaLabel } from '@/utils/helpers'
 import { useAuth } from '@/context/AuthContext'
@@ -32,6 +33,7 @@ export const PagoDetail = () => {
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [cuentaBancaria, setCuentaBancaria] = useState<CuentaBancaria | null>(null)
+  const [showRecibo, setShowRecibo] = useState(false)
 
   const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
   const canRegistrarPagos = !!currentRole && ROLE_CAPABILITIES[currentRole].registrar_pagos
@@ -204,27 +206,39 @@ export const PagoDetail = () => {
             Volver
           </Button>
 
-          {/* Action buttons (only when not cancelled) */}
-          {pago.estatus !== 'C' && canRegistrarPagos && (
-            <div className="flex items-center gap-3">
+          {/* Action buttons */}
+          <div className="flex items-center gap-3">
+            {pago.estatus === 'P' && (
               <Button
                 variant="outline"
-                onClick={() => setShowEditModal(true)}
+                onClick={() => setShowRecibo(true)}
                 className="inline-flex items-center gap-2"
               >
-                <Edit2 size={16} />
-                Editar
+                <Printer size={16} />
+                Generar Recibo
               </Button>
-              <Button
-                variant="destructive"
-                onClick={() => setShowCancelModal(true)}
-                className="inline-flex items-center gap-2"
-              >
-                <XCircle size={16} />
-                Cancelar Pago
-              </Button>
-            </div>
-          )}
+            )}
+            {pago.estatus !== 'C' && canRegistrarPagos && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEditModal(true)}
+                  className="inline-flex items-center gap-2"
+                >
+                  <Edit2 size={16} />
+                  Editar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowCancelModal(true)}
+                  className="inline-flex items-center gap-2"
+                >
+                  <XCircle size={16} />
+                  Cancelar Pago
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Pago Details */}
@@ -438,6 +452,39 @@ export const PagoDetail = () => {
           </div>
         </div>
       </Modal>
+    )}
+
+    {/* ── Modal: Recibo de Pago ─────────────────────── */}
+    {pago && showRecibo && (
+      <ReciboPago
+        isOpen={showRecibo}
+        onClose={() => setShowRecibo(false)}
+        data={{
+          pagoid: pago.pagoid,
+          montopagado: pago.montopagado,
+          servicios_extra: pago.servicios_extra,
+          recargo: pago.recargo,
+          fechapago: pago.fechapago,
+          formapago: pago.formapago,
+          estatus: pago.estatus,
+          referencia: pago.referencia,
+          cobrador: pago.cobrador,
+          comentario: pago.comentario,
+          corridafinancieraid: pago.corridafinancieraid,
+          nopago: pago.corridafinanciera?.nopago,
+          mensualidad: pago.corridafinanciera?.mensualidad,
+          saldo: pago.corridafinanciera?.saldo,
+          ventaid: venta?.ventaid,
+          preciolote: venta?.preciolote,
+          fechaventa: venta?.fecha,
+          clienteNombre: cliente?.nombre,
+          clienteEmail: cliente?.email,
+          clienteTelefono: (cliente as any)?.telefono,
+          manzana: lote?.manzana,
+          nolote: lote?.nolote,
+          desarrollo: (lote as any)?.desarrollo?.nombre,
+        }}
+      />
     )}
     </>
   )
