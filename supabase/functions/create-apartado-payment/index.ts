@@ -48,6 +48,27 @@ Deno.serve(async (req: Request) => {
       })
     }
 
+    // Buscar cliente por email
+    const { data: cliente } = await serviceClient
+      .from('cliente')
+      .select('clienteid, nombre, telefonocelular')
+      .eq('email', user.email!)
+      .maybeSingle()
+
+    if (!cliente) {
+      return new Response(JSON.stringify({ error: 'Cliente no encontrado' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Obtener la venta (verificar que pertenece al cliente y está en fase 'P')
+    const { data: venta, error: ventaErr } = await serviceClient
+      .from('venta')
+      .select('ventaid, estatus, loteid, clienteid')
+      .eq('ventaid', ventaId)
+      .eq('clienteid', cliente.clienteid)
+      .single()
+
     if (ventaErr || !venta) {
       return new Response(JSON.stringify({ error: 'Venta no encontrada o sin acceso' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
