@@ -198,21 +198,29 @@ export const Pagos = () => {
 
       const todayStr = new Date().toISOString().split('T')[0]
 
-      // Pre-fetch ventaIds for DEMO developments so corridafinanciera query
-      // is scoped to only those developments (avoids fetching 1000-row pages from other developments)
+      // Pre-fetch ventaIds for DEMO developments — query lote and venta directly
+      // (avoids relying on nested joins that can be blocked by RLS)
       let demoVentaIds: number[] | null = null
       if (DEMO_DESARROLLOIDS.length > 0) {
-        const { data: ventasActivas } = await supabase
-          .from('venta')
-          .select('ventaid, loteid, lote:lote(desarrolloid)')
-          .eq('estatus', 'A')
-          .limit(5000)
-        demoVentaIds = (ventasActivas || [])
-          .filter((v: any) => {
-            const devId = Array.isArray(v.lote) ? v.lote[0]?.desarrolloid : v.lote?.desarrolloid
-            return DEMO_DESARROLLOIDS.includes(devId)
-          })
-          .map((v: any) => v.ventaid as number)
+        const { data: lotesData } = await supabase
+          .from('lote')
+          .select('loteid')
+          .in('desarrolloid', DEMO_DESARROLLOIDS)
+
+        const loteIds = (lotesData || []).map((l: any) => l.loteid as number)
+
+        if (loteIds.length > 0) {
+          const { data: ventasData } = await supabase
+            .from('venta')
+            .select('ventaid')
+            .eq('estatus', 'A')
+            .in('loteid', loteIds)
+            .limit(5000)
+          demoVentaIds = (ventasData || []).map((v: any) => v.ventaid as number)
+        } else {
+          demoVentaIds = []
+        }
+        console.log('[Pendientes] demoVentaIds count:', demoVentaIds.length)
       }
 
       let corridasQuery = supabase
