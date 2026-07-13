@@ -203,23 +203,45 @@ export const Dashboard = () => {
         setLoadingRiesgo(true)
         const today = new Date().toISOString().split('T')[0]
 
-        // Query 1: todas las corridas vencidas de ventas activas (una sola query con join)
-        const { data: corridasData, error: corridasErr } = await supabase
+        // Pre-fetch ventaIds for DEMO developments (same fix as Pendientes tab)
+        let demoVentaIds: number[] | null = null
+        if (DEMO_DESARROLLOIDS.length > 0) {
+          const { data: lotesData } = await supabase
+            .from('lote').select('loteid').in('desarrolloid', DEMO_DESARROLLOIDS)
+          const loteIds = (lotesData || []).map((l: any) => l.loteid as number)
+          if (loteIds.length > 0) {
+            const { data: ventasData } = await supabase
+              .from('venta').select('ventaid').eq('estatus', 'A').in('loteid', loteIds).limit(5000)
+            demoVentaIds = (ventasData || []).map((v: any) => v.ventaid as number)
+          } else {
+            demoVentaIds = []
+          }
+        }
+
+        if (demoVentaIds !== null && demoVentaIds.length === 0) {
+          setVentasEnRiesgo([])
+          setLoadingRiesgo(false)
+          return
+        }
+
+        let corridasQuery = supabase
           .from('corridafinanciera')
-          .select('corridafinancieraid, ventaid, mensualidad, venta:venta!inner(estatus, clienteid, cliente:cliente(nombre), lote:lote(manzana, nolote, desarrolloid))') 
+          .select('corridafinancieraid, ventaid, mensualidad, venta:venta!inner(estatus, clienteid, cliente:cliente(nombre), lote:lote(manzana, nolote, desarrolloid))')
           .lt('fecha', today)
           .gt('nopago', 0)
-          .eq('venta.estatus', 'A')
+          .limit(5000)
+
+        if (demoVentaIds) corridasQuery = corridasQuery.in('ventaid', demoVentaIds)
+
+        const { data: corridasData, error: corridasErr } = await corridasQuery
 
         if (corridasErr || !corridasData?.length) { setLoadingRiesgo(false); return }
 
-        // Filter by demo desarrolloid after fetch
-        const corridasFiltradas = DEMO_DESARROLLOIDS.length > 0
-          ? (corridasData as any[]).filter((c) => {
-              const lote = Array.isArray(c.venta?.lote) ? c.venta.lote[0] : c.venta?.lote
-              return DEMO_DESARROLLOIDS.includes(lote?.desarrolloid)
-            })
-          : (corridasData as any[])
+        // Only active ventas
+        const corridasFiltradas = (corridasData as any[]).filter((c) => {
+          const venta = Array.isArray(c.venta) ? c.venta[0] : c.venta
+          return venta?.estatus === 'A'
+        })
 
         if (!corridasFiltradas.length) { setVentasEnRiesgo([]); setLoadingRiesgo(false); return }
 
@@ -245,11 +267,12 @@ export const Dashboard = () => {
           const pagado = pagosMap.get(c.corridafinancieraid) ?? 0
           if (pagado >= (c.mensualidad || 0)) continue  // ya pagada
 
+          const venta = Array.isArray(c.venta) ? c.venta[0] : c.venta
           const entry = ventaMap.get(c.ventaid)
           if (entry) {
             entry.vencidas++
           } else {
-            ventaMap.set(c.ventaid, { venta: c.venta, vencidas: 1 })
+            ventaMap.set(c.ventaid, { venta, vencidas: 1 })
           }
         }
 
@@ -607,7 +630,7 @@ export const Dashboard = () => {
               {canViewRiesgo && (
                 <div
                   onClick={() => document.getElementById('riesgo-section')?.scrollIntoView({ behavior: 'smooth' })}
-                  className={`bg-white rounded-lg shadow-md border-l-4 p-6 cursor-pointer hover:shadow-lg transition-shadow ${loadingRiesgo ? 'border-gray-300' : ventasEnRiesgo.length > 0 ? 'border-red-500' : 'border-green-500'}`}
+                  className="bg-white rounded-lg shadow-md border-l-4 border-red-500 p-6 cursor-pointer hover:shadow-lg transition-shadow"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -616,7 +639,7 @@ export const Dashboard = () => {
                         {loadingRiesgo ? '…' : ventasEnRiesgo.length}
                       </p>
                     </div>
-                    <div className={`w-14 h-14 rounded-lg flex items-center justify-center ${loadingRiesgo ? 'bg-gray-300' : ventasEnRiesgo.length > 0 ? 'bg-red-500' : 'bg-green-500'}`}>
+                    <div className="w-14 h-14 rounded-lg flex items-center justify-center bg-red-500">
                       <AlertTriangle className="w-8 h-8 text-white" />
                     </div>
                   </div>
@@ -774,15 +797,15 @@ export const Dashboard = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-red-800 border-b border-red-900">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Venta</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Cliente</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Lote</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Pagos vencidos</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Etapa</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Último aviso</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700"></th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Venta</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Cliente</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Lote</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Pagos vencidos</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Etapa</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Último aviso</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
