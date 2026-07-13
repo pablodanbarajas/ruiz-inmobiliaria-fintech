@@ -11,6 +11,31 @@
 -- ============================================================================
 
 -- ============================================================================
+-- 0. HELPERS DE ROLES SEGUROS
+-- Usan app_metadata (no editable por el usuario) + tabla user_roles.
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION public.is_admin_role()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT
+    (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
+    OR EXISTS (
+      SELECT 1 FROM public.user_roles
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+$$;
+
+CREATE OR REPLACE FUNCTION public.has_admin_panel_role(roles text[])
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT
+    (auth.jwt() -> 'app_metadata' ->> 'role') = ANY(roles)
+    OR EXISTS (
+      SELECT 1 FROM public.user_roles
+      WHERE user_id = auth.uid() AND role = ANY(roles)
+    )
+$$;
+
+-- ============================================================================
 -- 1. HABILITAR RLS EN TODAS LAS TABLAS CRÍTICAS
 -- ============================================================================
 
@@ -22,6 +47,176 @@ ALTER TABLE public.pagos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.convenios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.desarrollo ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cuentas_bancarias ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- 2. POLÍTICAS PARA TABLA: cliente
+-- ============================================================================
+
+-- Clientes autenticados ven SOLO su propio registro
+DROP POLICY IF EXISTS "cliente_select_own" ON public.cliente;
+CREATE POLICY "cliente_select_own" ON public.cliente
+  FOR SELECT
+  USING (
+    email = auth.jwt() ->> 'email'
+    OR public.is_admin_role()
+  );
+
+-- Admin puede actualizar clientes
+DROP POLICY IF EXISTS "cliente_update_admin" ON public.cliente;
+CREATE POLICY "cliente_update_admin" ON public.cliente
+  FOR UPDATE
+  USING (public.is_admin_role());
+
+-- ============================================================================
+-- 3. POLÍTICAS PARA TABLA: venta
+-- ============================================================================
+
+-- Clientes ven SOLO sus propias ventas
+DROP POLICY IF EXISTS "venta_select_own" ON public.venta;
+CREATE POLICY "venta_select_own" ON public.venta
+  FOR SELECT
+  USING (
+    clienteid IN (
+      SELECT clienteid FROM cliente WHERE email = auth.jwt() ->> 'email'
+    )
+    OR public.is_admin_role()
+  );
+
+-- ============================================================================
+-- 4. POLÍTICAS PARA TABLA: corridafinanciera
+-- ============================================================================
+
+-- Clientes ven SOLO sus propias corridas
+DROP POLICY IF EXISTS "corridafinanciera_select_own" ON public.corridafinanciera;
+CREATE POLICY "corridafinanciera_select_own" ON public.corridafinanciera
+  FOR SELECT
+  USING (
+    ventaid IN (
+      SELECT ventaid FROM venta WHERE clienteid IN (
+        SELECT clienteid FROM cliente WHERE email = auth.jwt() ->> 'email'
+      )
+    )
+    OR public.is_admin_role()
+  );
+
+-- ============================================================================
+-- 5. POLÍTICAS PARA TABLA: pagos
+-- ============================================================================
+
+-- Clientes ven SOLO sus propios pagos
+DROP POLICY IF EXISTS "pagos_select_own" ON public.pagos;
+CREATE POLICY "pagos_select_own" ON public.pagos
+  FOR SELECT
+  USING (
+    corridafinancieraid IN (
+      SELECT corridafinancieraid FROM corridafinanciera WHERE ventaid IN (
+        SELECT ventaid FROM venta WHERE clienteid IN (
+          SELECT clienteid FROM cliente WHERE email = auth.jwt() ->> 'email'
+        )
+      )
+    )
+    OR public.is_admin_role()
+  );
+
+-- Cobradores pueden INSERT pagos (pero no UPDATE/DELETE)
+DROP POLICY IF EXISTS "pagos_insert_cobradores" ON public.pagos;
+CREATE POLICY "pagos_insert_cobradores" ON public.pagos
+  FOR INSERT
+  WITH CHECK (
+    public.has_admin_panel_role(ARRAY['admin', 'supervisor_cobranza', 'cobrador'])
+  );
+
+-- ============================================================================
+-- 6. POLÍTICAS PARA TABLA: convenios
+-- ============================================================================
+
+-- Clientes ven SOLO sus propios convenios
+DROP POLICY IF EXISTS "convenios_select_own" ON public.convenios;
+CREATE POLICY "convenios_select_own" ON public.convenios
+  FOR SELECT
+  USING (
+    ventaid IN (
+      SELECT ventaid FROM venta WHERE clienteid IN (
+        SELECT clienteid FROM cliente WHERE email = auth.jwt() ->> 'email'
+      )
+    )
+    OR public.is_admin_role()
+  );
+
+-- Solo admin puede crear/actualizar convenios
+DROP POLICY IF EXISTS "convenios_insert_admin" ON public.convenios;
+CREATE POLICY "convenios_insert_admin" ON public.convenios
+  FOR INSERT
+  WITH CHECK (public.is_admin_role());
+
+-- ============================================================================
+-- 7. POLÍTICAS PARA TABLA: lote (Lectura pública)
+-- ============================================================================
+
+-- Clientes ven SOLO lotes que compraron
+DROP POLICY IF EXISTS "lote_select_cliente_owns" ON public.lote;
+CREATE POLICY "lote_select_cliente_owns" ON public.lote
+  FOR SELECT
+  USING (
+    loteid IN (
+      SELECT v.loteid FROM venta v
+      WHERE v.clienteid IN (
+        SELECT clienteid FROM cliente WHERE email = auth.jwt() ->> 'email'
+      )
+    )
+    OR public.is_admin_role()
+  );
+
+-- ============================================================================
+-- 8. POLÍTICAS PARA TABLA: desarrollo (Lectura pública)
+-- ============================================================================
+
+-- Todos pueden ver desarrollos activos
+DROP POLICY IF EXISTS "desarrollo_select_all" ON public.desarrollo;
+CREATE POLICY "desarrollo_select_all" ON public.desarrollo
+  FOR SELECT
+  USING (estatus = 'A' OR auth.role() = 'authenticated');
+
+-- ============================================================================
+-- 9. POLÍTICAS PARA TABLA: cuentas_bancarias
+-- ============================================================================
+
+-- Solo admin puede ver/editar cuentas bancarias
+DROP POLICY IF EXISTS "cuentas_bancarias_select_admin" ON public.cuentas_bancarias;
+CREATE POLICY "cuentas_bancarias_select_admin" ON public.cuentas_bancarias
+  FOR SELECT
+  USING (public.is_admin_role());
+
+-- ============================================================================
+-- 10. CREAR ÍNDICES PARA OPTIMIZACIÓN DE RLS
+-- ============================================================================
+
+CREATE INDEX IF NOT EXISTS idx_cliente_email ON cliente(email) WHERE email IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_venta_clienteid ON venta(clienteid);
+CREATE INDEX IF NOT EXISTS idx_corridafinanciera_ventaid ON corridafinanciera(ventaid);
+CREATE INDEX IF NOT EXISTS idx_pagos_corridafinancieraid ON pagos(corridafinancieraid);
+CREATE INDEX IF NOT EXISTS idx_convenios_ventaid ON convenios(ventaid);
+CREATE INDEX IF NOT EXISTS idx_lote_loteid ON lote(loteid);
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id);
+
+-- ============================================================================
+-- 11. VERIFICACIÓN - SCRIPTS DE TESTING
+-- ============================================================================
+
+-- Para verificar RLS, ejecutar como cliente autenticado:
+/*
+
+-- 1. Cliente SOLO debe ver su propio registro
+SELECT * FROM cliente;
+-- Resultado: 1 fila (la del cliente autenticado)
+
+-- 2. Cliente SOLO debe ver sus ventas
+SELECT * FROM venta;
+-- Resultado: sus propias ventas
+
+-- 3. Cliente SOLO debe ver sus pagos
+SELECT * FROM pagos;
+-- Resultado: sus propios pagos
 
 -- ============================================================================
 -- 2. POLÍTICAS PARA TABLA: cliente

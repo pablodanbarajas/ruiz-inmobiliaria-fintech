@@ -1,10 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-}
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 const ADMIN_PANEL_ROLES = ['admin', 'finanzas', 'vendedor', 'contratos', 'cobranza_caja'] as const
 
@@ -14,9 +9,9 @@ const isAdminPanelRole = (value: unknown): value is AdminPanelRole =>
   typeof value === 'string' && ADMIN_PANEL_ROLES.includes(value as AdminPanelRole)
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  const corsHeaders = getCorsHeaders(req)
+  const preflight = handleCors(req)
+  if (preflight) return preflight
 
   if (!['GET', 'POST'].includes(req.method)) {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {

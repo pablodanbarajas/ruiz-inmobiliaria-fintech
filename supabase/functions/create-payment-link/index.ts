@@ -1,30 +1,14 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 const QUENTLI_API = 'https://api.demo.quentli.com'
-
-/** Convierte teléfono mexicano a formato E.164. Si ya tiene + lo deja igual. */
-function toE164(phone: string | null | undefined): string | undefined {
-  if (!phone) return undefined
-  const digits = phone.replace(/\D/g, '')
-  if (digits.length === 10) return `+52${digits}`           // 10 dígitos → México
-  if (digits.length === 12 && digits.startsWith('52')) return `+${digits}` // ya con código país
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`  // EE.UU.
-  if (phone.startsWith('+')) return phone                   // ya en E.164
-  return undefined                                           // no reconocido → omitir
-}
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
 
 // Genera un link de pago autenticado en Quentli para que el cliente pague
 // el total exacto de una mensualidad (mensualidad base + cargos extra + recargo).
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  const corsHeaders = getCorsHeaders(req)
+  const preflight = handleCors(req)
+  if (preflight) return preflight
 
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {

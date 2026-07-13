@@ -1,19 +1,16 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 const QUENTLI_API = 'https://api.demo.quentli.com'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
 
 /**
  * Crea una sesión de pago de Quentli para el enganche restante de una venta.
  * Solo disponible para ventas con estatus='E' (apartado pagado, enganche pendiente).
  */
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  const corsHeaders = getCorsHeaders(req)
+  const preflight = handleCors(req)
+  if (preflight) return preflight
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

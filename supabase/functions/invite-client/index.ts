@@ -1,16 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  const corsHeaders = getCorsHeaders(req)
+  const preflight = handleCors(req)
+  if (preflight) return preflight
 
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -83,6 +77,20 @@ Deno.serve(async (req: Request) => {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+
+    // ── Rate limiting: máx 150 invitaciones por hora ──────────
+    const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString()
+    const { count: recentCount } = await supabaseAdmin
+      .from('cliente')
+      .select('*', { count: 'exact', head: true })
+      .not('portal_invited_at', 'is', null)
+      .gte('portal_invited_at', oneHourAgo)
+    if ((recentCount ?? 0) >= 150) {
+      return new Response(
+        JSON.stringify({ error: 'Límite de invitaciones por hora alcanzado (150). Intenta más tarde.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     // ── Enviar invitación ──────────────────────────────────────
