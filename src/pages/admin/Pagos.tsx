@@ -383,7 +383,13 @@ export const Pagos = () => {
   const endIndex = startIndex + itemsPerPage
   const pagos = filteredPagos.slice(startIndex, endIndex)
 
-  const totalCobrado = filteredPagos.reduce((sum, p) => sum + Number(p.montopagado || 0), 0)
+  // totalCobrado = efectivo realmente recibido (mensualidad + servicios extras cobrados en positivo)
+  // totalAplicado = total aplicado a la cuenta del cliente (incluyendo saldos a favor negativos)
+  // Diferencia = saldos a favor aplicados (solo aparece cuando servicios_extra < 0)
+  const totalCobrado = filteredPagos.reduce((sum, p) => {
+    const extra = Number(p.servicios_extra || 0)
+    return sum + Number(p.montopagado || 0) + Math.max(0, extra)
+  }, 0)
   const totalAplicado = filteredPagos.reduce((sum, p) => sum + getPagoAplicado(p), 0)
 
   // Paginated data for current page
@@ -1215,9 +1221,9 @@ export const Pagos = () => {
       >
         <div className="space-y-4">
           <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
-            <p><strong>Total cobrado</strong> = suma de <code>montopagado</code> de todos los pagos.</p>
-            <p className="mt-1"><strong>Total aplicado</strong> = suma de <code>montopagado + servicios_extra</code>. Cuando <code>servicios_extra</code> es negativo se aplicó un saldo a favor; cuando es positivo hay un cargo adicional.</p>
-            <p className="mt-1"><strong>Diferencia</strong> = Cobrado − Aplicado = suma de <code>−servicios_extra</code>.</p>
+            <p><strong>Total cobrado</strong> = efectivo recibido en caja (<code>montopagado</code> + servicios cobrados en positivo).</p>
+            <p className="mt-1"><strong>Total aplicado</strong> = lo que se aplicó a la cuenta del cliente (<code>montopagado + servicios_extra</code>).</p>
+            <p className="mt-1"><strong>Diferencia</strong> = Cobrado − Aplicado. Solo es negativa cuando hay <strong>saldos a favor</strong> aplicados (servicios_extra negativo) — indica créditos usados sin cobro en efectivo.</p>
           </div>
           {(() => {
             const conAjuste = filteredPagos.filter(p => p.servicios_extra && p.servicios_extra !== 0)
