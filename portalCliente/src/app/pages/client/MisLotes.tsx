@@ -23,6 +23,44 @@ export function MisLotes() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  // Al regresar de Quentli apartado, verificar y registrar automáticamente
+  useEffect(() => {
+    const apartadoVentaid = searchParams.get('apartado_ventaid');
+    if (!apartadoVentaid) return;
+
+    const sessionId = sessionStorage.getItem(`apartado_session_${apartadoVentaid}`) ?? '';
+    sessionStorage.removeItem(`apartado_session_${apartadoVentaid}`);
+    navigate('/mis-lotes', { replace: true });
+
+    if (!sessionId) return;
+
+    setVerifyState('verifying');
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) { setVerifyState('error'); return; }
+
+      fetch(`${SUPABASE_URL}/functions/v1/verify-apartado-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ ventaid: Number(apartadoVentaid) }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.ok) {
+            setVerifyState('success');
+            refreshLots();
+          } else {
+            setVerifyState('error');
+          }
+        })
+        .catch(() => setVerifyState('error'));
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Al regresar de Quentli enganche, verificar y registrar automáticamente
   useEffect(() => {
     const engancheVentaid = searchParams.get('enganche_ventaid');

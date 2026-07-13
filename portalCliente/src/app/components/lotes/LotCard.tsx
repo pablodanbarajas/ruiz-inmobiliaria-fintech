@@ -99,8 +99,31 @@ export function LotCard({ lote }: LotCardProps) {
       return;
     }
 
-    // apartado (P): la sesión Quentli ya expiró o está en proceso
-    alert('Para completar el pago de apartado o si necesitas ayuda, contacta a tu asesor.');
+    // apartado (P): generar sesión de pago Quentli para el apartado
+    try {
+      setPaying(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { navigate('/login'); return; }
+
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/create-apartado-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ ventaid: Number(lote.ventaid) }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error ?? 'Error al generar link de pago de apartado');
+      if (data.sessionId) {
+        sessionStorage.setItem(`apartado_session_${lote.ventaid}`, data.sessionId);
+      }
+      window.location.href = data.url;
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+      setPaying(false);
+    }
   };
 
   return (
