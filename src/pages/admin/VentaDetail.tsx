@@ -11,6 +11,7 @@ import type { PagoFormData } from '@/components/forms/PagoForm'
 import { ConvenioForm } from '@/components/forms/ConvenioForm'
 import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
 import { AlertaCancelacion } from '@/components/AlertaCancelacion'
+import { ContratoFirmado } from '@/components/ContratoFirmado'
 import { ChevronLeft, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, CheckCircle2, Wrench, ArrowLeftRight } from 'lucide-react'
 import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Convenio, Devolucion, DevolucionParcialidad, CargoExtra, Traspaso } from '@/types/database'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
@@ -1254,6 +1255,9 @@ export const VentaDetail = () => {
           )}
         </div>
       </div>
+
+      {/* ── Contrato Firmado ──────────────────────────── */}
+      <ContratoFirmado ventaid={venta.ventaid} />
 
       {/* ── Cargos Extra ───────────────────────────────── */}
       {cargosExtra.length > 0 && (
