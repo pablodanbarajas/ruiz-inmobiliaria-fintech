@@ -50,7 +50,9 @@ type PendingRow = {
   clienteNombre: string
   desarrolloid: number | null
   ventaid: number
+  corridafinancieraid: number
   fecha: string | null
+  mensualidad: number
   montoPendiente: number
 }
 
@@ -155,6 +157,8 @@ export const Pagos = () => {
   const [activeTab, setActiveTab] = useState<'pagos' | 'pendientes' | 'reportes'>('pagos')
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [reciboData, setReciboData] = useState<ReciboPagoData | null>(null)
+  const [expandedClients, setExpandedClients] = useState<Set<number>>(new Set())
+  const [showDifModal, setShowDifModal] = useState(false)
 
   const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
   const canRegistrarPagos = !!currentRole && ROLE_CAPABILITIES[currentRole].registrar_pagos
@@ -295,7 +299,9 @@ export const Pagos = () => {
           clienteNombre: cliente?.nombre || 'Sin cliente',
           desarrolloid,
           ventaid: corrida.ventaid || 0,
+          corridafinancieraid: corrida.corridafinancieraid,
           fecha: corrida.fecha || null,
+          mensualidad: Number(corrida.mensualidad || 0),
           montoPendiente: pendiente,
         })
       }
@@ -348,23 +354,27 @@ export const Pagos = () => {
   }, [pendientes, filters])
 
   const pendingByClient = useMemo(() => {
-    const byClient = new Map<number, { clienteNombre: string; totalPendiente: number; corridasPendientes: number }>()
+    const byClient = new Map<number, { clienteNombre: string; totalPendiente: number; corridasPendientes: number; corridas: PendingRow[] }>()
 
     for (const pending of filteredPendientes) {
       const current = byClient.get(pending.clienteid)
       if (current) {
         current.totalPendiente += pending.montoPendiente
         current.corridasPendientes += 1
+        current.corridas.push(pending)
       } else {
         byClient.set(pending.clienteid, {
           clienteNombre: pending.clienteNombre,
           totalPendiente: pending.montoPendiente,
           corridasPendientes: 1,
+          corridas: [pending],
         })
       }
     }
 
-    return Array.from(byClient.values()).sort((a, b) => b.totalPendiente - a.totalPendiente)
+    return Array.from(byClient.entries())
+      .map(([clienteid, v]) => ({ clienteid, ...v }))
+      .sort((a, b) => b.totalPendiente - a.totalPendiente)
   }, [filteredPendientes])
 
   const totalItems = filteredPagos.length
@@ -656,17 +666,23 @@ export const Pagos = () => {
             <div className="bg-white rounded-lg shadow p-4 border-l-4 border-[#eaae4c]">
               <p className="text-sm text-gray-500">Total cobrado</p>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalCobrado)}</p>
+              <p className="text-xs text-gray-400 mt-1">Suma de montopagado</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4 border-l-4 border-[#504840]">
               <p className="text-sm text-gray-500">Total aplicado</p>
               <p className="text-2xl font-bold text-blue-700">{formatCurrency(totalAplicado)}</p>
+              <p className="text-xs text-gray-400 mt-1">Cobrado ± servicios/ajustes</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4 border-l-4 border-[#9e9f92]">
-              <p className="text-sm text-gray-500">Diferencia</p>
+            <button
+              className="bg-white rounded-lg shadow p-4 border-l-4 border-[#9e9f92] text-left hover:bg-gray-50 transition-colors"
+              onClick={() => setShowDifModal(true)}
+            >
+              <p className="text-sm text-gray-500">Diferencia <span className="text-xs text-blue-500 ml-1">← ver detalle</span></p>
               <p className={`text-2xl font-bold ${totalCobrado - totalAplicado >= 0 ? 'text-green-700' : 'text-orange-700'}`}>
                 {formatCurrency(totalCobrado - totalAplicado)}
               </p>
-            </div>
+              <p className="text-xs text-gray-400 mt-1">Por servicios/ajustes aplicados</p>
+            </button>
           </div>
 
           {/* Tabs */}
@@ -934,8 +950,16 @@ export const Pagos = () => {
           {/* TAB 2: PENDIENTES */}
           {activeTab === 'pendientes' && (
             <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-6">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="font-semibold text-gray-800">Clientes con cartera pendiente</h2>
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <h2 className="font-semibold text-gray-800">Clientes con cartera pendiente</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Mensualidades vencidas sin pago completo · haz clic en una fila para ver el detalle</p>
+                </div>
+                {pendingByClient.length > 0 && (
+                  <span className="text-sm font-semibold text-orange-700">
+                    Total: {formatCurrency(pendingByClient.reduce((s, r) => s + r.totalPendiente, 0))}
+                  </span>
+                )}
               </div>
               {loading ? (
                 <div className="py-10 text-center text-gray-500">Cargando...</div>
@@ -943,22 +967,100 @@ export const Pagos = () => {
                 <div className="py-10 text-center text-gray-500">No hay cartera pendiente con los filtros actuales.</div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm min-w-[620px]">
+                  <table className="w-full text-sm min-w-[720px]">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-600 w-8" />
                         <th className="text-left px-4 py-3 font-semibold text-gray-600">Cliente</th>
-                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Corridas pendientes</th>
+                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Corridas vencidas</th>
                         <th className="text-right px-4 py-3 font-semibold text-gray-600">Total pendiente</th>
+                        <th className="px-4 py-3 w-32" />
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {pendingByClient.map((row) => (
-                        <tr key={`${row.clienteNombre}-${row.corridasPendientes}`} className="hover:bg-gray-50">
-                          <td className="px-4 py-3">{row.clienteNombre}</td>
-                          <td className="px-4 py-3 text-right">{row.corridasPendientes}</td>
-                          <td className="px-4 py-3 text-right font-semibold text-orange-700">{formatCurrency(row.totalPendiente)}</td>
-                        </tr>
-                      ))}
+                    <tbody>
+                      {pendingByClient.map((row) => {
+                        const isExpanded = expandedClients.has(row.clienteid)
+                        const toggle = () => setExpandedClients(prev => {
+                          const next = new Set(prev)
+                          if (next.has(row.clienteid)) next.delete(row.clienteid)
+                          else next.add(row.clienteid)
+                          return next
+                        })
+                        // Group corridas by ventaid for better display
+                        const byVenta = row.corridas.reduce((acc, c) => {
+                          if (!acc[c.ventaid]) acc[c.ventaid] = []
+                          acc[c.ventaid].push(c)
+                          return acc
+                        }, {} as Record<number, PendingRow[]>)
+
+                        return (
+                          <>
+                            <tr
+                              key={row.clienteid}
+                              className="hover:bg-amber-50 cursor-pointer border-t border-gray-100 transition-colors"
+                              onClick={toggle}
+                            >
+                              <td className="px-4 py-3 text-gray-400">
+                                <ChevronDown size={15} className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                              </td>
+                              <td className="px-4 py-3 font-medium text-gray-900">{row.clienteNombre}</td>
+                              <td className="px-4 py-3 text-right text-gray-700">{row.corridasPendientes}</td>
+                              <td className="px-4 py-3 text-right font-bold text-orange-700">{formatCurrency(row.totalPendiente)}</td>
+                              <td className="px-4 py-3 text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/admin/ventas/${row.corridas[0]?.ventaid}`) }}
+                                  className="text-xs text-blue-600 hover:text-blue-800"
+                                >
+                                  Ver venta →
+                                </Button>
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr key={`${row.clienteid}-detail`} className="bg-orange-50 border-t border-orange-100">
+                                <td colSpan={5} className="px-0 py-0">
+                                  <div className="px-8 py-3">
+                                    {Object.entries(byVenta).map(([ventaid, corridas]) => (
+                                      <div key={ventaid} className="mb-3">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className="text-xs font-semibold text-gray-500 uppercase">Venta #{ventaid}</span>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => navigate(`/admin/ventas/${ventaid}`)}
+                                            className="text-xs text-blue-600 py-0 h-auto"
+                                          >
+                                            Ir a venta y registrar pago →
+                                          </Button>
+                                        </div>
+                                        <table className="w-full text-xs">
+                                          <thead>
+                                            <tr className="text-gray-400 border-b border-orange-200">
+                                              <th className="text-left py-1">Fecha vencida</th>
+                                              <th className="text-right py-1">Mensualidad</th>
+                                              <th className="text-right py-1">Pendiente</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {corridas.sort((a, b) => (a.fecha || '') < (b.fecha || '') ? -1 : 1).map((c) => (
+                                              <tr key={c.corridafinancieraid} className="border-b border-orange-100">
+                                                <td className="py-1 text-gray-700">{formatDate(c.fecha)}</td>
+                                                <td className="py-1 text-right text-gray-700">{formatCurrency(c.mensualidad)}</td>
+                                                <td className="py-1 text-right font-semibold text-orange-700">{formatCurrency(c.montoPendiente)}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1103,6 +1205,102 @@ export const Pagos = () => {
           data={reciboData}
         />
       )}
+
+      {/* ── Modal: Detalle de Diferencia ──────────────── */}
+      <Modal
+        isOpen={showDifModal}
+        title="Detalle de la Diferencia"
+        onClose={() => setShowDifModal(false)}
+        size="xl"
+      >
+        <div className="space-y-4">
+          <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
+            <p><strong>Total cobrado</strong> = suma de <code>montopagado</code> de todos los pagos.</p>
+            <p className="mt-1"><strong>Total aplicado</strong> = suma de <code>montopagado + servicios_extra</code>. Cuando <code>servicios_extra</code> es negativo se aplicó un saldo a favor; cuando es positivo hay un cargo adicional.</p>
+            <p className="mt-1"><strong>Diferencia</strong> = Cobrado − Aplicado = suma de <code>−servicios_extra</code>.</p>
+          </div>
+          {(() => {
+            const conAjuste = filteredPagos.filter(p => p.servicios_extra && p.servicios_extra !== 0)
+            if (conAjuste.length === 0) return <p className="text-gray-400 text-center py-4">No hay ajustes en los pagos del filtro actual.</p>
+            const cargos = conAjuste.filter(p => (p.servicios_extra || 0) > 0)
+            const creditos = conAjuste.filter(p => (p.servicios_extra || 0) < 0)
+            return (
+              <div className="space-y-4">
+                {creditos.length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold uppercase text-indigo-600 mb-2">Saldo a favor aplicado ({creditos.length})</p>
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 text-xs text-gray-500">
+                        <tr>
+                          <th className="text-left px-3 py-2">Pago ID</th>
+                          <th className="text-left px-3 py-2">Cliente</th>
+                          <th className="text-left px-3 py-2">Fecha</th>
+                          <th className="text-right px-3 py-2">Aplicado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {creditos.map(p => {
+                          const ctx = getPagoContext(p)
+                          return (
+                            <tr key={p.pagoid} className="hover:bg-gray-50">
+                              <td className="px-3 py-2">
+                                <button className="text-blue-600 hover:underline" onClick={() => { navigate(`/admin/pagos/${p.pagoid}`); setShowDifModal(false) }}>
+                                  #{p.pagoid}
+                                </button>
+                              </td>
+                              <td className="px-3 py-2">{ctx.cliente?.nombre || '—'}</td>
+                              <td className="px-3 py-2">{formatDate(p.fechapago)}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-indigo-600">{formatCurrency(p.servicios_extra)}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {cargos.length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold uppercase text-purple-600 mb-2">Cargos adicionales ({cargos.length})</p>
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 text-xs text-gray-500">
+                        <tr>
+                          <th className="text-left px-3 py-2">Pago ID</th>
+                          <th className="text-left px-3 py-2">Cliente</th>
+                          <th className="text-left px-3 py-2">Fecha</th>
+                          <th className="text-right px-3 py-2">Cargo extra</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {cargos.map(p => {
+                          const ctx = getPagoContext(p)
+                          return (
+                            <tr key={p.pagoid} className="hover:bg-gray-50">
+                              <td className="px-3 py-2">
+                                <button className="text-blue-600 hover:underline" onClick={() => { navigate(`/admin/pagos/${p.pagoid}`); setShowDifModal(false) }}>
+                                  #{p.pagoid}
+                                </button>
+                              </td>
+                              <td className="px-3 py-2">{ctx.cliente?.nombre || '—'}</td>
+                              <td className="px-3 py-2">{formatDate(p.fechapago)}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-purple-600">+{formatCurrency(p.servicios_extra)}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="border-t pt-3 flex justify-between text-sm font-semibold">
+                  <span className="text-gray-600">Total diferencia</span>
+                  <span className={totalCobrado - totalAplicado >= 0 ? 'text-green-700' : 'text-orange-700'}>
+                    {formatCurrency(totalCobrado - totalAplicado)}
+                  </span>
+                </div>
+              </div>
+            )
+          })()}
+        </div>
+      </Modal>
     </>
   )
 }
