@@ -104,6 +104,12 @@ Deno.serve(async (req: Request) => {
       })
     }
 
+    // Registrar fecha de invitación en cliente para trazabilidad
+    await supabaseAdmin
+      .from('cliente')
+      .update({ portal_invited_at: new Date().toISOString() })
+      .eq('email', email.trim())
+
     return new Response(
       JSON.stringify({ success: true, userId: data.user?.id }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
