@@ -959,6 +959,9 @@ export const VentaDetail = () => {
           </div>
         </div>
 
+        {/* Contrato Firmado */}
+        <ContratoFirmado ventaid={venta.ventaid} />
+
         {/* Convenios */}
         <div className="bg-white rounded-lg shadow overflow-hidden mt-8 mb-8">
           <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4">
@@ -1255,9 +1258,6 @@ export const VentaDetail = () => {
           )}
         </div>
       </div>
-
-      {/* ── Contrato Firmado ──────────────────────────── */}
-      <ContratoFirmado ventaid={venta.ventaid} />
 
       {/* ── Cargos Extra ───────────────────────────────── */}
       {cargosExtra.length > 0 && (
