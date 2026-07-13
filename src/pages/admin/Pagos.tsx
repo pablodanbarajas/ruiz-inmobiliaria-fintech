@@ -234,31 +234,36 @@ export const Pagos = () => {
       }
 
       const pendingRows: PendingRow[] = []
+      console.log('[Pendientes] corridasRes total rows:', corridasRes.data?.length ?? 0)
+      if (corridasRes.data?.length) {
+        const sample = corridasRes.data[0] as any
+        console.log('[Pendientes] sample corrida:', JSON.stringify(sample).slice(0, 300))
+      }
+      let skippedEstatus = 0, skippedPendiente = 0, skippedDesarrollo = 0
       for (const corrida of (corridasRes.data || []) as any[]) {
         const venta = pickFirst(corrida.venta) as any
         // Solo ventas activas
-        if (venta?.estatus !== 'A') continue
+        if (venta?.estatus !== 'A') { skippedEstatus++; continue }
 
         const corridaId = corrida.corridafinancieraid as number
         const pagosCorrida = pagosPorCorrida.get(corridaId) || []
         const totalPagado = pagosCorrida.reduce((sum, p) => sum + getPagoAplicado(p), 0)
 
         const diasTolVenta = venta?.dias_tolerancia ?? 0
-        // Recargo: si hay pagos previos usar el máximo recargo registrado; si no, calcular dinámicamente
         const maxStoredRecargo = pagosCorrida.reduce((max, p) => Math.max(max, Number((p as any).recargo ?? 0)), 0)
         const recargoReq = pagosCorrida.length > 0
           ? maxStoredRecargo
           : (corrida.nopago !== 0 && corrida.fecha ? calcularRecargo(corrida.fecha, todayStr, diasTolVenta) : 0)
 
         const pendiente = Math.max(0, Number(corrida.mensualidad || 0) + recargoReq - totalPagado)
-        if (pendiente <= 0) continue
+        if (pendiente <= 0) { skippedPendiente++; continue }
 
         const cliente = pickFirst(venta?.cliente) as Cliente | undefined
         const lote = pickFirst(venta?.lote) as (Lote & { desarrollo?: Desarrollo | Desarrollo[] }) | undefined
         const desarrollo = pickFirst(lote?.desarrollo) as Desarrollo | undefined
         const desarrolloid = (desarrollo?.desarrolloid ?? lote?.desarrolloid ?? null) as number | null
 
-        if (DEMO_DESARROLLOIDS.length > 0 && desarrolloid && !DEMO_DESARROLLOIDS.includes(desarrolloid)) continue
+        if (DEMO_DESARROLLOIDS.length > 0 && desarrolloid && !DEMO_DESARROLLOIDS.includes(desarrolloid)) { skippedDesarrollo++; continue }
 
         pendingRows.push({
           clienteid: cliente?.clienteid || 0,
@@ -269,6 +274,7 @@ export const Pagos = () => {
           montoPendiente: pendiente,
         })
       }
+      console.log(`[Pendientes] skippedEstatus=${skippedEstatus} skippedPendiente=${skippedPendiente} skippedDesarrollo=${skippedDesarrollo} added=${pendingRows.length}`)
 
       setPendientes(pendingRows)
     } catch (error) {
