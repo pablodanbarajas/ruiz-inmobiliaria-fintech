@@ -142,13 +142,19 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => null)
     const action = body?.action  // 'create' | undefined (update)
 
-    // ── CREATE: invite new admin user ────────────────────────────
+    // ── CREATE: create admin user with password ─────────────────
     if (action === 'create') {
       const email = body?.email?.trim()
+      const password = body?.password
       const role = body?.role
 
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return new Response(JSON.stringify({ error: 'Email inválido' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      if (!password || typeof password !== 'string' || password.length < 8) {
+        return new Response(JSON.stringify({ error: 'La contraseña debe tener al menos 8 caracteres' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
@@ -158,24 +164,23 @@ Deno.serve(async (req: Request) => {
         })
       }
 
-      // Invite user — creates auth account and sends email
-      const adminPanelUrl = Deno.env.get('ADMIN_PANEL_URL') ?? 'https://ruiz-inmobiliaria-fintech.vercel.app/login'
-      const { data: invited, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-        redirectTo: adminPanelUrl,
+      const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
       })
-      if (inviteError) {
-        return new Response(JSON.stringify({ error: inviteError.message }), {
+      if (createError) {
+        return new Response(JSON.stringify({ error: createError.message }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
 
-      // Assign role immediately
       const { error: roleError } = await supabaseAdmin
         .from('user_roles')
-        .upsert({ user_id: invited.user.id, role }, { onConflict: 'user_id' })
+        .upsert({ user_id: created.user.id, role }, { onConflict: 'user_id' })
       if (roleError) throw roleError
 
-      return new Response(JSON.stringify({ ok: true, userId: invited.user.id, email, role }), {
+      return new Response(JSON.stringify({ ok: true, userId: created.user.id, email, role }), {
         status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }

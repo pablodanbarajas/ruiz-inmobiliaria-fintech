@@ -34,6 +34,7 @@ export const UsuariosAdmin = () => {
   const [saveMap, setSaveMap] = useState<SaveMap>({})
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newEmail, setNewEmail] = useState('')
+  const [newPassword, setNewPassword] = useState('')
   const [newRole, setNewRole] = useState<AdminPanelRole | ''>('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
@@ -150,7 +151,7 @@ export const UsuariosAdmin = () => {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
-          body: JSON.stringify({ action: 'create', email: newEmail.trim(), role: newRole }),
+          body: JSON.stringify({ action: 'create', email: newEmail.trim(), password: newPassword, role: newRole }),
         }
       )
       const result = await response.json()
@@ -159,6 +160,7 @@ export const UsuariosAdmin = () => {
       invalidateCache('usuarios:')
       setShowCreateModal(false)
       setNewEmail('')
+      setNewPassword('')
       setNewRole('')
       await fetchUsers(true)
     } catch (err: any) {
@@ -339,7 +341,7 @@ export const UsuariosAdmin = () => {
     >
       <div className="space-y-5">
         <p className="text-sm text-gray-500">
-          Se enviará una invitación al email indicado. El usuario deberá hacer clic en el enlace para establecer su contraseña.
+          El usuario podrá iniciar sesión de inmediato con el email y contraseña que establezcas.
         </p>
 
         <div>
@@ -351,6 +353,19 @@ export const UsuariosAdmin = () => {
             placeholder="usuario@empresa.com"
             value={newEmail}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewEmail(e.target.value)}
+            disabled={creating}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Contraseña <span className="text-red-500">*</span>
+          </label>
+          <Input
+            type="password"
+            placeholder="Mínimo 8 caracteres"
+            value={newPassword}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
             disabled={creating}
           />
         </div>
@@ -382,11 +397,11 @@ export const UsuariosAdmin = () => {
           </Button>
           <Button
             onClick={handleCreateUser}
-            disabled={creating || !newEmail || !newRole}
+            disabled={creating || !newEmail || !newPassword || !newRole}
             className="inline-flex items-center gap-2"
           >
             <UserPlus size={15} />
-            {creating ? 'Enviando invitación...' : 'Crear y enviar invitación'}
+            {creating ? 'Creando...' : 'Crear usuario'}
           </Button>
         </div>
       </div>
