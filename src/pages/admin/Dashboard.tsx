@@ -63,6 +63,7 @@ export const Dashboard = () => {
   const [loading, setLoading] = useState(true)
   const [ventasEnRiesgo, setVentasEnRiesgo] = useState<VentaEnRiesgo[]>([])
   const [loadingRiesgo, setLoadingRiesgo] = useState(true)
+  const [totalCarteraVencida, setTotalCarteraVencida] = useState(0)
   const [pagosRecientes, setPagosRecientes] = useState<PagoReciente[]>([])
   const [ventasRecientes, setVentasRecientes] = useState<VentaReciente[]>([])
   const [loadingRecent, setLoadingRecent] = useState(true)
@@ -235,7 +236,7 @@ export const Dashboard = () => {
 
         const { data: corridasData, error: corridasErr } = await corridasQuery
 
-        if (corridasErr || !corridasData?.length) { setLoadingRiesgo(false); return }
+        if (corridasErr || !corridasData?.length) { setTotalCarteraVencida(0); setLoadingRiesgo(false); return }
 
         // Only active ventas
         const corridasFiltradas = (corridasData as any[]).filter((c) => {
@@ -243,7 +244,7 @@ export const Dashboard = () => {
           return venta?.estatus === 'A'
         })
 
-        if (!corridasFiltradas.length) { setVentasEnRiesgo([]); setLoadingRiesgo(false); return }
+        if (!corridasFiltradas.length) { setVentasEnRiesgo([]); setTotalCarteraVencida(0); setLoadingRiesgo(false); return }
 
         const corridaIds = corridasFiltradas.map((c: any) => c.corridafinancieraid)
 
@@ -262,10 +263,14 @@ export const Dashboard = () => {
         }
 
         // Group corridas by ventaid, count vencidas
+        // Also sum total cartera vencida (all unpaid, not just 3+)
+        let totalCartera = 0
         const ventaMap = new Map<number, { venta: any; vencidas: number }>()
         for (const c of corridasFiltradas) {
           const pagado = pagosMap.get(c.corridafinancieraid) ?? 0
-          if (pagado >= (c.mensualidad || 0)) continue  // ya pagada
+          const pendiente = Math.max(0, (c.mensualidad || 0) - pagado)
+          if (pendiente <= 0) continue  // ya pagada
+          totalCartera += pendiente
 
           const venta = Array.isArray(c.venta) ? c.venta[0] : c.venta
           const entry = ventaMap.get(c.ventaid)
@@ -323,6 +328,7 @@ export const Dashboard = () => {
         resultados.sort((a, b) => b.corridasVencidas - a.corridasVencidas)
         setCached('dashboard:riesgo', resultados)
         setVentasEnRiesgo(resultados)
+        setTotalCarteraVencida(totalCartera)
       } catch (err) {
         console.error('Error fetching ventas en riesgo:', err)
       } finally {
@@ -594,16 +600,17 @@ export const Dashboard = () => {
               )}
               {canViewPagos && (
                 <StatCard
-                  title="Total cobrado"
-                  value={formatCurrency(stats.totalPagado)}
+                  title="Cartera vencida"
+                  value={loadingRiesgo ? '…' : formatCurrency(totalCarteraVencida)}
                   icon={<DollarSign className="w-8 h-8 text-white" />}
-                  color="#000000"
+                  color={totalCarteraVencida > 0 ? '#dc2626' : '#16a34a'}
+                  onClick={() => navigate('/admin/pagos')}
                 />
               )}
               {canViewPagos && (
                 <StatCard
                   title={`Cobrado en ${new Date().toLocaleString('es-MX', { month: 'long' })}`}
-                  value={formatCurrency(stats.pagosDelMes)}
+                  value={loading ? '…' : formatCurrency(stats.pagosDelMes)}
                   icon={<TrendingUp className="w-8 h-8 text-white" />}
                   color="#504840"
                   onClick={() => navigate('/admin/pagos')}
