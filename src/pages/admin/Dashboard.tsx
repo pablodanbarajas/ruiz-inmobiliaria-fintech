@@ -135,6 +135,15 @@ export const Dashboard = () => {
             lotesDisponibles,
             ventasActivas,
           })
+          setCached('dashboard:stats', {
+            totalClientes: clienteIds.length,
+            totalDesarrollos: DEMO_DESARROLLOIDS.length,
+            totalVentas: ventaIds.length,
+            totalPagado,
+            pagosDelMes,
+            lotesDisponibles,
+            ventasActivas,
+          })
         } else {
           const [clientesRes, desarrollosRes, ventasRes, pagosRes, lotesDisponiblesRes, ventasActivasRes, pagosDelMesRes] = await Promise.all([
             supabase.from('cliente').select('*', { count: 'exact', head: true }),

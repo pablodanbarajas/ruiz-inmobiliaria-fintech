@@ -89,15 +89,15 @@ export const getLoteStatusLabel = (status: string | null | undefined): string =>
 export const getLoteStatusColor = (status: string | null | undefined): string => {
   switch (status?.toUpperCase()) {
     case 'D': // Disponible
-      return 'bg-[#eaae4c] text-black'
+      return 'bg-green-500 text-white'
     case 'V': // Vendido
       return 'bg-[#504840] text-white'
     case 'B': // Bloqueado
       return 'bg-red-600 text-white'
     case 'A': // Apartado
-      return 'bg-[#9e9f92] text-white'
+      return 'bg-[#eaae4c] text-black'
     case 'N': // No disponible
-      return 'bg-slate-700 text-white'
+      return 'bg-gray-400 text-white'
     default:
       return 'bg-gray-100 text-gray-800'
   }

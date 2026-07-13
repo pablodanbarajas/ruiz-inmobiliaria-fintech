@@ -42,7 +42,7 @@ export const Convenios = () => {
 
   const fetchConvenios = async (bypass = false) => {
     const ck = 'convenios:all'
-    if (!bypass) { const c = getCached<ConvenioWithDetails[]>(ck); if (c) { setConvenios(c); setLoading(false); return } }
+    if (!bypass) { const c = getCached<{ items: ConvenioWithDetails[]; total: number }>(ck); if (c) { setConvenios(c.items); setTotalItems(c.total); setLoading(false); return } }
     try {
       setLoading(true)
       await syncExpiredConvenios()
@@ -76,7 +76,7 @@ export const Convenios = () => {
       setTotalItems(list.length)
       const start = (currentPage - 1) * itemsPerPage
       const page = list.slice(start, start + itemsPerPage)
-      setCached('convenios:all', page)
+      setCached('convenios:all', { items: page, total: list.length })
       setConvenios(page)
     } catch (err) {
       console.error('Error fetching convenios:', err)

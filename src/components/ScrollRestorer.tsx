@@ -1,28 +1,32 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 
-// Mapa en memoria: location.key → scrollY
-// location.key es único por cada entrada en el historial del navegador,
-// así que ir "atrás" restaura exactamente la posición correcta.
+// Saves scroll position per pathname so navigating back to a section
+// restores where you were, instead of always jumping to the top.
+// Keyed by pathname (not location.key) so forward navigation also restores.
 const scrollPositions = new Map<string, number>()
 
 export function ScrollRestorer() {
-  const { key } = useLocation()
+  const { pathname } = useLocation()
+  const prevPathname = useRef<string | null>(null)
 
   useEffect(() => {
-    // Al entrar a esta ruta: restaurar posición guardada, o ir al tope
-    const saved = scrollPositions.get(key)
-    if (saved !== undefined) {
-      window.scrollTo({ top: saved, behavior: 'instant' })
-    } else {
-      window.scrollTo({ top: 0, behavior: 'instant' })
+    // Save previous page's scroll before switching
+    if (prevPathname.current && prevPathname.current !== pathname) {
+      scrollPositions.set(prevPathname.current, window.scrollY)
     }
 
-    // Al salir de esta ruta: guardar posición actual
+    // Restore saved position for this page, or go to top if first visit
+    const saved = scrollPositions.get(pathname)
+    window.scrollTo({ top: saved ?? 0, behavior: 'instant' })
+
+    prevPathname.current = pathname
+
+    // Also save on unmount in case of programmatic navigation
     return () => {
-      scrollPositions.set(key, window.scrollY)
+      scrollPositions.set(pathname, window.scrollY)
     }
-  }, [key])
+  }, [pathname])
 
   return null
 }

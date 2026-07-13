@@ -264,13 +264,13 @@ export const DesarrolloDetail = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-[#504840] border-b border-[#504840]">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Manzana</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Lote</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Precio</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Estado</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Acción</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Manzana</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Lote</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Precio</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Estado</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">

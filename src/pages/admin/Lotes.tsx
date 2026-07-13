@@ -71,8 +71,8 @@ export const Lotes = () => {
   useEffect(() => {
     const fetchLotes = async () => {
       const ck = `lotes:${JSON.stringify(filters)}:${currentPage}`
-      const cached = getCached<any[]>(ck)
-      if (cached) { setLotes(cached); setLoading(false); return }
+      const cached = getCached<{ items: any[]; total: number }>(ck)
+      if (cached) { setLotes(cached.items); setTotalItems(cached.total); setLoading(false); return }
       try {
         setLoading(true)
         let query = supabase
@@ -116,7 +116,7 @@ export const Lotes = () => {
         const startIndex = (currentPage - 1) * itemsPerPage
         const endIndex = startIndex + itemsPerPage
         const paginatedData = filteredData.slice(startIndex, endIndex)
-        setCached(ck, paginatedData)
+        setCached(ck, { items: paginatedData, total: filteredData.length })
         setLotes(paginatedData)
       } catch (error) {
         console.error('Error fetching lotes:', error)

@@ -107,7 +107,7 @@ export const CargosExtra = () => {
   // ── Fetch master list ─────────────────────────────────────────
   const fetchCargos = async (bypass = false) => {
     const ck = `cargos:${JSON.stringify(filters)}:${currentPage}`
-    if (!bypass) { const c = getCached<CargoExtraWithDetails[]>(ck); if (c) { setCargos(c); setLoading(false); return } }
+    if (!bypass) { const c = getCached<{ items: CargoExtraWithDetails[]; total: number }>(ck); if (c) { setCargos(c.items); setTotalItems(c.total); setLoading(false); return } }
     try {
       setLoading(true)
       const { data, error } = await supabase
@@ -144,7 +144,7 @@ export const CargosExtra = () => {
       setTotalItems(list.length)
       const start = (currentPage - 1) * itemsPerPage
       const page = list.slice(start, start + itemsPerPage)
-      setCached(ck, page)
+      setCached(ck, { items: page, total: list.length })
       setCargos(page)
     } catch (err) {
       console.error('Error fetching cargos extra:', err)

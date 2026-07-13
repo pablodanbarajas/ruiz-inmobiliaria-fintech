@@ -80,8 +80,8 @@ export const Ventas = () => {
   useEffect(() => {
     const fetchVentas = async () => {
       const cacheKey = `ventas:${JSON.stringify(filters)}:${currentPage}`
-      const cached = getCached<VentaWithDetails[]>(cacheKey)
-      if (cached) { setVentas(cached); setLoading(false); return }
+      const cached = getCached<{ items: VentaWithDetails[]; total: number }>(cacheKey)
+      if (cached) { setVentas(cached.items); setTotalItems(cached.total); setLoading(false); return }
       try {
         setLoading(true)
         let query = supabase
@@ -116,7 +116,7 @@ export const Ventas = () => {
         const startIndex = (currentPage - 1) * itemsPerPage
         const endIndex = startIndex + itemsPerPage
         const page = filteredData.slice(startIndex, endIndex)
-        setCached(cacheKey, page)
+        setCached(cacheKey, { items: page, total: filteredData.length })
         setVentas(page)
       } catch (error) {
         console.error('Error fetching ventas:', error)
