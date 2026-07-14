@@ -98,6 +98,14 @@ export const Clientes = () => {
 
         // In demo mode, restrict to clients that have ventas in the demo desarrollo
         if (DEMO_DESARROLLOIDS.length > 0 && allData.length > 0) {
+          // Clientes con al menos una venta (en cualquier desarrollo)
+          const { data: ventasAll } = await supabase
+            .from('venta')
+            .select('clienteid')
+          const clientesConAlgunaVenta = new Set(
+            (ventasAll || []).map((v: any) => v.clienteid).filter(Boolean)
+          )
+
           const { data: lotesDemo } = await supabase
             .from('lote')
             .select('loteid')
@@ -111,9 +119,15 @@ export const Clientes = () => {
             const demoClienteIds = new Set(
               (ventasDemo || []).map((v: any) => v.clienteid).filter(Boolean)
             )
-            finalCache = allData.filter((c) => demoClienteIds.has(c.clienteid))
+            // Mostrar:
+            // 1) clientes con ventas en desarrollos demo
+            // 2) clientes sin ninguna venta (recién creados, por ejemplo)
+            finalCache = allData.filter(
+              (c) => demoClienteIds.has(c.clienteid) || !clientesConAlgunaVenta.has(c.clienteid)
+            )
           } else {
-            finalCache = []
+            // Si no hay lotes demo configurados, mostrar solo clientes sin ventas
+            finalCache = allData.filter((c) => !clientesConAlgunaVenta.has(c.clienteid))
           }
         }
 
