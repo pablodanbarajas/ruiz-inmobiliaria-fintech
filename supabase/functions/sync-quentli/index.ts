@@ -89,7 +89,7 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // ── MODO CREAR SUSCRIPCIÓN (default) ────────────────────
+    // ── MODO CREAR CUSTOMER + CONCEPT ────────────────────────
     const {
       clienteid,
       nombre,
@@ -98,13 +98,11 @@ Deno.serve(async (req: Request) => {
       ventaid,
       clavelote,
       mensualidad,
-      plazo,
-      fechaprimeramensualidad,
     } = body
 
-    if (!clienteid || !mensualidad || !plazo || !fechaprimeramensualidad) {
+    if (!clienteid || !mensualidad) {
       return new Response(
-        JSON.stringify({ error: 'Faltan campos requeridos: clienteid, mensualidad, plazo, fechaprimeramensualidad' }),
+        JSON.stringify({ error: 'Faltan campos requeridos: clienteid, mensualidad' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
@@ -188,40 +186,14 @@ Deno.serve(async (req: Request) => {
 
     if (!conceptId) throw new Error('No se pudo obtener el conceptId de Quentli')
 
-    // ── 3. Crear suscripción mensual en Quentli ────────────────
-    // nextCollectionDate = primera fecha de cobro (doc: "Required when using recurring items")
-    const fechaISO = new Date(`${fechaprimeramensualidad}T12:00:00`).toISOString()
-
-    const subscriptionRes = await fetch(`${QUENTLI_API}/v1/subscriptions`, {
-      method: 'POST',
-      headers: qHeaders,
-      body: JSON.stringify({
-        input: {
-          customerId: quentliCustomerId,
-          description: `Mensualidades ${clavelote ?? ''} · Venta #${ventaid}`,
-          nextCollectionDate: fechaISO,
-          numberOfPayments: Number(plazo),
-          collectionMethod: 'SEND_REMINDER',
-          items: [{ conceptId, quantity: 1 }],
-        },
-      }),
-    })
-
-    if (!subscriptionRes.ok) {
-      const errBody = await subscriptionRes.text()
-      throw new Error(`Error al crear suscripción en Quentli: ${errBody}`)
-    }
-
-    const subscriptionData = await subscriptionRes.json()
-    // Respuesta: { subscription: { id } }
-    const subscriptionId = subscriptionData.subscription?.id ?? subscriptionData.id
+    // Suscripción mensual deshabilitada intencionalmente.
+    // Solo se crean customer y payment concept.
 
     return new Response(
       JSON.stringify({
         ok: true,
         quentliCustomerId,
         quentliConceptId: conceptId,
-        quentliSubscriptionId: subscriptionId,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
