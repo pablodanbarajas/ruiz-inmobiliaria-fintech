@@ -27,6 +27,7 @@ interface Stats {
   totalVentas: number
   totalPagado: number
   pagosDelMes: number
+  ventasEsteMes: number
   lotesDisponibles: number
   ventasActivas: number
 }
@@ -57,6 +58,7 @@ export const Dashboard = () => {
     totalVentas: 0,
     totalPagado: 0,
     pagosDelMes: 0,
+    ventasEsteMes: 0,
     lotesDisponibles: 0,
     ventasActivas: 0,
   })
@@ -119,13 +121,18 @@ export const Dashboard = () => {
           const corridaIds = (corridasDemo || []).map((c: any) => c.corridafinancieraid)
 
           const { data: pagosDemo } = corridaIds.length
-            ? await supabase.from('pagos').select('montopagado, fechapago').in('corridafinancieraid', corridaIds)
+            ? await supabase.from('pagos').select('montopagado').in('corridafinancieraid', corridaIds).neq('estatus', 'C')
             : { data: [] }
+          const { data: pagosDelMesData } = corridaIds.length
+            ? await supabase.from('pagos').select('montopagado').in('corridafinancieraid', corridaIds).gte('fechapago', firstOfMonth).neq('estatus', 'C')
+            : { data: [] }
+          const { data: ventasEsteMesData } = await supabase
+            .from('venta').select('ventaid', { count: 'exact', head: true })
+            .in('loteid', loteIds.length ? loteIds : [-1]).gte('fecha', firstOfMonth)
 
           const totalPagado = (pagosDemo || []).reduce((sum: number, p: any) => sum + (p.montopagado || 0), 0)
-          const pagosDelMes = (pagosDemo || [])
-            .filter((p: any) => p.fechapago >= firstOfMonth)
-            .reduce((sum: number, p: any) => sum + (p.montopagado || 0), 0)
+          const pagosDelMes = (pagosDelMesData || []).reduce((sum: number, p: any) => sum + (p.montopagado || 0), 0)
+          const ventasEsteMes = (ventasEsteMesData as any)?.count ?? 0
 
           setStats({
             totalClientes: clienteIds.length,
@@ -133,6 +140,7 @@ export const Dashboard = () => {
             totalVentas: ventaIds.length,
             totalPagado,
             pagosDelMes,
+            ventasEsteMes,
             lotesDisponibles,
             ventasActivas,
           })
@@ -142,22 +150,25 @@ export const Dashboard = () => {
             totalVentas: ventaIds.length,
             totalPagado,
             pagosDelMes,
+            ventasEsteMes,
             lotesDisponibles,
             ventasActivas,
           })
         } else {
-          const [clientesRes, desarrollosRes, ventasRes, pagosRes, lotesDisponiblesRes, ventasActivasRes, pagosDelMesRes] = await Promise.all([
+          const [clientesRes, desarrollosRes, ventasRes, pagosRes, lotesDisponiblesRes, ventasActivasRes, pagosDelMesRes, ventasEsteMesRes] = await Promise.all([
             supabase.from('cliente').select('*', { count: 'exact', head: true }),
             supabase.from('desarrollo').select('*', { count: 'exact', head: true }),
             supabase.from('venta').select('*', { count: 'exact', head: true }),
-            supabase.from('pagos').select('montopagado'),
+            supabase.from('pagos').select('montopagado').neq('estatus', 'C'),
             supabase.from('lote').select('*', { count: 'exact', head: true }).eq('estatus', 'D'),
             supabase.from('venta').select('*', { count: 'exact', head: true }).eq('estatus', 'A'),
-            supabase.from('pagos').select('montopagado').gte('fechapago', firstOfMonth),
+            supabase.from('pagos').select('montopagado').gte('fechapago', firstOfMonth).neq('estatus', 'C'),
+            supabase.from('venta').select('*', { count: 'exact', head: true }).gte('fecha', firstOfMonth),
           ])
 
           const totalPagado = pagosRes.data?.reduce((sum, p) => sum + (p.montopagado || 0), 0) || 0
           const pagosDelMes = pagosDelMesRes.data?.reduce((sum, p) => sum + (p.montopagado || 0), 0) || 0
+          const ventasEsteMes = ventasEsteMesRes.count || 0
 
           setStats({
             totalClientes: clientesRes.count || 0,
@@ -165,6 +176,7 @@ export const Dashboard = () => {
             totalVentas: ventasRes.count || 0,
             totalPagado,
             pagosDelMes,
+            ventasEsteMes,
             lotesDisponibles: lotesDisponiblesRes.count || 0,
             ventasActivas: ventasActivasRes.count || 0,
           })
@@ -174,6 +186,7 @@ export const Dashboard = () => {
             totalVentas: ventasRes.count || 0,
             totalPagado,
             pagosDelMes,
+            ventasEsteMes,
             lotesDisponibles: lotesDisponiblesRes.count || 0,
             ventasActivas: ventasActivasRes.count || 0,
           })
@@ -658,6 +671,15 @@ export const Dashboard = () => {
                     </div>
                   </div>
                 </div>
+              )}
+              {canViewVentas && (
+                <StatCard
+                  title={`Ventas en ${new Date().toLocaleString('es-MX', { month: 'long' })}`}
+                  value={loading ? '…' : stats.ventasEsteMes}
+                  icon={<ShoppingCart className="w-8 h-8 text-white" />}
+                  color="#16a34a"
+                  onClick={() => navigate('/admin/ventas')}
+                />
               )}
             </div>
           </>
