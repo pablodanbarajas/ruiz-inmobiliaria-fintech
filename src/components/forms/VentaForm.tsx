@@ -38,6 +38,22 @@ interface VentaFormProps {
 
 type LoteWithDesarrollo = Lote & { desarrollo?: Desarrollo }
 
+const VENDEDOR_OPTIONS = [
+  'Alejandro Bory',
+  'Cynthia huerta',
+  'Roman Carrillo',
+  'Sugey Diaz',
+  'Deisy Godoy',
+  'Nhatzyeli Ruiz',
+  'Armando Moran',
+  'Saulo Guerrero',
+  'Angel Ruiz',
+  'Aide Ruiz',
+  'Maricela Solorio',
+  'Juan Manuel',
+  'Alejandro Zavala',
+] as const
+
 export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, allowFinancialEdit = false }: VentaFormProps) => {
   const isEditMode = !!venta
   const today = new Date().toISOString().split('T')[0]
@@ -65,6 +81,11 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [enganchemin, setEnganchemin] = useState<number>(0)
+  const [vendedorSeleccionado, setVendedorSeleccionado] = useState<string>(() => {
+    const actual = (venta?.vendedor ?? '').trim()
+    if (actual && VENDEDOR_OPTIONS.includes(actual as (typeof VENDEDOR_OPTIONS)[number])) return actual
+    return actual ? 'OTRO' : ''
+  })
 
   // Combobox option arrays (memoised from loaded data)
   const loteOptions: ComboOption[] = lotes.map((l) => ({
@@ -193,6 +214,19 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
   useEffect(() => {
     if (!formData.loteid) setEnganchemin(0)
   }, [formData.loteid])
+
+  useEffect(() => {
+    const actual = (formData.vendedor ?? '').trim()
+    if (!actual) {
+      setVendedorSeleccionado('')
+      return
+    }
+    if (VENDEDOR_OPTIONS.includes(actual as (typeof VENDEDOR_OPTIONS)[number])) {
+      setVendedorSeleccionado(actual)
+      return
+    }
+    setVendedorSeleccionado('OTRO')
+  }, [formData.vendedor])
 
   const validate = () => {
     const errs: Record<string, string> = {}
@@ -473,14 +507,36 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
       {/* ── Vendedor ────────────────────────────────────────── */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Vendedor <span className="text-red-500">*</span></label>
-        <Input
-          type="text"
-          value={formData.vendedor ?? ''}
-          onChange={(e) => setFormData({ ...formData, vendedor: e.target.value })}
+        <select
+          value={vendedorSeleccionado}
+          onChange={(e) => {
+            const value = e.target.value
+            setVendedorSeleccionado(value)
+            if (value === 'OTRO') {
+              setFormData({ ...formData, vendedor: '' })
+            } else {
+              setFormData({ ...formData, vendedor: value })
+            }
+          }}
           disabled={isLoading}
-          placeholder="Nombre del vendedor"
-          className={errors.vendedor ? 'border-red-500' : ''}
-        />
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] disabled:bg-gray-100 ${errors.vendedor ? 'border-red-500' : 'border-gray-300'}`}
+        >
+          <option value="">Selecciona un vendedor</option>
+          {VENDEDOR_OPTIONS.map((nombre) => (
+            <option key={nombre} value={nombre}>{nombre}</option>
+          ))}
+          <option value="OTRO">Otro</option>
+        </select>
+        {vendedorSeleccionado === 'OTRO' && (
+          <Input
+            type="text"
+            value={formData.vendedor ?? ''}
+            onChange={(e) => setFormData({ ...formData, vendedor: e.target.value })}
+            disabled={isLoading}
+            placeholder="Escribe el nombre del vendedor"
+            className={`mt-2 ${errors.vendedor ? 'border-red-500' : ''}`}
+          />
+        )}
         {errors.vendedor && <p className="text-xs text-red-500 mt-1">{errors.vendedor}</p>}
       </div>
 
