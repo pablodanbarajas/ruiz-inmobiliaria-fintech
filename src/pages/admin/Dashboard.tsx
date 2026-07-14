@@ -49,17 +49,21 @@ interface VentaReciente {
   loteLabel: string
 }
 
-const pickFirst = <T,>(value: T | T[] | null | undefined): T | undefined => {
-  if (!value) return undefined
-  return Array.isArray(value) ? value[0] : value
-}
-
 const isOnOrAfterDate = (value: string | null | undefined, floorDateIso: string): boolean => {
   if (!value) return false
   const valueDate = new Date(value)
   const floorDate = new Date(floorDateIso)
   if (Number.isNaN(valueDate.getTime()) || Number.isNaN(floorDate.getTime())) return false
   return valueDate >= floorDate
+}
+
+const isWithinMonth = (value: string | null | undefined, monthStartIso: string, nextMonthStartIso: string): boolean => {
+  if (!value) return false
+  const valueDate = new Date(value)
+  const monthStart = new Date(monthStartIso)
+  const nextMonthStart = new Date(nextMonthStartIso)
+  if (Number.isNaN(valueDate.getTime()) || Number.isNaN(monthStart.getTime()) || Number.isNaN(nextMonthStart.getTime())) return false
+  return valueDate >= monthStart && valueDate < nextMonthStart
 }
 
 export const Dashboard = () => {
@@ -114,6 +118,8 @@ export const Dashboard = () => {
       try {
         const now = new Date()
         const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+        const firstOfNextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+        const firstOfNextMonth = `${firstOfNextMonthDate.getFullYear()}-${String(firstOfNextMonthDate.getMonth() + 1).padStart(2, '0')}-01`
 
         if (DEMO_DESARROLLOIDS.length > 0) {
           const { data: lotesDemo, error: lotesDemoErr } = await supabase
@@ -133,72 +139,34 @@ export const Dashboard = () => {
           const clienteIds = [...new Set((ventasDemo || []).map((v: any) => v.clienteid).filter(Boolean))]
           const ventasActivas = (ventasDemo || []).filter((v: any) => v.estatus === 'A').length
 
-          const { data: pagosDemoRaw, error: pagosDemoErr } = await supabase
-            .from('pagos')
-            .select('montopagado, fechapago, corridafinanciera:corridafinanciera(venta:venta(lote:lote(desarrolloid)))')
-            .or('estatus.neq.C,estatus.is.null')
+          const { data: corridasDemo, error: corridasDemoErr } = await supabase
+            .from('corridafinanciera')
+            .select('corridafinancieraid')
+            .in('ventaid', ventaIds.length ? ventaIds : [-1])
+          if (corridasDemoErr) throw corridasDemoErr
+          const corridaIds = (corridasDemo || []).map((c: any) => c.corridafinancieraid)
+
+          const { data: pagosDemo, error: pagosDemoErr } = corridaIds.length
+            ? await supabase
+              .from('pagos')
+              .select('montopagado, servicios_extra, fechapago, estatus')
+              .in('corridafinancieraid', corridaIds)
+            : { data: [], error: null }
           if (pagosDemoErr) throw pagosDemoErr
 
-          // Match Tesoreria behavior: if desarrolloid is unavailable, do not discard the row.
-          const pagosDemo = (pagosDemoRaw || []).filter((p: any) => {
-            if (DEMO_DESARROLLOIDS.length === 0) return true
-            const corrida = pickFirst(p.corridafinanciera as any)
-            const venta = pickFirst(corrida?.venta as any)
-            const lote = pickFirst(venta?.lote as any)
-            const desarrolloid = lote?.desarrolloid as number | null | undefined
-            if (!desarrolloid) return true
-            return DEMO_DESARROLLOIDS.includes(desarrolloid)
-          })
-
-          const pagosDelMesData = pagosDemo.filter((p: any) => isOnOrAfterDate(p.fechapago, firstOfMonth))
+          const pagosDelMesData = (pagosDemo || []).filter((p: any) => isWithinMonth(p.fechapago, firstOfMonth, firstOfNextMonth))
           const ventasEsteMes = (ventasDemo || []).filter((v: any) => {
-            return isOnOrAfterDate(v.fecha, firstOfMonth)
+            return v.estatus !== 'C' && isWithinMonth(v.fecha, firstOfMonth, firstOfNextMonth)
           }).length
 
-          const totalPagado = (pagosDemo || []).reduce((sum: number, p: any) => sum + (p.montopagado || 0), 0)
-          const pagosDelMes = (pagosDelMesData || []).reduce((sum: number, p: any) => sum + (p.montopagado || 0), 0)
-
-          // If demo scope yields no data, fallback to global stats to avoid false-zero KPIs.
-          if (ventaIds.length === 0 && pagosDemo.length === 0) {
-            const [clientesRes, desarrollosRes, ventasRes, pagosRes, lotesDisponiblesRes, ventasActivasRes, pagosDelMesRes, ventasEsteMesRes] = await Promise.all([
-              supabase.from('cliente').select('*', { count: 'exact', head: true }),
-              supabase.from('desarrollo').select('*', { count: 'exact', head: true }),
-              supabase.from('venta').select('*', { count: 'exact', head: true }),
-              supabase.from('pagos').select('montopagado').or('estatus.neq.C,estatus.is.null'),
-              supabase.from('lote').select('*', { count: 'exact', head: true }).eq('estatus', 'D'),
-              supabase.from('venta').select('*', { count: 'exact', head: true }).eq('estatus', 'A'),
-              supabase.from('pagos').select('montopagado').gte('fechapago', firstOfMonth).or('estatus.neq.C,estatus.is.null'),
-              supabase.from('venta').select('ventaid, fecha').limit(10000),
-            ])
-
-            if (clientesRes.error) throw clientesRes.error
-            if (desarrollosRes.error) throw desarrollosRes.error
-            if (ventasRes.error) throw ventasRes.error
-            if (pagosRes.error) throw pagosRes.error
-            if (lotesDisponiblesRes.error) throw lotesDisponiblesRes.error
-            if (ventasActivasRes.error) throw ventasActivasRes.error
-            if (pagosDelMesRes.error) throw pagosDelMesRes.error
-            if (ventasEsteMesRes.error) throw ventasEsteMesRes.error
-
-            const totalPagadoGlobal = pagosRes.data?.reduce((sum, p) => sum + (p.montopagado || 0), 0) || 0
-            const pagosDelMesGlobal = pagosDelMesRes.data?.reduce((sum, p) => sum + (p.montopagado || 0), 0) || 0
-            const ventasEsteMesGlobal = (ventasEsteMesRes.data || []).filter((v: any) => isOnOrAfterDate(v.fecha, firstOfMonth)).length
-
-            const globalStats = {
-              totalClientes: clientesRes.count || 0,
-              totalDesarrollos: desarrollosRes.count || 0,
-              totalVentas: ventasRes.count || 0,
-              totalPagado: totalPagadoGlobal,
-              pagosDelMes: pagosDelMesGlobal,
-              ventasEsteMes: ventasEsteMesGlobal,
-              lotesDisponibles: lotesDisponiblesRes.count || 0,
-              ventasActivas: ventasActivasRes.count || 0,
-            }
-
-            setStats(globalStats)
-            setCached('dashboard:stats', globalStats)
-            return
-          }
+          const totalPagado = (pagosDemo || []).reduce((sum: number, p: any) => {
+            const extra = Number(p.servicios_extra || 0)
+            return sum + Number(p.montopagado || 0) + Math.max(0, extra)
+          }, 0)
+          const pagosDelMes = (pagosDelMesData || []).reduce((sum: number, p: any) => {
+            const extra = Number(p.servicios_extra || 0)
+            return sum + Number(p.montopagado || 0) + Math.max(0, extra)
+          }, 0)
 
           setStats({
             totalClientes: clienteIds.length,
