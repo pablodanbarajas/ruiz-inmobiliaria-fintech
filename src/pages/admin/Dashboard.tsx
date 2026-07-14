@@ -154,7 +154,56 @@ export const Dashboard = () => {
             : { data: [], error: null }
           if (pagosDemoErr) throw pagosDemoErr
 
-          const pagosDelMesData = (pagosDemo || []).filter((p: any) => isWithinMonth(p.fechapago, firstOfMonth, firstOfNextMonth))
+          const { data: pagosMesRaw, error: pagosMesErr } = await supabase
+            .from('pagos')
+            .select('montopagado, servicios_extra, fechapago, corridafinancieraid')
+            .gte('fechapago', firstOfMonth)
+            .lt('fechapago', firstOfNextMonth)
+            .limit(10000)
+          if (pagosMesErr) throw pagosMesErr
+
+          const corridaIdsMes = [...new Set((pagosMesRaw || []).map((p: any) => p.corridafinancieraid).filter(Boolean))]
+          const { data: corridasMesData, error: corridasMesErr } = corridaIdsMes.length > 0
+            ? await supabase
+              .from('corridafinanciera')
+              .select('corridafinancieraid, ventaid')
+              .in('corridafinancieraid', corridaIdsMes)
+            : { data: [], error: null }
+          if (corridasMesErr) throw corridasMesErr
+
+          const corridaVentaMap = new Map<number, number>((corridasMesData || []).map((c: any) => [c.corridafinancieraid, c.ventaid]))
+          const ventaIdsMes = [...new Set((corridasMesData || []).map((c: any) => c.ventaid).filter(Boolean))]
+
+          const { data: ventasMesData, error: ventasMesErr } = ventaIdsMes.length > 0
+            ? await supabase
+              .from('venta')
+              .select('ventaid, loteid')
+              .in('ventaid', ventaIdsMes)
+            : { data: [], error: null }
+          if (ventasMesErr) throw ventasMesErr
+
+          const ventaLoteMap = new Map<number, number>((ventasMesData || []).map((v: any) => [v.ventaid, v.loteid]))
+          const loteIdsMes = [...new Set((ventasMesData || []).map((v: any) => v.loteid).filter(Boolean))]
+
+          const { data: lotesMesData, error: lotesMesErr } = loteIdsMes.length > 0
+            ? await supabase
+              .from('lote')
+              .select('loteid, desarrolloid')
+              .in('loteid', loteIdsMes)
+            : { data: [], error: null }
+          if (lotesMesErr) throw lotesMesErr
+
+          const loteDesarrolloMap = new Map<number, number>((lotesMesData || []).map((l: any) => [l.loteid, l.desarrolloid]))
+
+          const pagosDelMesData = (pagosMesRaw || []).filter((p: any) => {
+            const ventaid = corridaVentaMap.get(p.corridafinancieraid)
+            if (!ventaid) return false
+            const loteid = ventaLoteMap.get(ventaid)
+            if (!loteid) return false
+            const desarrolloid = loteDesarrolloMap.get(loteid)
+            if (!desarrolloid) return false
+            return DEMO_DESARROLLOIDS.includes(desarrolloid)
+          })
           const ventasEsteMes = (ventasDemo || []).filter((v: any) => {
             return v.estatus !== 'C' && isWithinMonth(v.fecha, firstOfMonth, firstOfNextMonth)
           }).length
@@ -674,7 +723,7 @@ export const Dashboard = () => {
               )}
               {canViewPagos && (
                 <StatCard
-                  title={`Cobrado en ${new Date().toLocaleString('es-MX', { month: 'long' })}`}
+                  title="Cobrado"
                   value={loading ? '…' : formatCurrency(stats.pagosDelMes)}
                   icon={<TrendingUp className="w-8 h-8 text-white" />}
                   color="#504840"
@@ -719,7 +768,7 @@ export const Dashboard = () => {
               )}
               {canViewVentas && (
                 <StatCard
-                  title={`Ventas en ${new Date().toLocaleString('es-MX', { month: 'long' })}`}
+                  title="Ventas"
                   value={loading ? '…' : stats.ventasEsteMes}
                   icon={<ShoppingCart className="w-8 h-8 text-white" />}
                   color="#16a34a"
