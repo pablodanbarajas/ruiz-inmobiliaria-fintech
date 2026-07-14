@@ -54,6 +54,14 @@ const pickFirst = <T,>(value: T | T[] | null | undefined): T | undefined => {
   return Array.isArray(value) ? value[0] : value
 }
 
+const isOnOrAfterDate = (value: string | null | undefined, floorDateIso: string): boolean => {
+  if (!value) return false
+  const valueDate = new Date(value)
+  const floorDate = new Date(floorDateIso)
+  if (Number.isNaN(valueDate.getTime()) || Number.isNaN(floorDate.getTime())) return false
+  return valueDate >= floorDate
+}
+
 export const Dashboard = () => {
   const navigate = useNavigate()
   const { role } = useAuth()
@@ -108,25 +116,28 @@ export const Dashboard = () => {
         const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 
         if (DEMO_DESARROLLOIDS.length > 0) {
-          const { data: lotesDemo } = await supabase
+          const { data: lotesDemo, error: lotesDemoErr } = await supabase
             .from('lote')
             .select('loteid, estatus')
             .in('desarrolloid', DEMO_DESARROLLOIDS)
+          if (lotesDemoErr) throw lotesDemoErr
           const loteIds = (lotesDemo || []).map((l: any) => l.loteid)
           const lotesDisponibles = (lotesDemo || []).filter((l: any) => l.estatus === 'D').length
 
-          const { data: ventasDemo } = await supabase
+          const { data: ventasDemo, error: ventasDemoErr } = await supabase
             .from('venta')
-            .select('ventaid, clienteid, estatus')
+            .select('ventaid, clienteid, estatus, fecha')
             .in('loteid', loteIds.length ? loteIds : [-1])
+          if (ventasDemoErr) throw ventasDemoErr
           const ventaIds = (ventasDemo || []).map((v: any) => v.ventaid)
           const clienteIds = [...new Set((ventasDemo || []).map((v: any) => v.clienteid).filter(Boolean))]
           const ventasActivas = (ventasDemo || []).filter((v: any) => v.estatus === 'A').length
 
-          const { data: pagosDemoRaw } = await supabase
+          const { data: pagosDemoRaw, error: pagosDemoErr } = await supabase
             .from('pagos')
             .select('montopagado, fechapago, corridafinanciera:corridafinanciera(venta:venta(lote:lote(desarrolloid)))')
-            .neq('estatus', 'C')
+            .or('estatus.neq.C,estatus.is.null')
+          if (pagosDemoErr) throw pagosDemoErr
 
           // Match Tesoreria behavior: if desarrolloid is unavailable, do not discard the row.
           const pagosDemo = (pagosDemoRaw || []).filter((p: any) => {
@@ -139,14 +150,55 @@ export const Dashboard = () => {
             return DEMO_DESARROLLOIDS.includes(desarrolloid)
           })
 
-          const pagosDelMesData = pagosDemo.filter((p: any) => (p.fechapago || '') >= firstOfMonth)
-          const { data: ventasEsteMesData } = await supabase
-            .from('venta').select('ventaid', { count: 'exact', head: true })
-            .in('loteid', loteIds.length ? loteIds : [-1]).gte('fecha', firstOfMonth)
+          const pagosDelMesData = pagosDemo.filter((p: any) => isOnOrAfterDate(p.fechapago, firstOfMonth))
+          const ventasEsteMes = (ventasDemo || []).filter((v: any) => {
+            return isOnOrAfterDate(v.fecha, firstOfMonth)
+          }).length
 
           const totalPagado = (pagosDemo || []).reduce((sum: number, p: any) => sum + (p.montopagado || 0), 0)
           const pagosDelMes = (pagosDelMesData || []).reduce((sum: number, p: any) => sum + (p.montopagado || 0), 0)
-          const ventasEsteMes = (ventasEsteMesData as any)?.count ?? 0
+
+          // If demo scope yields no data, fallback to global stats to avoid false-zero KPIs.
+          if (ventaIds.length === 0 && pagosDemo.length === 0) {
+            const [clientesRes, desarrollosRes, ventasRes, pagosRes, lotesDisponiblesRes, ventasActivasRes, pagosDelMesRes, ventasEsteMesRes] = await Promise.all([
+              supabase.from('cliente').select('*', { count: 'exact', head: true }),
+              supabase.from('desarrollo').select('*', { count: 'exact', head: true }),
+              supabase.from('venta').select('*', { count: 'exact', head: true }),
+              supabase.from('pagos').select('montopagado').or('estatus.neq.C,estatus.is.null'),
+              supabase.from('lote').select('*', { count: 'exact', head: true }).eq('estatus', 'D'),
+              supabase.from('venta').select('*', { count: 'exact', head: true }).eq('estatus', 'A'),
+              supabase.from('pagos').select('montopagado').gte('fechapago', firstOfMonth).or('estatus.neq.C,estatus.is.null'),
+              supabase.from('venta').select('ventaid, fecha').limit(10000),
+            ])
+
+            if (clientesRes.error) throw clientesRes.error
+            if (desarrollosRes.error) throw desarrollosRes.error
+            if (ventasRes.error) throw ventasRes.error
+            if (pagosRes.error) throw pagosRes.error
+            if (lotesDisponiblesRes.error) throw lotesDisponiblesRes.error
+            if (ventasActivasRes.error) throw ventasActivasRes.error
+            if (pagosDelMesRes.error) throw pagosDelMesRes.error
+            if (ventasEsteMesRes.error) throw ventasEsteMesRes.error
+
+            const totalPagadoGlobal = pagosRes.data?.reduce((sum, p) => sum + (p.montopagado || 0), 0) || 0
+            const pagosDelMesGlobal = pagosDelMesRes.data?.reduce((sum, p) => sum + (p.montopagado || 0), 0) || 0
+            const ventasEsteMesGlobal = (ventasEsteMesRes.data || []).filter((v: any) => isOnOrAfterDate(v.fecha, firstOfMonth)).length
+
+            const globalStats = {
+              totalClientes: clientesRes.count || 0,
+              totalDesarrollos: desarrollosRes.count || 0,
+              totalVentas: ventasRes.count || 0,
+              totalPagado: totalPagadoGlobal,
+              pagosDelMes: pagosDelMesGlobal,
+              ventasEsteMes: ventasEsteMesGlobal,
+              lotesDisponibles: lotesDisponiblesRes.count || 0,
+              ventasActivas: ventasActivasRes.count || 0,
+            }
+
+            setStats(globalStats)
+            setCached('dashboard:stats', globalStats)
+            return
+          }
 
           setStats({
             totalClientes: clienteIds.length,
@@ -173,16 +225,27 @@ export const Dashboard = () => {
             supabase.from('cliente').select('*', { count: 'exact', head: true }),
             supabase.from('desarrollo').select('*', { count: 'exact', head: true }),
             supabase.from('venta').select('*', { count: 'exact', head: true }),
-            supabase.from('pagos').select('montopagado').neq('estatus', 'C'),
+            supabase.from('pagos').select('montopagado').or('estatus.neq.C,estatus.is.null'),
             supabase.from('lote').select('*', { count: 'exact', head: true }).eq('estatus', 'D'),
             supabase.from('venta').select('*', { count: 'exact', head: true }).eq('estatus', 'A'),
-            supabase.from('pagos').select('montopagado').gte('fechapago', firstOfMonth).neq('estatus', 'C'),
-            supabase.from('venta').select('*', { count: 'exact', head: true }).gte('fecha', firstOfMonth),
+            supabase.from('pagos').select('montopagado').gte('fechapago', firstOfMonth).or('estatus.neq.C,estatus.is.null'),
+            supabase.from('venta').select('ventaid, fecha').limit(10000),
           ])
+
+          if (clientesRes.error) throw clientesRes.error
+          if (desarrollosRes.error) throw desarrollosRes.error
+          if (ventasRes.error) throw ventasRes.error
+          if (pagosRes.error) throw pagosRes.error
+          if (lotesDisponiblesRes.error) throw lotesDisponiblesRes.error
+          if (ventasActivasRes.error) throw ventasActivasRes.error
+          if (pagosDelMesRes.error) throw pagosDelMesRes.error
+          if (ventasEsteMesRes.error) throw ventasEsteMesRes.error
 
           const totalPagado = pagosRes.data?.reduce((sum, p) => sum + (p.montopagado || 0), 0) || 0
           const pagosDelMes = pagosDelMesRes.data?.reduce((sum, p) => sum + (p.montopagado || 0), 0) || 0
-          const ventasEsteMes = ventasEsteMesRes.count || 0
+          const ventasEsteMes = (ventasEsteMesRes.data || []).filter((v: any) => {
+            return isOnOrAfterDate(v.fecha, firstOfMonth)
+          }).length
 
           setStats({
             totalClientes: clientesRes.count || 0,
