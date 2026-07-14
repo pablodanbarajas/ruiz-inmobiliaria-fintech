@@ -609,6 +609,7 @@ export const Pagos = () => {
       if (insertResult.error) throw insertResult.error
 
       await syncExpiredConvenios()
+      invalidateCache('dashboard:')  // keep Dashboard stats in sync
       await fetchPagosAndPendientes()
 
       setShowCreateModal(false)
