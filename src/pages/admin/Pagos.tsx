@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
-import { getCached, setCached, invalidateCache } from '@/lib/queryCache'
+import { getCached, setCached, invalidateCache, onFocusRefetch } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
 import { Input } from '@/components/ui/Input'
@@ -331,6 +331,8 @@ export const Pagos = () => {
 
   useEffect(() => {
     fetchPagosAndPendientes()
+    // Re-fetch if user returns after 10+ min away (datos financieros críticos)
+    return onFocusRefetch(() => fetchPagosAndPendientes(true), 'pagos:', 10 * 60 * 1000)
   }, [])
 
   useEffect(() => {

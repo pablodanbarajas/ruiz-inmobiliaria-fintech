@@ -5,7 +5,7 @@ import {
   Home, Plus, CreditCard, UserPlus, ArrowLeftRight, TrendingUp,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { getCached, setCached } from '@/lib/queryCache'
+import { getCached, setCached, invalidateCache, onFocusRefetch } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { formatCurrency, formatDate, getVentaStatusLabel, getVentaStatusColor } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
@@ -186,6 +186,7 @@ export const Dashboard = () => {
     }
 
     fetchStats()
+    return onFocusRefetch(() => { invalidateCache('dashboard:'); fetchStats() }, 'dashboard:stats', 10 * 60 * 1000)
   }, [])
 
   // ── Ventas en riesgo de cancelación ────────────────────────────
@@ -198,8 +199,8 @@ export const Dashboard = () => {
 
     const fetchRiesgo = async () => {
       const ck = 'dashboard:riesgo'
-      const cached = getCached<VentaEnRiesgo[]>(ck)
-      if (cached) { setVentasEnRiesgo(cached); setLoadingRiesgo(false); return }
+      const cached = getCached<{ resultados: VentaEnRiesgo[]; totalCartera: number }>(ck)
+      if (cached) { setVentasEnRiesgo(cached.resultados); setTotalCarteraVencida(cached.totalCartera); setLoadingRiesgo(false); return }
       try {
         setLoadingRiesgo(true)
         const today = new Date().toISOString().split('T')[0]
@@ -286,7 +287,13 @@ export const Dashboard = () => {
           .filter(([, v]) => v.vencidas >= 3)
           .map(([ventaid, v]) => ({ ventaid, ...v }))
 
-        if (!ventasConRiesgo.length) { setVentasEnRiesgo([]); setLoadingRiesgo(false); return }
+        if (!ventasConRiesgo.length) {
+          setVentasEnRiesgo([])
+          setTotalCarteraVencida(totalCartera)
+          setCached('dashboard:riesgo', { resultados: [], totalCartera })
+          setLoadingRiesgo(false)
+          return
+        }
 
         // Query 3: último aviso por cada venta en riesgo (una sola query)
         const ventaIds = ventasConRiesgo.map((v) => v.ventaid)
@@ -326,7 +333,7 @@ export const Dashboard = () => {
         })
 
         resultados.sort((a, b) => b.corridasVencidas - a.corridasVencidas)
-        setCached('dashboard:riesgo', resultados)
+        setCached('dashboard:riesgo', { resultados, totalCartera })
         setVentasEnRiesgo(resultados)
         setTotalCarteraVencida(totalCartera)
       } catch (err) {

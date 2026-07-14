@@ -1,10 +1,11 @@
 /**
- * Lightweight in-memory query cache with TTL.
- * Lives at module level → survives React navigation without re-fetching.
- * Default TTL: 5 minutes. "Recargar" buttons should call invalidate().
+ * In-memory query cache — professional approach:
+ * - No TTL: data lives until browser page refresh or explicit invalidation
+ * - Invalidate on mutations (create/update/delete)
+ * - "Recargar" buttons force a fresh fetch
+ *
+ * This mirrors how tools like Notion, Linear and GitHub handle client-side caching.
  */
-
-const DEFAULT_TTL_MS = 5 * 60 * 1000 // 5 min
 
 interface Entry<T> {
   data: T
@@ -13,10 +14,10 @@ interface Entry<T> {
 
 const store = new Map<string, Entry<any>>()
 
-export function getCached<T>(key: string, ttl = DEFAULT_TTL_MS): T | null {
+/** Returns cached data (no expiry — lives until invalidated or page reload) */
+export function getCached<T>(key: string, _ttl?: number): T | null {
   const entry = store.get(key)
   if (!entry) return null
-  if (Date.now() - entry.ts > ttl) { store.delete(key); return null }
   return entry.data as T
 }
 
@@ -32,15 +33,29 @@ export function invalidateCache(keyPrefix?: string): void {
 }
 
 /**
- * Wraps an async fetch function with cache.
- * Returns cached value immediately if fresh; otherwise fetches and caches.
+ * Re-fetch on window focus after >10 min of inactivity.
+ * Use only for financially critical sections (Tesorería, Dashboard).
+ * Call this hook in the component and pass the refetch function.
  */
+export function onFocusRefetch(refetch: () => void, keyPrefix: string, inactivityMs = 10 * 60 * 1000): () => void {
+  const handler = () => {
+    const entry = store.get(keyPrefix)
+    const stale = !entry || (Date.now() - entry.ts > inactivityMs)
+    if (stale) {
+      invalidateCache(keyPrefix)
+      refetch()
+    }
+  }
+  window.addEventListener('focus', handler)
+  return () => window.removeEventListener('focus', handler)
+}
+
 export async function cachedFetch<T>(
   key: string,
   fetcher: () => Promise<T>,
-  ttl = DEFAULT_TTL_MS
+  _ttl?: number
 ): Promise<T> {
-  const cached = getCached<T>(key, ttl)
+  const cached = getCached<T>(key)
   if (cached !== null) return cached
   const data = await fetcher()
   setCached(key, data)
