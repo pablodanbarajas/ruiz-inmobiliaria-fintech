@@ -3,7 +3,17 @@ import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 const QUENTLI_API = 'https://api.demo.quentli.com'
 
-// Crea o reutiliza un cliente en Quentli y le asigna una suscripción mensual.
+/** Convierte un número telefónico mexicano a formato E.164 (+52XXXXXXXXXX). */
+function toE164(phone: string | undefined | null): string | null {
+  if (!phone) return null
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length === 10) return `+52${digits}`
+  if (digits.length === 12 && digits.startsWith('52')) return `+${digits}`
+  if (digits.length === 13 && digits.startsWith('521')) return `+${digits}`
+  return null
+}
+
+// Crea o reutiliza un cliente en Quentli y crea un payment concept.
 // Llamado desde el admin al registrar una nueva venta.
 Deno.serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req)
