@@ -49,6 +49,11 @@ interface VentaReciente {
   loteLabel: string
 }
 
+const pickFirst = <T,>(value: T | T[] | null | undefined): T | undefined => {
+  if (!value) return undefined
+  return Array.isArray(value) ? value[0] : value
+}
+
 export const Dashboard = () => {
   const navigate = useNavigate()
   const { role } = useAuth()
@@ -93,7 +98,11 @@ export const Dashboard = () => {
     const fetchStats = async () => {
       const ck = 'dashboard:stats'
       const cached = getCached<Stats>(ck)
-      if (cached) { setStats(cached); setLoading(false); return }
+      if (cached) {
+        // Show cached values immediately, but still revalidate in background
+        setStats(cached)
+        setLoading(false)
+      }
       try {
         const now = new Date()
         const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
@@ -114,18 +123,23 @@ export const Dashboard = () => {
           const clienteIds = [...new Set((ventasDemo || []).map((v: any) => v.clienteid).filter(Boolean))]
           const ventasActivas = (ventasDemo || []).filter((v: any) => v.estatus === 'A').length
 
-          const { data: corridasDemo } = await supabase
-            .from('corridafinanciera')
-            .select('corridafinancieraid')
-            .in('ventaid', ventaIds.length ? ventaIds : [-1])
-          const corridaIds = (corridasDemo || []).map((c: any) => c.corridafinancieraid)
+          const { data: pagosDemoRaw } = await supabase
+            .from('pagos')
+            .select('montopagado, fechapago, corridafinanciera:corridafinanciera(venta:venta(lote:lote(desarrolloid)))')
+            .neq('estatus', 'C')
 
-          const { data: pagosDemo } = corridaIds.length
-            ? await supabase.from('pagos').select('montopagado').in('corridafinancieraid', corridaIds).neq('estatus', 'C')
-            : { data: [] }
-          const { data: pagosDelMesData } = corridaIds.length
-            ? await supabase.from('pagos').select('montopagado').in('corridafinancieraid', corridaIds).gte('fechapago', firstOfMonth).neq('estatus', 'C')
-            : { data: [] }
+          // Match Tesoreria behavior: if desarrolloid is unavailable, do not discard the row.
+          const pagosDemo = (pagosDemoRaw || []).filter((p: any) => {
+            if (DEMO_DESARROLLOIDS.length === 0) return true
+            const corrida = pickFirst(p.corridafinanciera as any)
+            const venta = pickFirst(corrida?.venta as any)
+            const lote = pickFirst(venta?.lote as any)
+            const desarrolloid = lote?.desarrolloid as number | null | undefined
+            if (!desarrolloid) return true
+            return DEMO_DESARROLLOIDS.includes(desarrolloid)
+          })
+
+          const pagosDelMesData = pagosDemo.filter((p: any) => (p.fechapago || '') >= firstOfMonth)
           const { data: ventasEsteMesData } = await supabase
             .from('venta').select('ventaid', { count: 'exact', head: true })
             .in('loteid', loteIds.length ? loteIds : [-1]).gte('fecha', firstOfMonth)
