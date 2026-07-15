@@ -16,9 +16,9 @@ function Pagination({
   const totalPages = Math.ceil(total / PAGE_SIZE);
   if (totalPages <= 1) return null;
   return (
-    <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 text-sm text-gray-600">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 md:px-6 py-3 border-t border-gray-200 text-sm text-gray-600">
       <span>{Math.min((page - 1) * PAGE_SIZE + 1, total)}–{Math.min(page * PAGE_SIZE, total)} de {total}</span>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
         <button
           onClick={() => onPage(page - 1)}
           disabled={page === 1}
@@ -224,6 +224,82 @@ function PaymentRow({
   );
 }
 
+function PaymentCard({
+  pago,
+  action,
+  dateLabel,
+}: {
+  pago: Payment;
+  action: React.ReactNode;
+  dateLabel: string;
+}) {
+  const config = statusConfig[pago.status];
+  const Icon = config.icon;
+  const bd = pago.breakdown;
+  const hasExtras = bd && (bd.cargoExtra > 0 || bd.recargo > 0);
+  const isParcial = bd && (bd.pagadoParcial ?? 0) > 0;
+
+  return (
+    <div className="rounded-lg border border-gray-200 p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">{dateLabel}</p>
+          <p className="text-sm font-semibold text-gray-800 mt-1">
+            {parseDate(pago.date).toLocaleDateString('es-MX', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}
+          </p>
+        </div>
+        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${config.color}`}>
+          <Icon className="w-3 h-3" />
+          {config.label}
+        </span>
+      </div>
+
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Motivo</p>
+        <p className="text-sm text-gray-800 mt-1 break-words">{pago.reason}</p>
+      </div>
+
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Monto</p>
+        <p className="text-lg font-bold text-gray-900 mt-1">${pago.amount.toLocaleString('es-MX')}</p>
+        {isParcial && bd && (
+          <div className="mt-2 space-y-0.5">
+            <div className="text-xs text-amber-600 font-medium">
+              Abonado: ${bd.pagadoParcial!.toLocaleString('es-MX')}
+            </div>
+            <div className="text-xs text-red-600 font-medium">
+              Pendiente: ${pago.amount.toLocaleString('es-MX')}
+            </div>
+          </div>
+        )}
+        {!isParcial && hasExtras && bd && (
+          <div className="mt-2 space-y-0.5">
+            <div className="text-xs text-gray-400">
+              Mensualidad: ${bd.base.toLocaleString('es-MX')}
+            </div>
+            {bd.cargoExtra > 0 && (
+              <div className="text-xs text-purple-600 font-medium">
+                + Cargos extra: ${bd.cargoExtra.toLocaleString('es-MX')}
+              </div>
+            )}
+            {bd.recargo > 0 && (
+              <div className="text-xs text-red-500 font-medium">
+                + Recargo por mora: ${bd.recargo.toLocaleString('es-MX')}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="pt-1">{action}</div>
+    </div>
+  );
+}
+
 const tableHeaders = (cols: string[]) => (
   <thead className="bg-gray-50">
     <tr>
@@ -286,12 +362,12 @@ function LoteSection({
       {/* Pagos pendientes del lote */}
       {lote.pendingPayments.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4">
-          <div className="px-6 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="px-4 md:px-6 py-3 border-b border-gray-200 bg-gray-50">
             <h3 className="text-sm font-semibold text-gray-700">
               Calendario de pagos — {lote.pendingPayments.length} pendiente{lote.pendingPayments.length !== 1 ? 's' : ''}
             </h3>
           </div>
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[700px]">
               {tableHeaders(['Fecha límite', 'Motivo', 'Monto', 'Estado', 'Acción'])}
               <tbody className="bg-white divide-y divide-gray-200">
@@ -313,6 +389,24 @@ function LoteSection({
               </tbody>
             </table>
           </div>
+          <div className="md:hidden p-4 space-y-3">
+            {pendingSlice.map((pago) => (
+              <PaymentCard
+                key={pago.id}
+                pago={pago}
+                dateLabel="Fecha límite"
+                action={
+                  <button
+                    onClick={() => onPagar(pago)}
+                    disabled={payingId === pago.id}
+                    className="w-full bg-teal-700 text-white px-4 py-2.5 rounded-lg hover:bg-teal-800 transition-colors text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {payingId === pago.id ? 'Generando...' : 'Pagar ahora'}
+                  </button>
+                }
+              />
+            ))}
+          </div>
           <Pagination total={lote.pendingPayments.length} page={pendingPage} onPage={setPendingPage} />
         </div>
       )}
@@ -320,12 +414,12 @@ function LoteSection({
       {/* Pagos realizados del lote */}
       {lote.completedPayments.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="px-4 md:px-6 py-3 border-b border-gray-200 bg-gray-50">
             <h3 className="text-sm font-semibold text-gray-700">
               Pagos realizados — {lote.completedPayments.length} pago{lote.completedPayments.length !== 1 ? 's' : ''}
             </h3>
           </div>
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[700px]">
               {tableHeaders(['Fecha de pago', 'Motivo', 'Monto', 'Estado', 'Recibo'])}
               <tbody className="bg-white divide-y divide-gray-200">
@@ -343,6 +437,21 @@ function LoteSection({
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="md:hidden p-4 space-y-3">
+            {completedSlice.map((pago) => (
+              <PaymentCard
+                key={pago.id}
+                pago={pago}
+                dateLabel="Fecha de pago"
+                action={
+                  <span className="flex items-center gap-1.5 text-gray-400 text-xs">
+                    <FileText className="w-3.5 h-3.5" />
+                    Recibo enviado por email
+                  </span>
+                }
+              />
+            ))}
           </div>
           <Pagination total={lote.completedPayments.length} page={completedPage} onPage={setCompletedPage} />
         </div>
