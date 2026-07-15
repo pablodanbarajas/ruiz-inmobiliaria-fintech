@@ -43,19 +43,19 @@ export function LoginCliente() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[80vh] py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-        <div className="text-center mb-8">
+    <div className="flex items-center justify-center min-h-[calc(100vh-160px)] md:min-h-[80vh] py-6 md:py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-8">
+        <div className="text-center mb-6 md:mb-8">
           <div className="mx-auto h-12 w-12 bg-teal-700 rounded-xl flex items-center justify-center text-white mb-4">
             <Building2 className="w-8 h-8" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">Iniciar sesión</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Iniciar sesión</h2>
           <p className="text-sm text-gray-600 mt-2">
             Ingresa a tu portal de cliente
           </p>
         </div>
 
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        <form className="space-y-5 md:space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
               {error}
@@ -102,7 +102,7 @@ export function LoginCliente() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <label className="flex items-center gap-2 text-sm text-gray-900 cursor-pointer">
               <input
                 type="checkbox"
@@ -111,7 +111,7 @@ export function LoginCliente() {
               Recordarme
             </label>
 
-            <a href="#" className="text-sm font-medium text-teal-600 hover:text-teal-500">
+            <a href="#" className="text-sm font-medium text-teal-600 hover:text-teal-500 sm:text-right">
               ¿Olvidaste tu contraseña?
             </a>
           </div>
