@@ -25,6 +25,18 @@ type ClientLotRow = {
   fecha_limite_enganche: string | null;
 };
 
+function toNumber(value: unknown, fallback = 0): number {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : fallback;
+  }
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  const cleaned = String(value).replace(/[^\d.-]/g, '');
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function mapLotStatus(portalStatus: string | null): ClientLot['status'] {
   const value = (portalStatus ?? '').toLowerCase();
   if (value === 'en_formalizacion') return 'en_formalizacion';
@@ -58,6 +70,7 @@ export const supabaseLotsService: ILotsService = {
 
     const rows = (data ?? []) as ClientLotRow[];
     const developmentIds = Array.from(new Set(rows.map((row) => row.development_id)));
+    const ventaIds = rows.map((row) => row.ventaid);
 
     const { data: developmentsData } = await supabase
       .from('desarrollo')
@@ -66,9 +79,20 @@ export const supabaseLotsService: ILotsService = {
 
     const minApartadoByDevelopment = new Map<number, number>(
       ((developmentsData as any[]) ?? []).map((d) => [
-        Number(d.desarrolloid),
-        Number(d.montominimoapartado ?? 2000),
+        toNumber(d.desarrolloid, 0),
+        toNumber(d.montominimoapartado, 2000),
       ])
+    );
+
+    const { data: ventasData } = await supabase
+      .from('venta')
+      .select('ventaid, fecha_reserva')
+      .in('ventaid', ventaIds);
+
+    const fechaReservaByVenta = new Map<number, string>(
+      ((ventasData as any[]) ?? [])
+        .filter((v) => v?.ventaid)
+        .map((v) => [toNumber(v.ventaid, 0), String(v.fecha_reserva ?? '')])
     );
 
     return rows.map((row) => ({
@@ -79,14 +103,14 @@ export const supabaseLotsService: ILotsService = {
       developmentName: row.development_name,
       location: 'Ubicación pendiente',
       surface: row.superficie ? `${row.superficie} m²` : 'N/D',
-      price: Number(row.preciolote ?? 0),
+      price: toNumber(row.preciolote, 0),
       imageUrl: '',
       status: mapLotStatus(row.portal_lot_status),
       nextPayment: (() => {
         // Lote en fase de enganche: mostrar monto restante y fecha limite
         if (row.portal_lot_status === 'apartado_confirmado' && row.fecha_limite_enganche) {
-          const engancheTotal = Number(row.enganche ?? 0);
-          const apartadoPagado = Number(row.monto_apartado_pagado ?? 0);
+          const engancheTotal = toNumber(row.enganche, 0);
+          const apartadoPagado = toNumber(row.monto_apartado_pagado, 0);
           return {
             amount: Math.max(0, engancheTotal - apartadoPagado),
             dueDate: row.fecha_limite_enganche,
@@ -100,16 +124,23 @@ export const supabaseLotsService: ILotsService = {
         // Lote en mensualidades
         if (row.next_due_date) {
           return {
-            amount: Number(row.next_payment_amount ?? row.mensualidad ?? 0),
+            amount: toNumber(row.next_payment_amount ?? row.mensualidad, 0),
             dueDate: row.next_due_date,
             paymentType: 'Mensualidad'
           };
         }
         // Lote apartado (reserva pendiente)
         if (row.portal_lot_status === 'apartado') {
+          const reservaRaw = fechaReservaByVenta.get(row.ventaid) ?? '';
+          const reservaDate = reservaRaw ? new Date(reservaRaw) : null;
+          const hasReservaValida = Boolean(reservaDate && !Number.isNaN(reservaDate.getTime()));
+          const dueDate = hasReservaValida
+            ? new Date(reservaDate!.getTime() + (24 * 60 * 60 * 1000)).toISOString()
+            : '';
+
           return {
-            amount: Number(minApartadoByDevelopment.get(row.development_id) ?? 2000),
-            dueDate: '',
+            amount: toNumber(minApartadoByDevelopment.get(row.development_id), 2000),
+            dueDate,
             paymentType: 'Apartado'
           };
         }

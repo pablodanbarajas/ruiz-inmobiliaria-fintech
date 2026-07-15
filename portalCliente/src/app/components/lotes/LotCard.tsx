@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { MapPin, Ruler, DollarSign, Clock, ChevronRight, ImageOff } from 'lucide-react';
 import type { ClientLot } from '../../types/lot.types';
@@ -54,10 +54,45 @@ export function LotCard({ lote }: LotCardProps) {
   const progressPct = (lote.progress.currentStage / (lote.progress.stages.length - 1)) * 100;
   const [imgError, setImgError] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [nowTs, setNowTs] = useState(Date.now());
   const navigate = useNavigate();
   const showPlaceholder = !lote.imageUrl || imgError;
-  const dueDateValue = lote.nextPayment?.dueDate ? new Date(`${lote.nextPayment.dueDate}T12:00:00`) : null;
-  const hasValidDueDate = Boolean(dueDateValue && !Number.isNaN(dueDateValue.getTime()));
+  const dueDateValue = useMemo(() => {
+    if (!lote.nextPayment?.dueDate) return null;
+    const raw = lote.nextPayment.dueDate;
+    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+      ? new Date(`${raw}T12:00:00`)
+      : new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }, [lote.nextPayment?.dueDate]);
+  const hasValidDueDate = Boolean(dueDateValue);
+  const showCountdown = lote.nextPayment?.paymentType === 'Apartado' && hasValidDueDate;
+
+  useEffect(() => {
+    if (!showCountdown) return;
+    const id = window.setInterval(() => setNowTs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [showCountdown]);
+
+  const countdownText = useMemo(() => {
+    if (!showCountdown || !dueDateValue) return null;
+    const remainingMs = dueDateValue.getTime() - nowTs;
+    if (remainingMs <= 0) return 'Tiempo de apartado expirado';
+
+    const totalSec = Math.floor(remainingMs / 1000);
+    const days = Math.floor(totalSec / 86400);
+    const hours = Math.floor((totalSec % 86400) / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
+
+    const hh = String(hours).padStart(2, '0');
+    const mm = String(mins).padStart(2, '0');
+    const ss = String(secs).padStart(2, '0');
+
+    return days > 0
+      ? `${days}d ${hh}:${mm}:${ss}`
+      : `${hh}:${mm}:${ss}`;
+  }, [showCountdown, dueDateValue, nowTs]);
 
   const handlePrimaryAction = async () => {
     if (lote.status === 'en_formalizacion') {
@@ -221,7 +256,9 @@ export function LotCard({ lote }: LotCardProps) {
                   <div className="flex items-center gap-1 text-orange-600 justify-end">
                     <Clock className="w-3.5 h-3.5" />
                     <span className="text-xs font-medium">
-                      {hasValidDueDate
+                      {showCountdown
+                        ? `Expira en: ${countdownText}`
+                        : hasValidDueDate
                         ? `Vence: ${dueDateValue!.toLocaleDateString('es-MX')}`
                         : 'Vence: pendiente de confirmar'
                       }
