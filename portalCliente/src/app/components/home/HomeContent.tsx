@@ -129,9 +129,9 @@ export function HomeContent({
   const displayName = userName ?? 'Cliente';
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-4">
+    <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
       {/* Header compacto + filtros en una sola fila */}
-      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
+      <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-4">
         <div className="shrink-0">
           <h1 className="text-xl font-bold text-gray-800 leading-tight">
             {isAuthenticated ? `Bienvenido, ${displayName}` : 'Ruiz Inmobiliaria'}
@@ -139,9 +139,9 @@ export function HomeContent({
           <p className="text-xs text-gray-500">Encuentra tu lote ideal</p>
         </div>
 
-        <form onSubmit={(e) => e.preventDefault()} className="flex flex-1 gap-2 items-center flex-wrap md:flex-nowrap">
+        <form onSubmit={(e) => e.preventDefault()} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_128px_128px_auto] gap-2 flex-1">
           {/* Ubicación */}
-          <div className="relative flex-1 min-w-[160px]" ref={locationRef}>
+          <div className="relative min-w-0 sm:col-span-2 lg:col-span-1" ref={locationRef}>
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
             <input
               type="text"
@@ -176,7 +176,7 @@ export function HomeContent({
           </div>
 
           {/* Precio mínimo */}
-          <div className="relative w-32">
+          <div className="relative w-full">
             <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="number"
@@ -188,7 +188,7 @@ export function HomeContent({
           </div>
 
           {/* Precio máximo */}
-          <div className="relative w-32">
+          <div className="relative w-full">
             <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="number"
@@ -203,7 +203,7 @@ export function HomeContent({
             <button
               type="button"
               onClick={handleReset}
-              className="border border-gray-300 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm flex items-center gap-1 whitespace-nowrap"
+              className="border border-gray-300 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm flex items-center justify-center gap-1 whitespace-nowrap w-full lg:w-auto"
             >
               <X className="w-3.5 h-3.5" />
               Limpiar
@@ -238,10 +238,10 @@ export function HomeContent({
       </div>
 
       {isAuthenticated && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-8">
         <Link
           to="/mis-lotes"
-          className="bg-gradient-to-br from-teal-700 to-teal-800 text-white rounded-lg p-6 hover:shadow-lg transition-shadow block"
+          className="bg-gradient-to-br from-teal-700 to-teal-800 text-white rounded-lg p-5 md:p-6 hover:shadow-lg transition-shadow block"
         >
           <h3 className="text-xl font-semibold mb-2">Ver mis lotes</h3>
           <p className="text-teal-100 text-sm">
@@ -251,7 +251,7 @@ export function HomeContent({
 
          <Link
           to="/mis-pagos"
-          className="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-lg p-6 hover:shadow-lg transition-shadow block"
+          className="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-lg p-5 md:p-6 hover:shadow-lg transition-shadow block"
         >
           <h3 className="text-xl font-semibold mb-2">Mis pagos</h3>
           <p className="text-amber-100 text-sm">

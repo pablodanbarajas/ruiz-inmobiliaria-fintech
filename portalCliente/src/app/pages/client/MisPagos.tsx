@@ -427,7 +427,7 @@ export function MisPagos() {
 
   if (isLoading || !summary) {
     return (
-      <div className="max-w-7xl mx-auto px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 rounded w-48" />
           <div className="h-4 bg-gray-200 rounded w-72" />
@@ -457,7 +457,7 @@ export function MisPagos() {
   const loteActivo = lotes[activeTab];
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-4">
+    <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
       <div className="mb-4">
         <h1 className="text-xl font-bold text-gray-800 leading-tight">Mis pagos</h1>
         <p className="text-xs text-gray-500">Consulta tu calendario, historial y comprobantes</p>
@@ -517,7 +517,7 @@ export function MisPagos() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8">
         {/* Próximos pagos — uno por lote */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-3">
@@ -551,13 +551,13 @@ export function MisPagos() {
       </div>
 
       {/* Pestañas por lote */}
-      <div className="border-b border-gray-200 mb-6">
-        <div className="flex gap-0">
+      <div className="border-b border-gray-200 mb-6 overflow-x-auto">
+        <div className="flex gap-0 min-w-max">
           {lotes.map((lote, idx) => (
             <button
               key={lote.ventaid}
               onClick={() => setActiveTab(idx)}
-              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-4 md:px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === idx
                   ? 'border-teal-700 text-teal-700'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -565,7 +565,7 @@ export function MisPagos() {
             >
               <Home className="w-4 h-4" />
               <span>{lote.lotKey}</span>
-              <span className="text-xs text-gray-400">{lote.developmentName}</span>
+              <span className="text-xs text-gray-400 hidden sm:inline">{lote.developmentName}</span>
             </button>
           ))}
         </div>

@@ -145,7 +145,7 @@ export function MisLotes() {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 rounded w-48" />
           <div className="h-4 bg-gray-200 rounded w-72" />
@@ -160,7 +160,7 @@ export function MisLotes() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-4">
+    <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
       <div className="mb-4">
         <h1 className="text-xl font-bold text-gray-800 leading-tight">Mis lotes</h1>
         <p className="text-xs text-gray-500">Consulta el estado de tus apartados y avance de compra</p>
@@ -256,7 +256,7 @@ export function MisLotes() {
         {filteredLots.length > 0 ? (
           filteredLots.map((lote) => <LotCard key={lote.id} lote={lote} />)
         ) : (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 md:p-12 text-center">
             <MapPin className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-800 mb-2">
               No hay lotes en esta categoría

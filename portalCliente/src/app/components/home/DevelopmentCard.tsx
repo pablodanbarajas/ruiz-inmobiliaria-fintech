@@ -14,7 +14,7 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
       <div className="flex flex-col md:flex-row">
         {/* Imagen — altura dinámica para cubrir todo el contenido */}
-        <div className="relative w-full md:w-72 flex-shrink-0 bg-gray-100 min-h-[200px] self-stretch">
+        <div className="relative w-full md:w-72 flex-shrink-0 bg-gray-100 min-h-[220px] md:min-h-[200px] self-stretch">
           {development.imageUrl ? (
             <img
               src={development.imageUrl}
@@ -30,11 +30,11 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
         </div>
 
         {/* Contenido */}
-        <div className="flex-1 p-5 flex flex-col justify-between gap-4">
+        <div className="flex-1 p-4 md:p-5 flex flex-col justify-between gap-4">
           {/* Header */}
           <div>
-            <div className="flex items-start justify-between gap-3 mb-1">
-              <h3 className="text-xl font-bold text-gray-800 leading-tight">{development.name}</h3>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3 mb-1">
+              <h3 className="text-lg md:text-xl font-bold text-gray-800 leading-tight">{development.name}</h3>
               <span className="bg-teal-50 text-teal-700 text-xs font-semibold px-3 py-1 rounded-full border border-teal-200 whitespace-nowrap flex-shrink-0">
                 {development.availableLots} disponibles
               </span>
@@ -47,7 +47,7 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
 
           {/* Datos promocionales */}
           {(development.minApartado || development.enganche) && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {development.minApartado && (
                 <div className="bg-teal-50 border border-teal-100 rounded-lg p-3">
                   <p className="text-xs text-teal-600 font-medium mb-0.5">Aparta desde</p>
@@ -69,7 +69,7 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
           )}
 
           {/* Acciones */}
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col lg:flex-row gap-2">
             {development.mapsUrl ? (
               <a
                 href={development.mapsUrl}
