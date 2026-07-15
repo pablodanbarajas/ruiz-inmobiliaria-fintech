@@ -51,6 +51,7 @@ function Pagination({
 import { useAuth } from '../../hooks/useAuth';
 import { useData } from '../../context/DataContext';
 import type { Payment, PaymentStatus, PaymentSummary, LoteSummary } from '../../types/payment.types';
+import type { ClientLot } from '../../types/lot.types';
 import { SummaryCard } from '../../components/shared/SummaryCard';
 import { supabase } from '../../services/supabase/client';
 
@@ -96,6 +97,28 @@ async function verifyPayment(corridafinancieraid: string, sessionId: string): Pr
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? 'Error al verificar pago');
   return data;
+}
+
+async function createApartadoPaymentLink(ventaid: string): Promise<{ url: string; sessionId: string }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sin sesión activa');
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+  const res = await fetch(`${supabaseUrl}/functions/v1/create-apartado-payment`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: anonKey,
+    },
+    body: JSON.stringify({ ventaid: Number(ventaid) }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? 'Error al generar link de pago de apartado');
+  return { url: data.url as string, sessionId: data.sessionId as string ?? '' };
 }
 
 function parseDate(str: string): Date {
@@ -307,8 +330,9 @@ function LoteSection({
 }
 
 export function MisPagos() {
-  const { paymentSummary: summary, paymentsLoading: isLoading, refreshPayments } = useData();
+  const { paymentSummary: summary, paymentsLoading: isLoading, refreshPayments, lots } = useData();
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [payingApartadoVentaId, setPayingApartadoVentaId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [verifyState, setVerifyState] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
   const [searchParams] = useSearchParams();
@@ -356,6 +380,22 @@ export function MisPagos() {
     }
   };
 
+  const handlePagarApartado = async (lote: ClientLot) => {
+    try {
+      setPayingApartadoVentaId(lote.ventaid);
+      const { url, sessionId } = await createApartadoPaymentLink(lote.ventaid);
+      if (!url.startsWith('https://')) throw new Error('URL de pago inválida');
+      if (sessionId) {
+        sessionStorage.setItem(`apartado_session_${lote.ventaid}`, sessionId);
+      }
+      window.location.href = url;
+    } catch (err: any) {
+      alert(`Error al generar link de pago de apartado: ${err.message}`);
+    } finally {
+      setPayingApartadoVentaId(null);
+    }
+  };
+
   if (isLoading || !summary) {
     return (
       <div className="max-w-7xl mx-auto px-8 py-8">
@@ -373,6 +413,7 @@ export function MisPagos() {
   }
 
   const { pendingPayments, lotes, totalAdeudado } = summary;
+  const apartadosPendientes = lots.filter((lote) => lote.status === 'apartado');
 
   // Próximo pago por cada lote
   const proximosPorLote = lotes.map((lote) => {
@@ -412,6 +453,35 @@ export function MisPagos() {
       )}
 
       {/* Cards globales */}
+      {apartadosPendientes.length > 0 && (
+        <div className="bg-white rounded-xl border border-orange-200 shadow-sm p-5 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Clock className="w-5 h-5 text-orange-500" />
+            <span className="text-sm font-semibold text-gray-700">Apartados pendientes por pagar</span>
+          </div>
+          <div className="space-y-3">
+            {apartadosPendientes.map((lote) => (
+              <div key={lote.ventaid} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-orange-100 rounded-lg p-3 bg-orange-50/40">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Lote {lote.key}</p>
+                  <p className="text-xs text-gray-500">{lote.developmentName}</p>
+                </div>
+                <div className="text-sm font-semibold text-gray-900">
+                  {lote.nextPayment ? `$${lote.nextPayment.amount.toLocaleString('es-MX')}` : 'Monto pendiente'}
+                </div>
+                <button
+                  onClick={() => handlePagarApartado(lote)}
+                  disabled={payingApartadoVentaId === lote.ventaid}
+                  className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {payingApartadoVentaId === lote.ventaid ? 'Generando...' : 'Pagar apartado'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Próximos pagos — uno por lote */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">

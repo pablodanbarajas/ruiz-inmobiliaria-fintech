@@ -56,6 +56,8 @@ export function LotCard({ lote }: LotCardProps) {
   const [paying, setPaying] = useState(false);
   const navigate = useNavigate();
   const showPlaceholder = !lote.imageUrl || imgError;
+  const dueDateValue = lote.nextPayment?.dueDate ? new Date(`${lote.nextPayment.dueDate}T12:00:00`) : null;
+  const hasValidDueDate = Boolean(dueDateValue && !Number.isNaN(dueDateValue.getTime()));
 
   const handlePrimaryAction = async () => {
     if (lote.status === 'en_formalizacion') {
@@ -219,7 +221,10 @@ export function LotCard({ lote }: LotCardProps) {
                   <div className="flex items-center gap-1 text-orange-600 justify-end">
                     <Clock className="w-3.5 h-3.5" />
                     <span className="text-xs font-medium">
-                      Vence: {new Date(lote.nextPayment.dueDate + 'T12:00:00').toLocaleDateString('es-MX')}
+                      {hasValidDueDate
+                        ? `Vence: ${dueDateValue!.toLocaleDateString('es-MX')}`
+                        : 'Vence: pendiente de confirmar'
+                      }
                     </span>
                   </div>
                   <p className="text-xs text-gray-400">{lote.nextPayment.paymentType}</p>

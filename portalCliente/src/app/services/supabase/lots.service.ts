@@ -56,7 +56,22 @@ export const supabaseLotsService: ILotsService = {
       throw new Error(`Error al obtener lotes del cliente: ${error.message}`);
     }
 
-    return ((data ?? []) as ClientLotRow[]).map((row) => ({
+    const rows = (data ?? []) as ClientLotRow[];
+    const developmentIds = Array.from(new Set(rows.map((row) => row.development_id)));
+
+    const { data: developmentsData } = await supabase
+      .from('desarrollo')
+      .select('desarrolloid, montominimoapartado')
+      .in('desarrolloid', developmentIds);
+
+    const minApartadoByDevelopment = new Map<number, number>(
+      ((developmentsData as any[]) ?? []).map((d) => [
+        Number(d.desarrolloid),
+        Number(d.montominimoapartado ?? 2000),
+      ])
+    );
+
+    return rows.map((row) => ({
       id: String(row.lot_id),
       ventaid: String(row.ventaid),
       developmentId: String(row.development_id),
@@ -65,7 +80,7 @@ export const supabaseLotsService: ILotsService = {
       location: 'Ubicación pendiente',
       surface: row.superficie ? `${row.superficie} m²` : 'N/D',
       price: Number(row.preciolote ?? 0),
-      image: '',
+      imageUrl: '',
       status: mapLotStatus(row.portal_lot_status),
       nextPayment: (() => {
         // Lote en fase de enganche: mostrar monto restante y fecha limite
@@ -75,7 +90,7 @@ export const supabaseLotsService: ILotsService = {
           return {
             amount: Math.max(0, engancheTotal - apartadoPagado),
             dueDate: row.fecha_limite_enganche,
-            type: 'Enganche'
+            paymentType: 'Enganche'
           };
         }
         // Lote en formalizacion (enganche pagado, admin configura mensualidades)
@@ -84,11 +99,19 @@ export const supabaseLotsService: ILotsService = {
         }
         // Lote en mensualidades
         if (row.next_due_date) {
-          return { amount: Number(row.next_payment_amount ?? row.mensualidad ?? 0), dueDate: row.next_due_date, type: 'Mensualidad' };
+          return {
+            amount: Number(row.next_payment_amount ?? row.mensualidad ?? 0),
+            dueDate: row.next_due_date,
+            paymentType: 'Mensualidad'
+          };
         }
         // Lote apartado (reserva pendiente)
         if (row.portal_lot_status === 'apartado') {
-          return { amount: Number(row.enganche ?? 0), dueDate: '', type: 'Apartado' };
+          return {
+            amount: Number(minApartadoByDevelopment.get(row.development_id) ?? 2000),
+            dueDate: '',
+            paymentType: 'Apartado'
+          };
         }
         return undefined;
       })(),
