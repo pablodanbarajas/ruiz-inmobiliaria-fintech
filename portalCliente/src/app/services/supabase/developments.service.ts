@@ -14,6 +14,10 @@ type SupabaseDevelopmentRow = {
   enganche: number | null;
 };
 
+const FALLBACK_DEVELOPMENT_IMAGES: Record<number, string> = {
+  11: '/images/Pueblos-de-la-barranca.jpeg',
+};
+
 export const supabaseDevelopmentsService: IDevelopmentsService = {
   async getPublicDevelopments(): Promise<PublicDevelopment[]> {
     const ALLOWED_IDS = [11, 20]; // Pueblos de la Barranca, Desarrollo de Prueba
@@ -35,7 +39,7 @@ export const supabaseDevelopmentsService: IDevelopmentsService = {
       name: row.name,
       location: row.location || 'Ubicación pendiente',
       availableLots: row.available_lots ?? 0,
-      imageUrl: row.image_url || '',
+      imageUrl: row.image_url || FALLBACK_DEVELOPMENT_IMAGES[row.id] || '',
       mapsUrl: (row.google_maps_url && row.google_maps_url !== '#') ? row.google_maps_url : '',
       minApartado: row.min_apartado ?? undefined,
       enganche: row.enganche ?? undefined,
