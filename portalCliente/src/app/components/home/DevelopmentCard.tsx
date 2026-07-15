@@ -27,12 +27,6 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
               <span className="text-xs">Sin imagen</span>
             </div>
           )}
-          {development.hasInteractiveMap && (
-            <span className="absolute top-3 left-3 bg-teal-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
-              <Star className="w-3 h-3" />
-              Mapa interactivo
-            </span>
-          )}
         </div>
 
         {/* Contenido */}
@@ -99,6 +93,12 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
               <Map className="w-4 h-4" />
               Ver lotes disponibles
             </Link>
+            {development.hasInteractiveMap && (
+              <span className="flex items-center justify-center gap-1 px-3 py-2 bg-teal-50 text-teal-700 border border-teal-200 rounded-lg text-sm font-semibold">
+                <Star className="w-3.5 h-3.5" />
+                Mapa interactivo
+              </span>
+            )}
           </div>
         </div>
       </div>
