@@ -380,7 +380,7 @@
         manzana: lote.manzana || '',
         precio: lote.preciolote ? fmt(lote.preciolote) : ''
       });
-      window.location.href = '/portal/mapa/apartado.html?' + p.toString();
+      window.top.location.href = '/portal/mapa/apartado.html?' + p.toString();
     };
 
     document.getElementById('modal-overlay').classList.add('open');
