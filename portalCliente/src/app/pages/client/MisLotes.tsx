@@ -11,6 +11,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 type FilterStatus = 'todos' | LotStatus;
+type VerifyFlow = 'apartado' | 'enganche' | null;
 
 function parseDate(str: string): Date {
   return /^\d{4}-\d{2}-\d{2}$/.test(str) ? new Date(str + 'T12:00:00') : new Date(str);
@@ -20,6 +21,7 @@ export function MisLotes() {
   const { lots, lotsLoading: isLoading, refreshLots } = useData();
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('todos');
   const [verifyState, setVerifyState] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
+  const [verifyFlow, setVerifyFlow] = useState<VerifyFlow>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -34,6 +36,7 @@ export function MisLotes() {
 
     if (!sessionId) return;
 
+    setVerifyFlow('apartado');
     setVerifyState('verifying');
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -72,6 +75,7 @@ export function MisLotes() {
 
     if (!sessionId) return;
 
+    setVerifyFlow('enganche');
     setVerifyState('verifying');
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -166,19 +170,28 @@ export function MisLotes() {
       {verifyState === 'verifying' && (
         <div className="mb-4 flex items-center gap-3 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg text-sm">
           <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          Verificando tu pago de enganche con Quentli...
+          {verifyFlow === 'apartado'
+            ? 'Verificando tu pago de apartado con Quentli...'
+            : 'Verificando tu pago de enganche con Quentli...'
+          }
         </div>
       )}
       {verifyState === 'success' && (
         <div className="mb-4 flex items-center gap-3 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg text-sm">
           <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-          ¡Enganche registrado! Tu lote está en proceso de formalización. Un asesor se pondrá en contacto contigo.
+          {verifyFlow === 'apartado'
+            ? '¡Apartado confirmado! Ya puedes continuar con el pago de enganche dentro del plazo establecido.'
+            : '¡Enganche registrado! Tu lote está en proceso de formalización. Un asesor se pondrá en contacto contigo.'
+          }
         </div>
       )}
       {verifyState === 'error' && (
         <div className="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
           <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-          No se pudo verificar el pago. Si realizaste el pago, contacta a tu asesor.
+          {verifyFlow === 'apartado'
+            ? 'No se pudo verificar el pago de apartado. Si realizaste el pago, contacta a tu asesor.'
+            : 'No se pudo verificar el pago de enganche. Si realizaste el pago, contacta a tu asesor.'
+          }
         </div>
       )}
 
