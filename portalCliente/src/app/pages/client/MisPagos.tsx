@@ -121,6 +121,28 @@ async function createApartadoPaymentLink(ventaid: string): Promise<{ url: string
   return { url: data.url as string, sessionId: data.sessionId as string ?? '' };
 }
 
+async function createEnganchePaymentLink(ventaid: string): Promise<{ url: string; sessionId: string }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sin sesión activa');
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+  const res = await fetch(`${supabaseUrl}/functions/v1/create-enganche-payment`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: anonKey,
+    },
+    body: JSON.stringify({ ventaid: Number(ventaid) }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? 'Error al generar link de pago de enganche');
+  return { url: data.url as string, sessionId: data.sessionId as string ?? '' };
+}
+
 function parseDate(str: string): Date {
   return /^\d{4}-\d{2}-\d{2}$/.test(str) ? new Date(str + 'T12:00:00') : new Date(str);
 }
@@ -332,7 +354,7 @@ function LoteSection({
 export function MisPagos() {
   const { paymentSummary: summary, paymentsLoading: isLoading, refreshPayments, lots } = useData();
   const [payingId, setPayingId] = useState<string | null>(null);
-  const [payingApartadoVentaId, setPayingApartadoVentaId] = useState<string | null>(null);
+  const [payingInitialVentaId, setPayingInitialVentaId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [verifyState, setVerifyState] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
   const [searchParams] = useSearchParams();
@@ -380,19 +402,26 @@ export function MisPagos() {
     }
   };
 
-  const handlePagarApartado = async (lote: ClientLot) => {
+  const handlePagarInicial = async (lote: ClientLot) => {
     try {
-      setPayingApartadoVentaId(lote.ventaid);
-      const { url, sessionId } = await createApartadoPaymentLink(lote.ventaid);
+      setPayingInitialVentaId(lote.ventaid);
+      const isEnganche = lote.status === 'apartado_confirmado';
+      const { url, sessionId } = isEnganche
+        ? await createEnganchePaymentLink(lote.ventaid)
+        : await createApartadoPaymentLink(lote.ventaid);
       if (!url.startsWith('https://')) throw new Error('URL de pago inválida');
       if (sessionId) {
-        sessionStorage.setItem(`apartado_session_${lote.ventaid}`, sessionId);
+        if (isEnganche) {
+          sessionStorage.setItem(`enganche_session_${lote.ventaid}`, sessionId);
+        } else {
+          sessionStorage.setItem(`apartado_session_${lote.ventaid}`, sessionId);
+        }
       }
       window.location.href = url;
     } catch (err: any) {
-      alert(`Error al generar link de pago de apartado: ${err.message}`);
+      alert(`Error al generar link de pago: ${err.message}`);
     } finally {
-      setPayingApartadoVentaId(null);
+      setPayingInitialVentaId(null);
     }
   };
 
@@ -413,7 +442,9 @@ export function MisPagos() {
   }
 
   const { pendingPayments, lotes, totalAdeudado } = summary;
-  const apartadosPendientes = lots.filter((lote) => lote.status === 'apartado');
+  const pagosInicialesPendientes = lots.filter(
+    (lote) => lote.status === 'apartado' || lote.status === 'apartado_confirmado'
+  );
 
   // Próximo pago por cada lote
   const proximosPorLote = lotes.map((lote) => {
@@ -453,14 +484,14 @@ export function MisPagos() {
       )}
 
       {/* Cards globales */}
-      {apartadosPendientes.length > 0 && (
+      {pagosInicialesPendientes.length > 0 && (
         <div className="bg-white rounded-xl border border-orange-200 shadow-sm p-5 mb-6">
           <div className="flex items-center gap-2 mb-3">
             <Clock className="w-5 h-5 text-orange-500" />
-            <span className="text-sm font-semibold text-gray-700">Apartados pendientes por pagar</span>
+            <span className="text-sm font-semibold text-gray-700">Pagos iniciales pendientes</span>
           </div>
           <div className="space-y-3">
-            {apartadosPendientes.map((lote) => (
+            {pagosInicialesPendientes.map((lote) => (
               <div key={lote.ventaid} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-orange-100 rounded-lg p-3 bg-orange-50/40">
                 <div>
                   <p className="text-sm font-semibold text-gray-800">Lote {lote.key}</p>
@@ -470,11 +501,15 @@ export function MisPagos() {
                   {lote.nextPayment ? `$${lote.nextPayment.amount.toLocaleString('es-MX')}` : 'Monto pendiente'}
                 </div>
                 <button
-                  onClick={() => handlePagarApartado(lote)}
-                  disabled={payingApartadoVentaId === lote.ventaid}
+                  onClick={() => handlePagarInicial(lote)}
+                  disabled={payingInitialVentaId === lote.ventaid}
                   className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {payingApartadoVentaId === lote.ventaid ? 'Generando...' : 'Pagar apartado'}
+                  {payingInitialVentaId === lote.ventaid
+                    ? 'Generando...'
+                    : lote.status === 'apartado_confirmado'
+                    ? 'Pagar enganche'
+                    : 'Pagar apartado'}
                 </button>
               </div>
             ))}
