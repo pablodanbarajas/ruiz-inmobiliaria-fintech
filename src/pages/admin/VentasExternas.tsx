@@ -38,6 +38,7 @@ export const VentasExternas = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [cancelingId, setCancelingId] = useState<number | null>(null)
+  const [confirmCancel, setConfirmCancel] = useState<VentaExternaRow | null>(null)
 
   // ── Filters (admin only) ─────────────────────────────────
   const [filterVendedor, setFilterVendedor] = useState('')
@@ -110,10 +111,7 @@ export const VentasExternas = () => {
 
   // ── Cancel apartado ──────────────────────────────────────
   const handleCancelApartado = async (row: VentaExternaRow) => {
-    const confirmed = window.confirm(
-      `¿Cancelar el apartado de ${row.cliente?.nombre ?? 'este cliente'}?\nEl lote quedará disponible nuevamente.`
-    )
-    if (!confirmed) return
+    setConfirmCancel(null)
     setCancelingId(row.ventaid)
     try {
       const { error: ventaErr } = await supabase
@@ -367,7 +365,7 @@ export const VentasExternas = () => {
                         </button>
                         {row.estatus === 'P' && (
                           <button
-                            onClick={() => handleCancelApartado(row)}
+                            onClick={() => setConfirmCancel(row)}
                             disabled={cancelingId === row.ventaid}
                             className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-red-50 hover:bg-red-100 text-red-600 transition-colors disabled:opacity-50"
                           >
@@ -405,6 +403,36 @@ export const VentasExternas = () => {
           </div>
         )}
         <ApartadoExternoForm onSubmit={handleCreateApartado} isLoading={isSubmitting} />
+      </Modal>
+
+      {/* Confirm cancel modal */}
+      <Modal
+        isOpen={!!confirmCancel}
+        onClose={() => setConfirmCancel(null)}
+        title="Cancelar apartado"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-700">
+            ¿Estás seguro de que deseas cancelar el apartado de{' '}
+            <span className="font-semibold">{confirmCancel?.cliente?.nombre ?? 'este cliente'}</span>?
+          </p>
+          <p className="text-sm text-gray-500">
+            El lote quedará disponible nuevamente para otros clientes.
+          </p>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setConfirmCancel(null)}>
+              Volver
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => confirmCancel && handleCancelApartado(confirmCancel)}
+              disabled={cancelingId !== null}
+            >
+              {cancelingId !== null ? 'Cancelando…' : 'Sí, cancelar apartado'}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </AdminLayout>
   )
