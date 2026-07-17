@@ -94,7 +94,14 @@ export const Dashboard = () => {
   const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
   const capabilities = currentRole ? ROLE_CAPABILITIES[currentRole] : null
 
-  const canViewClientes = !!capabilities?.editar_clientes
+  // vendedor_externo has no useful content on the dashboard — redirect immediately
+  useEffect(() => {
+    if (role === 'vendedor_externo') {
+      navigate('/admin/ventas-externas', { replace: true })
+    }
+  }, [role, navigate])
+
+  const canViewClientes = !!capabilities?.editar_clientes && role !== 'vendedor_externo'
   const canViewDesarrollos = !!capabilities?.ver_desarrollos
   const canViewLotes = !!capabilities?.ver_lotes
   const canViewVentas = !!capabilities?.editar_ventas
@@ -102,7 +109,7 @@ export const Dashboard = () => {
   const canViewRiesgo = canViewVentas
   const canUseMapa = currentRole === 'admin'
   const canUseTraspasos = currentRole === 'admin'
-  const canCreateCliente = !!capabilities?.editar_clientes
+  const canCreateCliente = !!capabilities?.editar_clientes && role !== 'vendedor_externo'
   const canCreateVenta = !!capabilities?.editar_ventas
   const canCreatePago = !!capabilities?.registrar_pagos
 
