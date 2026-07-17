@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var manzana      = params.get('manzana')      || '';
 
   // Texto descriptivo del lote en el pill
-  var loteDisplay = (loteNombre ? 'Lote ' + loteNombre : '') + (manzana ? ' ┬À Mza ' + manzana : '');
+  var loteDisplay = (loteNombre ? 'Lote ' + loteNombre : '') + (manzana ? ' \u00B7 Mza ' + manzana : '');
   var nombreEl = document.getElementById('lote-nombre');
   if (nombreEl) nombreEl.textContent = loteDisplay || 'Lote seleccionado';
 
