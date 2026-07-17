@@ -331,6 +331,7 @@ export const Lotes = () => {
               key: 'clavedesarrollo',
               label: 'Clave',
               width: 'w-20',
+              render: (row) => (row as any).clavedesarrollo || (row as any).desarrollo?.clavedesarrollo || '—',
             },
             {
               key: 'manzana',
