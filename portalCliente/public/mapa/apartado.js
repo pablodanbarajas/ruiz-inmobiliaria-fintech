@@ -71,6 +71,17 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    var vendedorSelect    = document.getElementById('vendedor-select');
+    var vendedorInputEl   = document.getElementById('vendedor-input');
+    var vendedorFinal     = null;
+    if (vendedorSelect) {
+      if (vendedorSelect.value === '__otro__') {
+        vendedorFinal = vendedorInputEl ? vendedorInputEl.value.trim() || null : null;
+      } else {
+        vendedorFinal = vendedorSelect.value || null;
+      }
+    }
+
     fetch(SUPABASE_URL + '/functions/v1/create-reservation', {
       method: 'POST',
       headers: {
@@ -81,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function () {
       body: JSON.stringify({
         loteid: Number(loteid),
         desarrolloid: Number(desarrolloid),
-        vendedor: getVendedorFinal(),
+        vendedor: vendedorFinal,
       }),
     })
     .then(function (res) { return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
