@@ -452,13 +452,15 @@ export const VentasExternas = () => {
                           <Eye size={13} />
                           Ver
                         </button>
-                        <button
-                          onClick={() => openEditCliente(row)}
-                          className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
-                        >
-                          <Pencil size={13} />
-                          Editar cliente
-                        </button>
+                        {row.estatus !== 'C' && (
+                          <button
+                            onClick={() => openEditCliente(row)}
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
+                          >
+                            <Pencil size={13} />
+                            Editar cliente
+                          </button>
+                        )}
                         {row.estatus === 'P' && (
                           <button
                             onClick={() => setConfirmCancel(row)}
