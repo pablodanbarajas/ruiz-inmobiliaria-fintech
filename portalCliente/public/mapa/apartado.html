@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -54,7 +54,7 @@
       padding: 24px 16px 48px;
     }
 
-    /* ── Header ── */
+    /* ÔöÇÔöÇ Header ÔöÇÔöÇ */
     .page-header {
       display: flex;
       align-items: center;
@@ -74,7 +74,7 @@
     }
     .page-header a:hover { color: var(--indigo); }
 
-    /* ── Card ── */
+    /* ÔöÇÔöÇ Card ÔöÇÔöÇ */
     .card {
       background: var(--surface);
       border-radius: var(--radius-xl);
@@ -85,7 +85,7 @@
       border: 1px solid rgba(255,255,255,0.8);
     }
 
-    /* ── Steps indicator ── */
+    /* ÔöÇÔöÇ Steps indicator ÔöÇÔöÇ */
     .steps {
       display: flex;
       padding: 20px 28px 0;
@@ -136,7 +136,7 @@
     }
     .step.active .step-label, .step.done .step-label { color: var(--indigo); }
 
-    /* ── Screen ── */
+    /* ÔöÇÔöÇ Screen ÔöÇÔöÇ */
     .screen { display: none; padding: 24px 28px 28px; }
     .screen.visible { display: block; animation: fadeUp 0.3s ease; }
     @keyframes fadeUp {
@@ -144,7 +144,7 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* ── Screen 1: Solicitud ── */
+    /* ÔöÇÔöÇ Screen 1: Solicitud ÔöÇÔöÇ */
     .screen-title {
       font-family: 'DM Serif Display', serif;
       font-size: 1.55rem;
@@ -249,7 +249,7 @@
       line-height: 1.5;
     }
 
-    /* ── Buttons ── */
+    /* ÔöÇÔöÇ Buttons ÔöÇÔöÇ */
     .btn-primary {
       width: 100%;
       background: var(--indigo);
@@ -297,7 +297,7 @@
     }
     .btn-ghost:hover { color: var(--ink); background: var(--surface-2); }
 
-    /* ── Screen 2: Pago ── */
+    /* ÔöÇÔöÇ Screen 2: Pago ÔöÇÔöÇ */
     .pay-tabs {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
@@ -501,70 +501,43 @@
     .toast.show { transform: translateX(-50%) translateY(0); }
 
     /* ── Vendedor field ── */
-    .vendedor-section {
-      margin-bottom: 20px;
-    }
+    .vendedor-section { margin-bottom: 20px; }
     .vendedor-label {
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: var(--ink-3);
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      font-size: 12px; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; color: var(--ink-3);
+      margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
     }
     .vendedor-label .badge-opt {
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.03em;
-      text-transform: none;
-      background: var(--surface-3);
-      color: var(--ink-4);
-      padding: 1px 7px;
-      border-radius: 999px;
+      font-size: 10px; font-weight: 600; text-transform: none;
+      letter-spacing: 0.03em; background: var(--surface-3); color: var(--ink-4);
+      padding: 1px 7px; border-radius: 999px;
     }
     .vendedor-select {
-      width: 100%;
-      background: var(--surface-2);
-      border: 1.5px solid var(--surface-3);
-      border-radius: var(--radius-md);
-      padding: 11px 14px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px;
-      color: var(--ink);
-      outline: none;
-      transition: border-color 0.15s;
-      appearance: none;
+      width: 100%; background: var(--surface-2);
+      border: 1.5px solid var(--surface-3); border-radius: var(--radius-md);
+      padding: 11px 14px; font-family: 'DM Sans', sans-serif;
+      font-size: 14px; color: var(--ink); outline: none;
+      transition: border-color 0.15s; appearance: none; cursor: pointer;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-      padding-right: 36px;
-      cursor: pointer;
-      margin-bottom: 8px;
+      background-repeat: no-repeat; background-position: right 12px center;
+      padding-right: 36px; margin-bottom: 8px;
     }
     .vendedor-select:focus { border-color: var(--indigo); background-color: var(--surface); }
     .vendedor-input-wrap { display: none; }
     .vendedor-input-wrap.visible { display: block; }
     .vendedor-input {
-      width: 100%;
-      background: var(--surface-2);
-      border: 1.5px solid var(--indigo);
-      border-radius: var(--radius-md);
-      padding: 11px 14px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px;
-      color: var(--ink);
-      outline: none;
+      width: 100%; background: var(--surface-2);
+      border: 1.5px solid var(--indigo); border-radius: var(--radius-md);
+      padding: 11px 14px; font-family: 'DM Sans', sans-serif;
+      font-size: 14px; color: var(--ink); outline: none;
       transition: border-color 0.15s;
     }
     .vendedor-input:focus { border-color: var(--indigo-d); background-color: var(--surface); }
     .vendedor-input::placeholder { color: var(--ink-4); }
 
-    /* ── Screen 3: placeholder (redirige a pagado.html) ── */
+    /* ÔöÇÔöÇ Screen 3: placeholder (redirige a pagado.html) ÔöÇÔöÇ */
 
-    /* ── Contador de tiempo ── */
+    /* ÔöÇÔöÇ Contador de tiempo ÔöÇÔöÇ */
     .timer-bar {
       background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
       border: 1.5px solid #fecdd3;
@@ -621,7 +594,7 @@
       <iconify-icon icon="solar:arrow-left-linear" width="16" height="16"></iconify-icon>
       Volver al mapa
     </a>
-    <span style="color:var(--ink-5)">·</span>
+    <span style="color:var(--ink-5)">┬À</span>
     <span>Proceso de apartado</span>
   </div>
 
@@ -639,9 +612,9 @@
       </div>
     </div>
 
-    <!-- ═══════════════════════════════════════ -->
+    <!-- ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ -->
     <!-- PANTALLA 1: Solicitud de apartado       -->
-    <!-- ═══════════════════════════════════════ -->
+    <!-- ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ -->
     <div class="screen visible" id="screen-solicitud">
 
       <div class="screen-title">
@@ -653,7 +626,7 @@
       <!-- Lote info -->
       <div class="lote-pill">
         <iconify-icon icon="solar:map-point-bold" width="16" height="16" style="color:var(--indigo)"></iconify-icon>
-        <span class="lote-pill-name" id="lote-nombre">Lote M1-32 · Pueblo de Barrancas</span>
+        <span class="lote-pill-name" id="lote-nombre">Cargando...</span>
         <span class="lote-pill-badge" id="lote-estado">Disponible</span>
       </div>
 
@@ -664,12 +637,12 @@
             <iconify-icon icon="solar:bill-list-bold-duotone" width="18" height="18" style="color:var(--amber)"></iconify-icon>
             Monto de apartado
           </div>
-          <div class="info-row-right">$2,000 MXN</div>
+          <div class="info-row-right" id="monto-apartado-display">$2,000 MXN</div>
         </div>
         <div class="info-row">
           <div class="info-row-left">
             <iconify-icon icon="solar:clock-circle-bold-duotone" width="18" height="18" style="color:var(--red)"></iconify-icon>
-            Tiempo límite
+            Tiempo l├¡mite
           </div>
           <div class="info-row-right danger">24 horas</div>
         </div>
@@ -685,7 +658,7 @@
             <iconify-icon icon="solar:danger-triangle-bold-duotone" width="18" height="18" style="color:var(--amber)"></iconify-icon>
             Si no pagas
           </div>
-          <div class="info-row-right accent">Se libera automáticamente</div>
+          <div class="info-row-right accent">Se libera autom├íticamente</div>
         </div>
       </div>
 
@@ -693,7 +666,7 @@
       <div class="vendedor-section">
         <div class="vendedor-label">
           <iconify-icon icon="solar:user-id-bold-duotone" width="16" height="16" style="color:var(--indigo)"></iconify-icon>
-          ¿Fuiste asesorado por un vendedor?
+          &iquest;Fuiste asesorado por un vendedor?
           <span class="badge-opt">Opcional</span>
         </div>
         <select class="vendedor-select" id="vendedor-select">
@@ -711,16 +684,11 @@
           <option value="Maricela Solorio">Maricela Solorio</option>
           <option value="Juan Manuel">Juan Manuel</option>
           <option value="Alejandro Zavala">Alejandro Zavala</option>
-          <option value="__otro__">Otro vendedor…</option>
+          <option value="__otro__">Otro vendedor&hellip;</option>
         </select>
         <div class="vendedor-input-wrap" id="vendedor-input-wrap">
-          <input
-            class="vendedor-input"
-            id="vendedor-input"
-            type="text"
-            placeholder="Escribe el nombre del vendedor"
-            autocomplete="off"
-          />
+          <input class="vendedor-input" id="vendedor-input" type="text"
+            placeholder="Escribe el nombre del vendedor" autocomplete="off" />
         </div>
       </div>
 
@@ -729,7 +697,7 @@
         <div class="check-box" id="checkBox">
           <iconify-icon icon="solar:check-read-linear" width="12" height="12" style="color:white;display:none" id="checkIcon"></iconify-icon>
         </div>
-        <span class="check-label">Entiendo las condiciones del apartado y el tiempo límite de <strong>24 horas</strong></span>
+        <span class="check-label">Entiendo las condiciones del apartado y el tiempo l├¡mite de <strong>24 horas</strong></span>
       </div>
 
       <!-- CTA -->
@@ -742,16 +710,16 @@
     </div><!-- /screen-solicitud -->
 
 
-    <!-- ═══════════════════════════════════════ -->
+    <!-- ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ -->
     <!-- PANTALLA 2: Pago                        -->
-    <!-- ═══════════════════════════════════════ -->
+    <!-- ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ -->
     <div class="screen" id="screen-pago">
 
       <div class="screen-title">
         <iconify-icon icon="solar:card-bold" width="24" height="24" style="color:var(--indigo)"></iconify-icon>
-        Método de pago
+        M├®todo de pago
       </div>
-      <p class="screen-subtitle" style="margin-bottom:20px;">Selecciona cómo quieres pagar tu apartado.</p>
+      <p class="screen-subtitle" style="margin-bottom:20px;">Selecciona c├│mo quieres pagar tu apartado.</p>
 
 
       <!-- Contador de tiempo -->
@@ -784,7 +752,7 @@
       </div>
       <div class="timer-expired" id="timerExpired">
         <iconify-icon icon="solar:danger-triangle-bold" width="18" height="18"></iconify-icon>
-        Tiempo agotado — el apartado ya no está disponible
+        Tiempo agotado ÔÇö el apartado ya no est├í disponible
       </div>
 
       <!-- Tabs -->
@@ -809,14 +777,14 @@
         <span class="amount-val">$2,000.00 MXN</span>
       </div>
 
-      <!-- ── Panel: Tarjeta ── -->
+      <!-- ÔöÇÔöÇ Panel: Tarjeta ÔöÇÔöÇ -->
       <div class="pay-panel active" id="panel-tarjeta">
-        <p style="font-size:13px;color:var(--ink-3);margin-bottom:14px;">Paga con tarjeta de débito o crédito</p>
+        <p style="font-size:13px;color:var(--ink-3);margin-bottom:14px;">Paga con tarjeta de d├®bito o cr├®dito</p>
 
         <div class="pay-label">Titular de la tarjeta</div>
         <input class="pay-input" type="text" id="card-name" placeholder="Nombre como aparece en la tarjeta" />
 
-        <div class="pay-label">Número de tarjeta</div>
+        <div class="pay-label">N├║mero de tarjeta</div>
         <div class="card-preview">
           <input class="pay-input" type="text" id="card-num" placeholder="0000 0000 0000 0000" maxlength="19" id="card-num-input" style="padding-right:70px;" />
           <span class="card-brand" id="card-brand" style="display:none;"></span>
@@ -829,7 +797,7 @@
           </div>
           <div>
             <div class="pay-label">CVV</div>
-            <input class="pay-input" type="password" id="card-cvv" placeholder="···" maxlength="4" />
+            <input class="pay-input" type="password" id="card-cvv" placeholder="┬À┬À┬À" maxlength="4" />
           </div>
         </div>
 
@@ -846,7 +814,7 @@
         </button>
       </div>
 
-      <!-- ── Panel: Transferencia ── -->
+      <!-- ÔöÇÔöÇ Panel: Transferencia ÔöÇÔöÇ -->
       <div class="pay-panel" id="panel-transferencia">
         <p style="font-size:13px;color:var(--ink-3);margin-bottom:16px;">Realiza una transferencia SPEI a la siguiente cuenta:</p>
 
@@ -881,22 +849,22 @@
 
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius-md);padding:12px 14px;font-size:12px;color:#15803d;display:flex;align-items:flex-start;gap:8px;margin-bottom:20px;">
           <iconify-icon icon="solar:info-circle-linear" width="16" height="16" style="flex-shrink:0;margin-top:1px;"></iconify-icon>
-          Una vez realizado el pago, envía tu comprobante a <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="6f1f0e08001c2f091d0e0c0c0600010e02060a011b00410217">[email&#160;protected]</a></strong>. Te confirmaremos en menos de 2 horas hábiles.
+          Una vez realizado el pago, env├¡a tu comprobante a <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="6f1f0e08001c2f091d0e0c0c0600010e02060a011b00410217">[email&#160;protected]</a></strong>. Te confirmaremos en menos de 2 horas h├íbiles.
         </div>
 
         <button class="btn-primary" data-pagar="transferencia">
           <iconify-icon icon="solar:check-circle-linear" width="17" height="17"></iconify-icon>
-          Ya realicé la transferencia
+          Ya realic├® la transferencia
         </button>
       </div>
 
-      <!-- ── Panel: Efectivo / OXXO ── -->
+      <!-- ÔöÇÔöÇ Panel: Efectivo / OXXO ÔöÇÔöÇ -->
       <div class="pay-panel" id="panel-efectivo">
         <p style="font-size:13px;color:var(--ink-3);margin-bottom:16px;">Paga en efectivo en cualquier tienda OXXO.</p>
 
         <div class="oxxo-box">
           <div class="oxxo-logo">OX<span>XO</span> Pay</div>
-          <div class="oxxo-ref-label">Número de referencia</div>
+          <div class="oxxo-ref-label">N├║mero de referencia</div>
           <div class="oxxo-ref" id="oxxo-ref">8891 4402 7736 0021 85</div>
           <div style="display:flex;justify-content:center;margin-bottom:12px;">
             <button class="copy-btn" style="background:#fed7aa;border-radius:8px;padding:6px 14px;font-size:12px;" data-copiar="oxxo-ref">
@@ -905,24 +873,24 @@
             </button>
           </div>
           <div class="oxxo-note">
-            Presenta este número en caja, indica que pagas <strong>OXXO Pay</strong><br>
+            Presenta este n├║mero en caja, indica que pagas <strong>OXXO Pay</strong><br>
             y entrega exactamente <strong style="color:#dc2626;">$2,000.00 MXN</strong>.<br>
-            La referencia es válida por <strong>24 horas</strong>.
+            La referencia es v├ílida por <strong>24 horas</strong>.
           </div>
         </div>
 
         <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--radius-md);padding:12px 14px;font-size:12px;color:#92400e;display:flex;align-items:flex-start;gap:8px;margin-bottom:20px;">
           <iconify-icon icon="solar:danger-triangle-linear" width="16" height="16" style="flex-shrink:0;margin-top:1px;"></iconify-icon>
-          El lote quedará bloqueado para ti durante 24 horas. Si no se confirma el pago, se liberará automáticamente.
+          El lote quedar├í bloqueado para ti durante 24 horas. Si no se confirma el pago, se liberar├í autom├íticamente.
         </div>
 
         <button class="btn-primary" data-pagar="efectivo">
           <iconify-icon icon="solar:check-circle-linear" width="17" height="17"></iconify-icon>
-          Ya pagué en OXXO
+          Ya pagu├® en OXXO
         </button>
       </div>
 
-      <button class="btn-ghost" id="btn-volver">← Volver</button>
+      <button class="btn-ghost" id="btn-volver">ÔåÉ Volver</button>
 
     </div><!-- /screen-pago -->
 
