@@ -26,6 +26,7 @@ import { InvitarClientes } from '@/pages/admin/InvitarClientes'
 import { CuentasBancarias } from '@/pages/admin/CuentasBancarias'
 import { UsuariosAdmin } from '@/pages/admin/UsuariosAdmin'
 import { VentasExternas } from '@/pages/admin/VentasExternas'
+import { CargaMasivaLotes } from '@/pages/admin/CargaMasivaLotes'
 import { ADMIN_PANEL_ROLES } from '@/config/roles'
 
 const ROLES_VER_DESARROLLOS = ['admin', 'finanzas'] as const
@@ -244,6 +245,16 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['admin', 'finanzas', 'vendedor_externo']}>
               <VentasExternas />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Carga Masiva de Lotes */}
+        <Route
+          path="/admin/lotes/carga-masiva"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <CargaMasivaLotes />
             </ProtectedRoute>
           }
         />

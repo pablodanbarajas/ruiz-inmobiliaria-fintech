@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { LoteForm } from '@/components/forms/LoteForm'
-import { Eye, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Eye, Edit2, Trash2, ChevronLeft, ChevronRight, UploadCloud } from 'lucide-react'
 import type { Lote, Desarrollo } from '@/types/database'
 import { getLoteStatusLabel, getLoteStatusColor, formatCurrency } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
@@ -242,12 +242,22 @@ export const Lotes = () => {
             <p className="text-[#9e9f92] mt-2">Listado de terrenos disponibles</p>
           </div>
           {canEditLotes && (
-            <Button
-              onClick={() => setShowModal(true)}
-              className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-2 px-6"
-            >
-              + Nuevo Lote
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/admin/lotes/carga-masiva')}
+                className="font-semibold py-2 px-4"
+              >
+                <UploadCloud size={16} className="mr-1.5" />
+                Carga Masiva
+              </Button>
+              <Button
+                onClick={() => setShowModal(true)}
+                className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-2 px-6"
+              >
+                + Nuevo Lote
+              </Button>
+            </div>
           )}
         </div>
 
