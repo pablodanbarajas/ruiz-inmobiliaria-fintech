@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/Modal'
 import { ApartadoExternoForm } from '@/components/forms/ApartadoExternoForm'
 import type { ApartadoExternoFormData } from '@/components/forms/ApartadoExternoForm'
 import { formatDate, getVentaStatusLabel, getVentaStatusColor } from '@/utils/helpers'
-import { Plus, Eye, RefreshCw } from 'lucide-react'
+import { Plus, Eye, RefreshCw, XCircle } from 'lucide-react'
 import type { Venta, Cliente, Lote, Desarrollo } from '@/types/database'
 
 interface VentaExternaRow extends Venta {
@@ -37,6 +37,7 @@ export const VentasExternas = () => {
   const [showModal, setShowModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [cancelingId, setCancelingId] = useState<number | null>(null)
 
   // ── Filters (admin only) ─────────────────────────────────
   const [filterVendedor, setFilterVendedor] = useState('')
@@ -106,6 +107,35 @@ export const VentasExternas = () => {
     const names = [...new Set(rows.map((r) => r.vendedor).filter(Boolean))]
     return names.sort()
   }, [rows])
+
+  // ── Cancel apartado ──────────────────────────────────────
+  const handleCancelApartado = async (row: VentaExternaRow) => {
+    const confirmed = window.confirm(
+      `¿Cancelar el apartado de ${row.cliente?.nombre ?? 'este cliente'}?\nEl lote quedará disponible nuevamente.`
+    )
+    if (!confirmed) return
+    setCancelingId(row.ventaid)
+    try {
+      const { error: ventaErr } = await supabase
+        .from('venta')
+        .update({ estatus: 'C' })
+        .eq('ventaid', row.ventaid)
+      if (ventaErr) throw new Error(ventaErr.message)
+
+      if (row.loteid) {
+        await supabase
+          .from('lote')
+          .update({ estatus: 'D' })
+          .eq('loteid', row.loteid)
+          .eq('estatus', 'A') // only revert if still 'Apartado'
+      }
+      await loadData()
+    } catch (err: any) {
+      alert(`Error al cancelar: ${err.message}`)
+    } finally {
+      setCancelingId(null)
+    }
+  }
 
   // ── Create apartado ──────────────────────────────────────
   const handleCreateApartado = async (data: ApartadoExternoFormData) => {
@@ -323,17 +353,29 @@ export const VentasExternas = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() =>
-                          navigate(`/admin/ventas/${row.ventaid}`, {
-                            state: { from: '/admin/ventas-externas' },
-                          })
-                        }
-                        className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
-                      >
-                        <Eye size={13} />
-                        Ver
-                      </button>
+                      <div className="inline-flex items-center gap-1.5">
+                        <button
+                          onClick={() =>
+                            navigate(`/admin/ventas/${row.ventaid}`, {
+                              state: { from: '/admin/ventas-externas' },
+                            })
+                          }
+                          className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                        >
+                          <Eye size={13} />
+                          Ver
+                        </button>
+                        {row.estatus === 'P' && (
+                          <button
+                            onClick={() => handleCancelApartado(row)}
+                            disabled={cancelingId === row.ventaid}
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-red-50 hover:bg-red-100 text-red-600 transition-colors disabled:opacity-50"
+                          >
+                            <XCircle size={13} />
+                            {cancelingId === row.ventaid ? '…' : 'Cancelar'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
