@@ -441,17 +441,19 @@ export const VentasExternas = () => {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="inline-flex items-center gap-1.5">
-                        <button
-                          onClick={() =>
-                            navigate(`/admin/ventas/${row.ventaid}`, {
-                              state: { from: '/admin/ventas-externas' },
-                            })
-                          }
-                          className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
-                        >
-                          <Eye size={13} />
-                          Ver
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() =>
+                              navigate(`/admin/ventas/${row.ventaid}`, {
+                                state: { from: '/admin/ventas-externas' },
+                              })
+                            }
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                          >
+                            <Eye size={13} />
+                            Ver
+                          </button>
+                        )}
                         {row.estatus !== 'C' && (
                           <button
                             onClick={() => openEditCliente(row)}
