@@ -5,6 +5,27 @@ document.addEventListener('DOMContentLoaded', function () {
   if (params.get('lote'))   document.getElementById('lote-nombre').textContent = params.get('lote');
   if (params.get('estado')) document.getElementById('lote-estado').textContent = params.get('estado');
 
+  // ── Vendedor selector ────────────────────────────────────
+  var vendedorSelect   = document.getElementById('vendedor-select');
+  var vendedorInputWrap = document.getElementById('vendedor-input-wrap');
+  var vendedorInput    = document.getElementById('vendedor-input');
+
+  vendedorSelect.addEventListener('change', function () {
+    if (vendedorSelect.value === '__otro__') {
+      vendedorInputWrap.classList.add('visible');
+      vendedorInput.focus();
+    } else {
+      vendedorInputWrap.classList.remove('visible');
+      vendedorInput.value = '';
+    }
+  });
+
+  function getVendedorFinal() {
+    if (!vendedorSelect) return '';
+    if (vendedorSelect.value === '__otro__') return vendedorInput.value.trim();
+    return vendedorSelect.value;
+  }
+
   // ── Checkbox ───────────────────────────────────────────────────────
   var checked = false;
   document.getElementById('check-row').addEventListener('click', function () {
@@ -82,6 +103,8 @@ document.addEventListener('DOMContentLoaded', function () {
         var p = new URLSearchParams();
         p.set('metodo', btn.dataset.pagar);
         if (params.get('lote')) p.set('lote', params.get('lote'));
+        var vendedor = getVendedorFinal();
+        if (vendedor) p.set('vendedor', vendedor);
         window.location.href = 'pagado.html?' + p.toString();
       }, 1400);
     });
