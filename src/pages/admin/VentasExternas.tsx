@@ -4,11 +4,12 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/context/AuthContext'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { ApartadoExternoForm } from '@/components/forms/ApartadoExternoForm'
 import type { ApartadoExternoFormData } from '@/components/forms/ApartadoExternoForm'
 import { formatDate, getVentaStatusLabel, getVentaStatusColor } from '@/utils/helpers'
-import { Plus, Eye, RefreshCw, XCircle } from 'lucide-react'
+import { Plus, Eye, RefreshCw, XCircle, Pencil } from 'lucide-react'
 import type { Venta, Cliente, Lote, Desarrollo } from '@/types/database'
 
 interface VentaExternaRow extends Venta {
@@ -40,9 +41,16 @@ export const VentasExternas = () => {
   const [cancelingId, setCancelingId] = useState<number | null>(null)
   const [confirmCancel, setConfirmCancel] = useState<VentaExternaRow | null>(null)
 
+  // ── Edit client state ────────────────────────────────
+  const [editClienteRow, setEditClienteRow] = useState<VentaExternaRow | null>(null)
+  const [editClienteForm, setEditClienteForm] = useState<Partial<Cliente>>({})
+  const [editClienteErrors, setEditClienteErrors] = useState<Record<string, string>>({})
+  const [savingCliente, setSavingCliente] = useState(false)
+
   // ── Filters (admin only) ─────────────────────────────────
   const [filterVendedor, setFilterVendedor] = useState('')
   const [filterEstatus, setFilterEstatus] = useState('')
+  const [vendorEmailMap, setVendorEmailMap] = useState<Record<string, string>>({})
 
   // ── Load data ────────────────────────────────────────────
   const loadData = async () => {
@@ -58,7 +66,6 @@ export const VentasExternas = () => {
         query = query.eq('vendedor_user_id', user.id)
       } else if (isAdmin) {
         // Admin: only ventas created by vendedor_externo users
-        // We identify them by joining user_roles
         const { data: vrData } = await supabase
           .from('user_roles')
           .select('user_id')
@@ -71,6 +78,26 @@ export const VentasExternas = () => {
           return
         }
         query = query.in('vendedor_user_id', vendedorIds)
+
+        // Load vendor emails to display when vendedor name is missing
+        try {
+          const { data: sessionData } = await supabase.auth.getSession()
+          const token = sessionData.session?.access_token
+          if (token) {
+            const res = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-admin-users`,
+              { headers: { Authorization: `Bearer ${token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY } }
+            )
+            if (res.ok) {
+              const result = await res.json()
+              const map: Record<string, string> = {}
+              for (const u of result.users ?? []) {
+                if (u.user_id && u.email) map[u.user_id] = u.email
+              }
+              setVendorEmailMap(map)
+            }
+          }
+        } catch { /* non-critical */ }
       } else {
         setRows([])
         setLoading(false)
@@ -109,6 +136,62 @@ export const VentasExternas = () => {
     return names.sort()
   }, [rows])
 
+  // ── Open edit client modal ──────────────────────────
+  const openEditCliente = (row: VentaExternaRow) => {
+    setEditClienteRow(row)
+    setEditClienteForm(row.cliente ? { ...row.cliente } : {})
+    setEditClienteErrors({})
+  }
+
+  const handleSaveCliente = async () => {
+    const errs: Record<string, string> = {}
+    if (!editClienteForm.nombre?.trim()) errs.nombre = 'Nombre requerido'
+    if (!editClienteForm.telefonocelular?.trim()) errs.telefonocelular = 'Teléfono requerido'
+    if (
+      editClienteForm.email &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editClienteForm.email.trim())
+    ) errs.email = 'Email inválido'
+    if (
+      editClienteForm.rfc?.trim() &&
+      !/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{2,3}$/i.test(editClienteForm.rfc.trim())
+    ) errs.rfc = 'RFC inválido'
+    if (
+      editClienteForm.curp?.trim() &&
+      !/^[A-Z]{4}\d{6}[HM][A-Z]{5}[0-9A-Z]{2}$/i.test(editClienteForm.curp.trim())
+    ) errs.curp = 'CURP inválido (18 caracteres)'
+    setEditClienteErrors(errs)
+    if (Object.keys(errs).length > 0) return
+
+    setSavingCliente(true)
+    try {
+      const { error } = await supabase
+        .from('cliente')
+        .update({
+          nombre: editClienteForm.nombre?.trim() ?? null,
+          telefonocelular: editClienteForm.telefonocelular?.trim() ?? null,
+          telefono2: editClienteForm.telefono2?.trim() || null,
+          email: editClienteForm.email?.trim().toLowerCase() || null,
+          rfc: editClienteForm.rfc?.trim().toUpperCase() || null,
+          curp: editClienteForm.curp?.trim().toUpperCase() || null,
+          calle: editClienteForm.calle?.trim() || null,
+          numeroext: editClienteForm.numeroext?.trim() || null,
+          colonia: editClienteForm.colonia?.trim() || null,
+          municipio_ciudad: editClienteForm.municipio_ciudad?.trim() || null,
+          estado: editClienteForm.estado?.trim() || null,
+          codigopostal: editClienteForm.codigopostal?.trim() || null,
+          comentarios: editClienteForm.comentarios?.trim() || null,
+        })
+        .eq('clienteid', editClienteRow!.clienteid!)
+      if (error) throw error
+      setEditClienteRow(null)
+      await loadData()
+    } catch (err: any) {
+      setEditClienteErrors({ _general: err.message })
+    } finally {
+      setSavingCliente(false)
+    }
+  }
+
   // ── Cancel apartado ──────────────────────────────────────
   const handleCancelApartado = async (row: VentaExternaRow) => {
     setConfirmCancel(null)
@@ -142,7 +225,8 @@ export const VentasExternas = () => {
     try {
       const { data: authData } = await supabase.auth.getUser()
       const vendedorUserId = authData.user?.id ?? null
-      const vendedorNombre = user ? `${user.nombre} ${user.apellido}`.trim() : null
+      const nombreCompleto = [user?.nombre, user?.apellido].filter(s => s?.trim()).join(' ').trim()
+      const vendedorNombre = nombreCompleto || user?.email || null
 
       // ── 1. Create or use existing client ─────────────────
       let clienteid: number
@@ -340,7 +424,12 @@ export const VentasExternas = () => {
                     </td>
                     {isAdmin && (
                       <td className="px-4 py-3 text-gray-700">
-                        {row.vendedor ?? '—'}
+                        {row.vendedor
+                          ? row.vendedor
+                          : row.vendedor_user_id
+                            ? <span className="text-gray-400 italic text-xs">{vendorEmailMap[row.vendedor_user_id] ?? row.vendedor_user_id.substring(0, 8) + '…'}</span>
+                            : '—'
+                        }
                       </td>
                     )}
                     <td className="px-4 py-3">
@@ -362,6 +451,13 @@ export const VentasExternas = () => {
                         >
                           <Eye size={13} />
                           Ver
+                        </button>
+                        <button
+                          onClick={() => openEditCliente(row)}
+                          className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
+                        >
+                          <Pencil size={13} />
+                          Editar cliente
                         </button>
                         {row.estatus === 'P' && (
                           <button
@@ -403,6 +499,160 @@ export const VentasExternas = () => {
           </div>
         )}
         <ApartadoExternoForm onSubmit={handleCreateApartado} isLoading={isSubmitting} />
+      </Modal>
+
+      {/* Edit client modal */}
+      <Modal
+        isOpen={!!editClienteRow}
+        onClose={() => !savingCliente && setEditClienteRow(null)}
+        title="Editar datos del cliente"
+      >
+        {editClienteErrors._general && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+            {editClienteErrors._general}
+          </div>
+        )}
+        <div className="space-y-5">
+          {/* Datos básicos */}
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Datos básicos</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo *</label>
+                <Input
+                  value={editClienteForm.nombre ?? ''}
+                  onChange={(e) => setEditClienteForm({ ...editClienteForm, nombre: e.target.value })}
+                />
+                {editClienteErrors.nombre && <p className="text-red-500 text-xs mt-1">{editClienteErrors.nombre}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono celular *</label>
+                <Input
+                  type="tel"
+                  value={editClienteForm.telefonocelular ?? ''}
+                  onChange={(e) => setEditClienteForm({ ...editClienteForm, telefonocelular: e.target.value })}
+                />
+                {editClienteErrors.telefonocelular && <p className="text-red-500 text-xs mt-1">{editClienteErrors.telefonocelular}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono 2</label>
+                <Input
+                  type="tel"
+                  value={editClienteForm.telefono2 ?? ''}
+                  onChange={(e) => setEditClienteForm({ ...editClienteForm, telefono2: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
+                <Input
+                  type="email"
+                  value={editClienteForm.email ?? ''}
+                  onChange={(e) => setEditClienteForm({ ...editClienteForm, email: e.target.value })}
+                />
+                {editClienteErrors.email && <p className="text-red-500 text-xs mt-1">{editClienteErrors.email}</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Documentos oficiales */}
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Documentos oficiales
+              <span className="ml-2 font-normal normal-case text-gray-400">(completar cuando estén disponibles)</span>
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">RFC</label>
+                <Input
+                  placeholder="XAXX000101000 (opcional)"
+                  value={editClienteForm.rfc ?? ''}
+                  onChange={(e) => setEditClienteForm({ ...editClienteForm, rfc: e.target.value.toUpperCase() })}
+                  maxLength={13}
+                />
+                {editClienteErrors.rfc && <p className="text-red-500 text-xs mt-1">{editClienteErrors.rfc}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">CURP</label>
+                <Input
+                  placeholder="18 caracteres (opcional)"
+                  value={editClienteForm.curp ?? ''}
+                  onChange={(e) => setEditClienteForm({ ...editClienteForm, curp: e.target.value.toUpperCase() })}
+                  maxLength={18}
+                />
+                {editClienteErrors.curp && <p className="text-red-500 text-xs mt-1">{editClienteErrors.curp}</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Domicilio */}
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Domicilio</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Calle</label>
+                <Input
+                  value={editClienteForm.calle ?? ''}
+                  onChange={(e) => setEditClienteForm({ ...editClienteForm, calle: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Número exterior</label>
+                <Input
+                  value={editClienteForm.numeroext ?? ''}
+                  onChange={(e) => setEditClienteForm({ ...editClienteForm, numeroext: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Colonia</label>
+                <Input
+                  value={editClienteForm.colonia ?? ''}
+                  onChange={(e) => setEditClienteForm({ ...editClienteForm, colonia: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Código Postal</label>
+                <Input
+                  value={editClienteForm.codigopostal ?? ''}
+                  onChange={(e) => setEditClienteForm({ ...editClienteForm, codigopostal: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Municipio / Ciudad</label>
+                <Input
+                  value={editClienteForm.municipio_ciudad ?? ''}
+                  onChange={(e) => setEditClienteForm({ ...editClienteForm, municipio_ciudad: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <Input
+                  value={editClienteForm.estado ?? ''}
+                  onChange={(e) => setEditClienteForm({ ...editClienteForm, estado: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Observaciones */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+            <textarea
+              value={editClienteForm.comentarios ?? ''}
+              onChange={(e) => setEditClienteForm({ ...editClienteForm, comentarios: e.target.value })}
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-1">
+            <Button variant="secondary" onClick={() => setEditClienteRow(null)} disabled={savingCliente}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveCliente} disabled={savingCliente}>
+              {savingCliente ? 'Guardando…' : 'Guardar cambios'}
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Confirm cancel modal */}

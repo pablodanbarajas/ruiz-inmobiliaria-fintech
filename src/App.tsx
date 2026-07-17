@@ -30,7 +30,7 @@ import { ADMIN_PANEL_ROLES } from '@/config/roles'
 
 const ROLES_VER_DESARROLLOS = ['admin', 'finanzas'] as const
 const ROLES_EDITAR_CLIENTES = ['admin', 'contratos'] as const
-const ROLES_EDITAR_VENTAS = ['admin', 'contratos', 'cobranza_caja'] as const
+const ROLES_EDITAR_VENTAS = ['admin', 'contratos', 'cobranza_caja', 'vendedor_externo'] as const
 const ROLES_PAGOS = ['admin', 'finanzas', 'contratos', 'cobranza_caja'] as const
 
 function App() {
