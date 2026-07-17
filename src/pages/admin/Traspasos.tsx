@@ -5,11 +5,12 @@ import { getCached, setCached } from '@/lib/queryCache'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Input } from '@/components/ui/Input'
-import { ChevronLeft, ChevronRight, ArrowLeftRight, ExternalLink, Plus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ArrowLeftRight, ExternalLink, Plus, X, FileText } from 'lucide-react'
 import type { Traspaso } from '@/types/database'
 import { formatDate, formatDateTime } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { SearchCombobox, type ComboOption } from '@/components/ui/SearchCombobox'
+import { TraspasoDocumentos } from '@/components/TraspasoDocumentos'
 
 interface TraspasoWithDetails extends Traspaso {
   cliente_anterior?: { nombre: string | null }
@@ -56,6 +57,10 @@ export const Traspasos = () => {
   const [traspasoFecha, setTraspasoFecha] = useState('')
   const [traspasoNotas, setTraspasoNotas] = useState('')
   const [modalError, setModalError] = useState('')
+
+  // ── Documentos modal state ──────────────────────────────────────
+  const [showDocsModal, setShowDocsModal] = useState(false)
+  const [docsTraspaso, setDocsTraspaso] = useState<{ id: number; label: string } | null>(null)
 
   // Reset to page 1 on filter change
   useEffect(() => {
@@ -482,13 +487,29 @@ export const Traspasos = () => {
                             {formatDateTime(t.created_at)}
                           </td>
                           <td className="px-6 py-4">
-                            <button
-                              type="button"
-                              onClick={() => navigate(`/admin/ventas/${t.ventaid}`)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded hover:bg-gray-50 transition-colors"
-                            >
-                              Ver venta
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/admin/ventas/${t.ventaid}`)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded hover:bg-gray-50 transition-colors"
+                              >
+                                Ver venta
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDocsTraspaso({
+                                    id: t.traspasoid,
+                                    label: `Traspaso #${t.traspasoid} — Venta #${t.ventaid}`,
+                                  })
+                                  setShowDocsModal(true)
+                                }}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded hover:bg-gray-50 transition-colors text-blue-600"
+                              >
+                                <FileText size={12} />
+                                Documentos
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       )
@@ -527,6 +548,34 @@ export const Traspasos = () => {
             </>
           )}
         </div>
+      </div>
+        {/* Documentos de traspaso modal */}
+        {showDocsModal && docsTraspaso && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Documentos sellados</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">{docsTraspaso.label}</p>
+                </div>
+                <button onClick={() => setShowDocsModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="px-6 py-5">
+                <TraspasoDocumentos traspasoid={docsTraspaso.id} />
+              </div>
+              <div className="px-6 py-3 border-t border-gray-100 bg-gray-50 flex justify-end">
+                <button
+                  onClick={() => setShowDocsModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AdminLayout>
   )
