@@ -87,7 +87,9 @@ export const CargaMasivaLotes = () => {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('desarrollo').select('desarrolloid, nombre, clavedesarrollo').order('nombre'),
+      supabase.from('desarrollo').select('desarrolloid, nombre, clavedesarrollo')
+        .in('clavedesarrollo', ['PRU', 'PUB'])
+        .order('nombre'),
       supabase.from('duenio').select('duenioid, nombre').order('nombre'),
     ]).then(([{ data: devData }, { data: duenData }]) => {
       setDesarrollos((devData || []) as Desarrollo[])
