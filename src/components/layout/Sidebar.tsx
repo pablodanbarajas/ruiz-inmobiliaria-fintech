@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Landmark,
   Handshake,
+  UserCheck,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { ROLE_LABELS } from '@/config/roles'
@@ -56,6 +57,12 @@ const MENU_ITEMS = [
     path: '/admin/pagos',
     icon: DollarSign,
     roles: ['admin', 'finanzas', 'contratos', 'cobranza_caja'],
+  },
+  {
+    label: 'Ventas Externas',
+    path: '/admin/ventas-externas',
+    icon: UserCheck,
+    roles: ['admin', 'finanzas', 'vendedor_externo'],
   },
   {
     label: 'Convenios',

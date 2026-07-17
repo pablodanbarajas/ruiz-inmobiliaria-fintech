@@ -2,6 +2,7 @@ export type AdminPanelRole =
   | 'admin'
   | 'finanzas'
   | 'vendedor'
+  | 'vendedor_externo'
   | 'contratos'
   | 'cobranza_caja'
 
@@ -11,6 +12,7 @@ export const ADMIN_PANEL_ROLES: AdminPanelRole[] = [
   'admin',
   'finanzas',
   'vendedor',
+  'vendedor_externo',
   'contratos',
   'cobranza_caja',
 ]
@@ -21,6 +23,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Administrador',
   finanzas: 'Finanzas',
   vendedor: 'Vendedor',
+  vendedor_externo: 'Vendedor Externo',
   contratos: 'Contratos',
   cobranza_caja: 'Cobranza/Caja',
   cliente: 'Cliente',
@@ -79,6 +82,24 @@ export const ROLE_CAPABILITIES: Record<AdminPanelRole, Record<CapabilityKey, boo
     registrar_pagos: true,
     consultar_pagos: true,
     consultar_estados_cuenta: true,
+    administrar_usuarios: false,
+  },
+  vendedor_externo: {
+    ver_desarrollos: false,
+    editar_desarrollos: false,
+    ver_lotes: true,
+    editar_lotes: false,
+    bloquear_lotes: false,
+    desbloquear_lotes: false,
+    apartar_lotes: true,
+    cancelar_apartado: false,
+    editar_clientes: true,
+    editar_ventas: false,
+    ver_lotes_vendidos: false,
+    liberar_lotes_vendidos: false,
+    registrar_pagos: false,
+    consultar_pagos: false,
+    consultar_estados_cuenta: false,
     administrar_usuarios: false,
   },
   vendedor: {
