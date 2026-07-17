@@ -31,10 +31,15 @@ ALTER TABLE public.user_roles
   );
 
 -- ─────────────────────────────────────────────────────────────
--- 2. Índice en venta.usuarioid (mejora consultas por vendedor)
+-- 2. Nueva columna vendedor_user_id (TEXT, sin FK)
+--    Almacena el UUID del vendedor externo sin restricción FK,
+--    evitando el error con la constraint fk_venta_usuario.
 -- ─────────────────────────────────────────────────────────────
-CREATE INDEX IF NOT EXISTS idx_venta_usuarioid
-  ON public.venta (usuarioid);
+ALTER TABLE public.venta
+  ADD COLUMN IF NOT EXISTS vendedor_user_id text;
+
+CREATE INDEX IF NOT EXISTS idx_venta_vendedor_user_id
+  ON public.venta (vendedor_user_id);
 
 -- ─────────────────────────────────────────────────────────────
 -- 3. Row Level Security en tabla venta
@@ -50,35 +55,35 @@ CREATE POLICY "admin_read_all_ventas"
   USING (
     EXISTS (
       SELECT 1 FROM public.user_roles ur
-      WHERE ur.user_id = auth.uid()::text
+      WHERE ur.user_id = auth.uid()
         AND ur.role IN ('admin', 'finanzas', 'contratos', 'cobranza_caja')
     )
   );
 
 -- Política para vendedor_externo:
--- solo puede leer sus propias ventas (usuarioid = auth.uid()::text)
+-- solo puede leer sus propias ventas (vendedor_user_id = auth.uid()::text)
 CREATE POLICY "vendedor_externo_read_own_ventas"
   ON public.venta
   FOR SELECT
   USING (
-    usuarioid = auth.uid()::text
+    vendedor_user_id = auth.uid()::text
     AND EXISTS (
       SELECT 1 FROM public.user_roles ur
-      WHERE ur.user_id = auth.uid()::text
+      WHERE ur.user_id = auth.uid()
         AND ur.role = 'vendedor_externo'
     )
   );
 
 -- Política de inserción para vendedor_externo:
--- solo puede insertar ventas con su propio usuarioid
+-- solo puede insertar ventas con su propio vendedor_user_id
 CREATE POLICY "vendedor_externo_insert_own_ventas"
   ON public.venta
   FOR INSERT
   WITH CHECK (
-    usuarioid = auth.uid()::text
+    vendedor_user_id = auth.uid()::text
     AND EXISTS (
       SELECT 1 FROM public.user_roles ur
-      WHERE ur.user_id = auth.uid()::text
+      WHERE ur.user_id = auth.uid()
         AND ur.role = 'vendedor_externo'
     )
   );
@@ -95,7 +100,7 @@ CREATE POLICY "admin_read_all_clientes"
   USING (
     EXISTS (
       SELECT 1 FROM public.user_roles ur
-      WHERE ur.user_id = auth.uid()::text
+      WHERE ur.user_id = auth.uid()
         AND ur.role IN ('admin', 'finanzas', 'contratos', 'cobranza_caja')
     )
   );
@@ -107,7 +112,7 @@ CREATE POLICY "vendedor_externo_read_clientes"
   USING (
     EXISTS (
       SELECT 1 FROM public.user_roles ur
-      WHERE ur.user_id = auth.uid()::text
+      WHERE ur.user_id = auth.uid()
         AND ur.role = 'vendedor_externo'
     )
   );
@@ -119,7 +124,7 @@ CREATE POLICY "vendedor_externo_insert_clientes"
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.user_roles ur
-      WHERE ur.user_id = auth.uid()::text
+      WHERE ur.user_id = auth.uid()
         AND ur.role = 'vendedor_externo'
     )
   );
@@ -136,7 +141,7 @@ CREATE POLICY "vendedor_externo_read_lotes"
   USING (
     EXISTS (
       SELECT 1 FROM public.user_roles ur
-      WHERE ur.user_id = auth.uid()::text
+      WHERE ur.user_id = auth.uid()
         AND ur.role = 'vendedor_externo'
     )
   );
@@ -148,14 +153,14 @@ CREATE POLICY "vendedor_externo_update_lote_estatus"
   USING (
     EXISTS (
       SELECT 1 FROM public.user_roles ur
-      WHERE ur.user_id = auth.uid()::text
+      WHERE ur.user_id = auth.uid()
         AND ur.role = 'vendedor_externo'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.user_roles ur
-      WHERE ur.user_id = auth.uid()::text
+      WHERE ur.user_id = auth.uid()
         AND ur.role = 'vendedor_externo'
     )
   );

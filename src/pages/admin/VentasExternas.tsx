@@ -53,7 +53,7 @@ export const VentasExternas = () => {
 
       if (isVendedorExterno && user?.id) {
         // Vendedor externo: only their own apartados
-        query = query.eq('usuarioid', user.id)
+        query = query.eq('vendedor_user_id', user.id)
       } else if (isAdmin) {
         // Admin: only ventas created by vendedor_externo users
         // We identify them by joining user_roles
@@ -68,7 +68,7 @@ export const VentasExternas = () => {
           setLoading(false)
           return
         }
-        query = query.in('usuarioid', vendedorIds)
+        query = query.in('vendedor_user_id', vendedorIds)
       } else {
         setRows([])
         setLoading(false)
@@ -113,7 +113,7 @@ export const VentasExternas = () => {
     setSubmitError(null)
     try {
       const { data: authData } = await supabase.auth.getUser()
-      const usuarioid = authData.user?.id ?? null
+      const vendedorUserId = authData.user?.id ?? null
       const vendedorNombre = user ? `${user.nombre} ${user.apellido}`.trim() : null
 
       // ── 1. Create or use existing client ─────────────────
@@ -160,7 +160,8 @@ export const VentasExternas = () => {
             loteid: data.loteid,
             clienteid,
             fecha: data.fecha || today,
-            usuarioid,
+            usuarioid: null,
+            vendedor_user_id: vendedorUserId,
             vendedor: vendedorNombre,
             estatus: 'P',
             comentarios: data.comentarios || null,

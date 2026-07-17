@@ -5,6 +5,7 @@ const ASSIGNABLE_ADMIN_ROLES = [
   'admin',
   'finanzas',
   'vendedor',
+  'vendedor_externo',
   'contratos',
   'cobranza_caja',
 ] as const
