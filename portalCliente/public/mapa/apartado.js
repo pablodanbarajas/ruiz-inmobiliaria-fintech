@@ -101,6 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
         throw new Error(result.data.error || 'Error al generar el link de pago');
       }
       sessionStorage.setItem('apartado_ventaid', String(result.data.ventaid));
+      sessionStorage.setItem('apartado_vendedor', vendedorFinal || '');
       window.location.href = result.data.url;
     })
     .catch(function (err) {

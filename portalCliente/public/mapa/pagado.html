@@ -501,7 +501,7 @@
             <iconify-icon icon="solar:user-linear" width="15" height="15" style="color:#4f46e5"></iconify-icon>
             Asesor asignado
           </span>
-          <span class="detail-val">Carlos Méndez</span>
+          <span class="detail-val" id="asesor-display">Pendiente</span>
         </div>
       </div>
     </div>
@@ -538,7 +538,7 @@
       </div>
       <div class="next-step">
         <div class="step-num">1</div>
-        <div class="next-step-text">Tu asesor <strong>Carlos Méndez</strong> te llamará en las próximas 2 horas hábiles.</div>
+        <div class="next-step-text" id="paso1-asesor">Un asesor de Ruiz Inmobiliaria te llamará en las próximas 2 horas hábiles.</div>
       </div>
       <div class="next-step">
         <div class="step-num">2</div>
@@ -582,6 +582,26 @@
     function fmt(n) {
       return '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
+
+    // ── Vendor (read from sessionStorage set by apartado.js) ────────
+    function setAsesor(nombre) {
+      var label = nombre && nombre.trim() ? nombre.trim() : 'Pendiente';
+      var el = document.getElementById('asesor-display');
+      if (el) el.textContent = label;
+      var paso1 = document.getElementById('paso1-asesor');
+      if (paso1) {
+        if (nombre && nombre.trim()) {
+          paso1.innerHTML = 'Tu asesor <strong>' + label + '</strong> te llamar&aacute; en las pr&oacute;ximas 2 horas h&aacute;biles.';
+        } else {
+          paso1.textContent = 'Un asesor de Ruiz Inmobiliaria te llamar\u00e1 en las pr\u00f3ximas 2 horas h\u00e1biles.';
+        }
+      }
+    }
+
+    // Apply immediately from sessionStorage so it shows before API response
+    var vendedorGuardado = sessionStorage.getItem('apartado_vendedor') || '';
+    setAsesor(vendedorGuardado);
+    sessionStorage.removeItem('apartado_vendedor');
 
     // ── Params de URL ────────────────────────────────────────────────
     var params   = new URLSearchParams(window.location.search);

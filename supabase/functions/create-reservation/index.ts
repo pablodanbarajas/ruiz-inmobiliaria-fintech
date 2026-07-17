@@ -36,7 +36,7 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    const { loteid, desarrolloid } = await req.json()
+    const { loteid, desarrolloid, vendedor } = await req.json()
     const loteId = Number(loteid)
     const desarrolloId = Number(desarrolloid)
     if (!Number.isInteger(loteId) || loteId <= 0 || !Number.isInteger(desarrolloId) || desarrolloId <= 0) {
@@ -136,6 +136,7 @@ Deno.serve(async (req: Request) => {
         estatus: 'P',
         fecha_reserva: new Date().toISOString(),
         monto_apartado_pagado: 0,
+        vendedor: (typeof vendedor === 'string' && vendedor.trim()) ? vendedor.trim() : null,
         comentarios: `Reserva creada desde portal (${desarrollo.nombre ?? desarrollo.name})`,
       })
       .select()
