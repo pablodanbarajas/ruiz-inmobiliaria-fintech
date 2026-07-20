@@ -180,7 +180,14 @@ function PaymentRow({
           day: 'numeric'
         })}
       </td>
-      <td className="px-6 py-4 text-sm text-gray-800">{pago.reason}</td>
+      <td className="px-6 py-4 text-sm text-gray-800">
+        {pago.reason}
+        {pago.dueDate && (
+          <div className="text-xs text-gray-400 mt-0.5">
+            Período: {parseDate(pago.dueDate).toLocaleDateString('es-MX', { year: 'numeric', month: 'long' })}
+          </div>
+        )}
+      </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm">
         <span className="font-semibold text-gray-800">
           ${pago.amount.toLocaleString('es-MX')}
@@ -261,6 +268,11 @@ function PaymentCard({
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Motivo</p>
         <p className="text-sm text-gray-800 mt-1 break-words">{pago.reason}</p>
+        {pago.dueDate && (
+          <p className="text-xs text-gray-400 mt-0.5">
+            Período: {parseDate(pago.dueDate).toLocaleDateString('es-MX', { year: 'numeric', month: 'long' })}
+          </p>
+        )}
       </div>
 
       <div>

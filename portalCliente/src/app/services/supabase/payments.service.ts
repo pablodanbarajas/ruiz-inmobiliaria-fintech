@@ -173,7 +173,7 @@ export const supabasePaymentsService: IPaymentsService = {
         };
 
         if (esPagado) {
-          completedPayments.push({ ...payment, date: pagoCorrida?.lastDate ?? corrida.fecha });
+          completedPayments.push({ ...payment, date: pagoCorrida?.lastDate ?? corrida.fecha, dueDate: corrida.fecha });
         } else {
           totalRecargos += recargo;
           pendingPayments.push(payment);

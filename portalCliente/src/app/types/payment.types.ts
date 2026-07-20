@@ -14,6 +14,8 @@ export interface Payment {
   id: string;
   /** Fecha límite o fecha de pago (ISO 8601) */
   date: string;
+  /** Fecha límite del período al que corresponde el pago (ISO 8601) */
+  dueDate?: string;
   reason: string;
   amount: number;
   status: PaymentStatus;
