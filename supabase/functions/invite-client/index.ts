@@ -94,15 +94,16 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── Enviar invitación ──────────────────────────────────────
-    // PORTAL_URL debe estar configurada en las variables de entorno
-    // de la Edge Function (Supabase Dashboard → Edge Functions → Secrets)
-    const portalUrl =
-      Deno.env.get('PORTAL_URL') ??
-      'https://ruiz-inmobiliaria-fintech.vercel.app/portal/set-password'
+    // Construye la URL de set-password a partir de PORTAL_URL
+    const basePortalUrl = (Deno.env.get('PORTAL_URL') ?? 'https://ruiz-inmobiliaria.trustcapitalia.com/portal')
+      .replace(/\/$/, '')
+    const setPasswordUrl = basePortalUrl.endsWith('/set-password')
+      ? basePortalUrl
+      : `${basePortalUrl}/set-password`
 
     const { data, error: inviteError } =
       await supabaseAdmin.auth.admin.inviteUserByEmail(email.trim(), {
-        redirectTo: portalUrl,
+        redirectTo: setPasswordUrl,
       })
 
     if (inviteError) {
