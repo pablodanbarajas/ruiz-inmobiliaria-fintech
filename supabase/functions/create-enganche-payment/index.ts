@@ -102,7 +102,7 @@ Deno.serve(async (req: Request) => {
     const desarrolloid = desarrolloData?.desarrolloid ?? ''
 
     // Crear sesión de pago en Quentli
-    const portalUrl = (Deno.env.get('PORTAL_URL') ?? 'https://ruiz-inmobiliaria-fintech.vercel.app/portal')
+    const portalUrl = (Deno.env.get('PORTAL_URL') ?? 'https://ruiz-inmobiliaria.trustcapitalia.com/portal')
       .replace(/\/set-password.*$/, '').replace(/\/$/, '')
 
     const apiKey = Deno.env.get('QUENTLI_API_KEY') ?? ''

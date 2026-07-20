@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
           { key: 'ventaid', value: String(row.ventaid) },
           { key: 'clienteid', value: String(row.clienteid) },
         ],
-        returnUrl: `${(Deno.env.get('PORTAL_URL') ?? 'https://ruiz-inmobiliaria-fintech.vercel.app/portal').replace(/\/set-password.*$/, '').replace(/\/$/, '')}/mis-pagos?corridafinancieraid=${corridafinancieraid}`,
+        returnUrl: `${(Deno.env.get('PORTAL_URL') ?? 'https://ruiz-inmobiliaria.trustcapitalia.com/portal').replace(/\/set-password.*$/, '').replace(/\/$/, '')}/mis-pagos?corridafinancieraid=${corridafinancieraid}`,
       },
     }
 
