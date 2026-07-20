@@ -22,6 +22,8 @@ export interface IAuthService {
   getSession(): AuthSession;
   /** Inicia sesión con email y contraseña */
   login(credentials: LoginCredentials): Promise<AuthSession>;
+  /** Registra un nuevo cliente */
+  register(credentials: RegisterCredentials): Promise<AuthSession>;
   /** Cierra la sesión activa */
   logout(): Promise<void>;
 }

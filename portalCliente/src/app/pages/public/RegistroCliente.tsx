@@ -9,18 +9,16 @@ import { useAuth } from '../../hooks/useAuth';
  * Lee el parámetro `redirect` de la URL para saber a dónde regresar
  * después de registrarse, manteniendo la intención del usuario
  * (ej. volver al lote que quería apartar).
- *
- * TODO: agregar register() a IAuthService cuando se implemente Supabase.
- * Por ahora simula el registro haciendo login con credenciales mock.
  */
 export function RegistroCliente() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login, isLoading } = useAuth();
+  const { register, isLoading } = useAuth();
 
   const redirectTo = searchParams.get('redirect') || '/home';
 
   const [error, setError] = useState<string | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState(false);
   const [formData, setFormData] = useState({
     nombre: '',
     email: '',
@@ -33,11 +31,20 @@ export function RegistroCliente() {
     setError(null);
 
     try {
-      // Mock: reutiliza login hasta que se implemente register() en Supabase
-      await login({ email: formData.email, password: formData.password });
+      await register({
+        name: formData.nombre,
+        email: formData.email,
+        phone: formData.telefono,
+        password: formData.password
+      });
       navigate(redirectTo, { replace: true });
-    } catch {
-      setError('No se pudo completar el registro. Intenta de nuevo.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      if (message.includes('confirma') || message.includes('Confirma') || message.includes('email')) {
+        setPendingConfirmation(true);
+      } else {
+        setError(message || 'No se pudo completar el registro. Intenta de nuevo.');
+      }
     }
   };
 
@@ -58,6 +65,17 @@ export function RegistroCliente() {
           </p>
         </div>
 
+        {pendingConfirmation ? (
+          <div className="text-center space-y-4">
+            <div className="bg-teal-50 border border-teal-200 text-teal-800 text-sm rounded-lg px-4 py-4">
+              <p className="font-medium mb-1">¡Cuenta creada!</p>
+              <p>Revisa tu correo <strong>{formData.email}</strong> y confirma tu cuenta para iniciar sesión.</p>
+            </div>
+            <Link to="/login" className="block text-sm text-teal-700 hover:underline">
+              Ir a inicio de sesión
+            </Link>
+          </div>
+        ) : (
         <form className="space-y-5 md:space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
@@ -158,6 +176,7 @@ export function RegistroCliente() {
             {isLoading ? 'Registrando...' : 'Registrarse'}
           </button>
         </form>
+        )}
 
         <div className="mt-6 text-center text-sm">
           <span className="text-gray-600">¿Ya tienes cuenta? </span>

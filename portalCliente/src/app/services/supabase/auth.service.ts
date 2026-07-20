@@ -1,6 +1,6 @@
 import { supabase } from './client';
 import type { IAuthService } from '../interfaces';
-import type { AuthSession, LoginCredentials } from '../../types/auth.types';
+import type { AuthSession, LoginCredentials, RegisterCredentials } from '../../types/auth.types';
 
 interface ClientRecord {
   clienteid: number;
@@ -79,5 +79,29 @@ export const supabaseAuthService: IAuthService = {
     if (error) {
       throw new Error(error.message);
     }
+  },
+
+  async register(credentials: RegisterCredentials): Promise<AuthSession> {
+    const { data, error } = await supabase.auth.signUp({
+      email: credentials.email,
+      password: credentials.password,
+      options: {
+        data: {
+          full_name: credentials.name,
+          phone: credentials.phone
+        }
+      }
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    // Si Supabase requiere confirmación de email, data.session será null
+    if (!data.session) {
+      throw new Error('Confirma tu correo electrónico para activar tu cuenta.');
+    }
+
+    return mapSupabaseSessionWithClientData(data.session);
   }
 };

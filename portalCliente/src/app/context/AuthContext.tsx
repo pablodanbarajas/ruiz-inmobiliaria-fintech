@@ -6,7 +6,7 @@ import {
   useEffect,
   type ReactNode
 } from 'react';
-import type { AuthSession, LoginCredentials } from '../types/auth.types';
+import type { AuthSession, LoginCredentials, RegisterCredentials } from '../types/auth.types';
 import { authService } from '../services';
 import { supabase } from '../services/supabase/client';
 
@@ -14,6 +14,7 @@ interface AuthContextValue {
   session: AuthSession;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
+  register: (credentials: RegisterCredentials) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -145,6 +146,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
+  const register = useCallback(async (credentials: RegisterCredentials) => {
+    setIsLoading(true);
+    try {
+      const newSession = await authService.register(credentials);
+      setSession(newSession);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -156,7 +167,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ session, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,5 +1,5 @@
 import type { IAuthService } from '../interfaces';
-import type { AuthSession, LoginCredentials } from '../../types/auth.types';
+import type { AuthSession, LoginCredentials, RegisterCredentials } from '../../types/auth.types';
 import { mockAuthSession, mockGuestSession } from '../../data/mock/auth.mock';
 
 /**
@@ -26,5 +26,11 @@ export const mockAuthService: IAuthService = {
 
   async logout(): Promise<void> {
     _session = { ...mockGuestSession };
+  },
+
+  async register(_credentials: RegisterCredentials): Promise<AuthSession> {
+    // Mock: simula registro exitoso como el usuario de prueba.
+    _session = { ...mockAuthSession };
+    return _session;
   }
 };
