@@ -5,8 +5,7 @@
  */
 
 const ALLOWED_ORIGINS = [
-  'https://ruiz-inmobiliaria-fintech.vercel.app',
-  // Portal cliente — actualiza esta URL cuando el portal tenga dominio propio
+  'https://ruiz-inmobiliaria.trustcapitalia.com',
   'https://ruiz-inmobiliaria-fintech.vercel.app',
   // Dev local
   'http://localhost:5173',
