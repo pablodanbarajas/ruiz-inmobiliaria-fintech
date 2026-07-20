@@ -109,7 +109,14 @@ Deno.serve(async (req: Request) => {
   }
 
   // Extraer datos del evento
-  const clienteid = parseInt(data?.customer?.username ?? '', 10)
+  // Quentli puede enviar el id del cliente en username, externalId o en metadata
+  const clienteid = parseInt(
+    data?.customer?.username ??
+    data?.customer?.externalId ??
+    metadataMap?.['clienteid'] ??
+    '',
+    10,
+  )
   const amountCentavos: number = data?.amount ?? 0
   const montopagado = amountCentavos / 100
   const invoiceId: string = data?.invoiceId ?? ''
@@ -126,9 +133,19 @@ Deno.serve(async (req: Request) => {
   const subscriptionId: string | null =
     data?.subscriptionId ?? data?.subscription?.id ?? null
 
-  if (!clienteid || isNaN(clienteid) || montopagado <= 0) {
+  // Para RUTA 1 (metadata con corridafinancieraid) solo necesitamos el monto.
+  // Para RUTA 2 (suscripción / pago genérico) necesitamos clienteid válido.
+  if (montopagado <= 0) {
     return new Response(
-      JSON.stringify({ error: 'Datos insuficientes: se requiere customer.username y amount' }),
+      JSON.stringify({ error: 'Datos insuficientes: amount debe ser mayor a 0' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } },
+    )
+  }
+
+  // Si no hay corridaFinancieraid en metadata y tampoco clienteid válido → rechazar
+  if (!corridaFromMetadata && (isNaN(clienteid) || clienteid <= 0)) {
+    return new Response(
+      JSON.stringify({ error: 'Datos insuficientes: se requiere corridafinancieraid en metadata o customer id válido' }),
       { status: 400, headers: { 'Content-Type': 'application/json' } },
     )
   }
