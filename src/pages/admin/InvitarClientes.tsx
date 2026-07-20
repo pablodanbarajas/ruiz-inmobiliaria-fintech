@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { supabase } from '@/lib/supabaseClient'
-import { getCached, setCached } from '@/lib/queryCache'
+import { getCached, setCached, invalidateCache } from '@/lib/queryCache'
 import { Button } from '@/components/ui/Button'
 import { Mail, CheckCircle, Clock, XCircle, RefreshCw, Users, Send, AlertTriangle } from 'lucide-react'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
@@ -49,11 +49,15 @@ export const InvitarClientes = () => {
     })
   }, [])
 
-  const fetchCandidates = useCallback(async () => {
+  const fetchCandidates = useCallback(async (forceRefresh = false) => {
     if (!selectedDesarrollo) return
     const ck = `invitar:${selectedDesarrollo}`
-    const cached = getCached<InviteCandidate[]>(ck)
-    if (cached) { setCandidates(cached); setStatusMap({}); setLoading(false); return }
+    if (!forceRefresh) {
+      const cached = getCached<InviteCandidate[]>(ck)
+      if (cached) { setCandidates(cached); setStatusMap({}); setLoading(false); return }
+    } else {
+      invalidateCache(ck)
+    }
     setLoading(true)
     try {
       const { data, error } = await supabase
@@ -194,7 +198,7 @@ export const InvitarClientes = () => {
             </span>
           )}
           <button
-            onClick={fetchCandidates}
+            onClick={() => fetchCandidates(true)}
             className="inline-flex items-center gap-1.5 text-gray-500 hover:text-gray-700 text-sm transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
