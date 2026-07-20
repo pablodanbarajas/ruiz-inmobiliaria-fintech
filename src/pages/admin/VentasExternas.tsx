@@ -272,6 +272,7 @@ export const VentasExternas = () => {
             loteid: data.loteid,
             clienteid,
             fecha: data.fecha || today,
+            fecha_reserva: new Date().toISOString(),
             usuarioid: null,
             vendedor_user_id: vendedorUserId,
             vendedor: vendedorNombre,
