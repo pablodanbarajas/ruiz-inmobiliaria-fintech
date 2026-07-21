@@ -158,6 +158,8 @@ export const Pagos = () => {
   const [activeTab, setActiveTab] = useState<'pagos' | 'pendientes' | 'reportes'>('pagos')
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [reciboData, setReciboData] = useState<ReciboPagoData | null>(null)
+  const [pendingNavPagoId, setPendingNavPagoId] = useState<number | null>(null)
+  const [showPrintPrompt, setShowPrintPrompt] = useState(false)
   const [expandedClients, setExpandedClients] = useState<Set<number>>(new Set())
   const [showDifModal, setShowDifModal] = useState(false)
 
@@ -613,7 +615,8 @@ export const Pagos = () => {
       await fetchPagosAndPendientes()
 
       setShowCreateModal(false)
-      navigate(`/admin/pagos/${insertResult.data.pagoid}`)
+      setPendingNavPagoId(insertResult.data.pagoid)
+      setShowPrintPrompt(true)
     } catch (err: any) {
       console.error('Error creating pago:', err)
       alert(`Error al registrar el pago: ${err.message}`)
@@ -1223,9 +1226,86 @@ export const Pagos = () => {
       {reciboData && (
         <ReciboPago
           isOpen={!!reciboData}
-          onClose={() => setReciboData(null)}
+          onClose={() => {
+            setReciboData(null)
+            if (pendingNavPagoId) {
+              navigate(`/admin/pagos/${pendingNavPagoId}`)
+              setPendingNavPagoId(null)
+            }
+          }}
           data={reciboData}
         />
+      )}
+
+      {/* ── Modal: ¿Imprimir recibo? ──────────────────── */}
+      {showPrintPrompt && pendingNavPagoId && (
+        <Modal
+          isOpen={showPrintPrompt}
+          title="Pago registrado"
+          onClose={() => {
+            setShowPrintPrompt(false)
+            navigate(`/admin/pagos/${pendingNavPagoId}`)
+            setPendingNavPagoId(null)
+          }}
+        >
+          <div className="py-2 space-y-5">
+            <p className="text-gray-700 text-sm">El pago fue registrado correctamente. ¿Deseas imprimir el recibo?</p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPrintPrompt(false)
+                  navigate(`/admin/pagos/${pendingNavPagoId}`)
+                  setPendingNavPagoId(null)
+                }}
+              >
+                No, continuar
+              </Button>
+              <Button
+                onClick={async () => {
+                  setShowPrintPrompt(false)
+                  // Buscar el pago recién creado en la lista ya cargada
+                  const pago = allPagos.find(p => p.pagoid === pendingNavPagoId)
+                  if (pago) {
+                    const ctx = getPagoContext(pago)
+                    setReciboData({
+                      pagoid: pago.pagoid,
+                      montopagado: pago.montopagado,
+                      servicios_extra: pago.servicios_extra,
+                      recargo: pago.recargo,
+                      fechapago: pago.fechapago,
+                      formapago: pago.formapago,
+                      estatus: pago.estatus,
+                      referencia: pago.referencia,
+                      cobrador: pago.cobrador,
+                      comentario: pago.comentario,
+                      corridafinancieraid: pago.corridafinancieraid,
+                      nopago: pago.corridafinanciera?.nopago,
+                      mensualidad: pago.corridafinanciera?.mensualidad,
+                      saldo: pago.corridafinanciera?.saldo,
+                      ventaid: ctx.venta?.ventaid,
+                      preciolote: ctx.venta?.preciolote,
+                      fechaventa: ctx.venta?.fecha,
+                      clienteNombre: ctx.cliente?.nombre,
+                      clienteEmail: ctx.cliente?.email,
+                      clienteTelefono: (ctx.cliente as any)?.telefono,
+                      manzana: ctx.lote?.manzana,
+                      nolote: ctx.lote?.nolote,
+                      desarrollo: ctx.desarrollo?.nombre,
+                    })
+                  } else {
+                    navigate(`/admin/pagos/${pendingNavPagoId}`)
+                    setPendingNavPagoId(null)
+                  }
+                }}
+                className="inline-flex items-center gap-2 bg-[#504840] hover:bg-[#3d3630] text-white"
+              >
+                <Printer size={16} />
+                Sí, imprimir recibo
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* ── Modal: Detalle de Diferencia ──────────────── */}
