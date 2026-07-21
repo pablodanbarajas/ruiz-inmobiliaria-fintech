@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Mail, Lock, Building2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -14,13 +14,24 @@ import { useAuth } from '../../hooks/useAuth';
  *   Login exitoso → vuelve a /desarrollos/dev-1/mapa
  *
  * Si no hay parámetro redirect, navega al portal por defecto.
+ *
+ * También maneja el caso donde Supabase redirige aquí tras confirmar
+ * email: el cliente JS detecta el token en el hash, establece la
+ * sesión y este componente redirige automáticamente al home.
  */
 export function LoginCliente() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login } = useAuth();
+  const { login, session, isLoading } = useAuth();
 
   const redirectTo = searchParams.get('redirect') || '/home';
+
+  // Si ya hay sesión activa (ej. tras confirmar email), redirigir de inmediato
+  useEffect(() => {
+    if (!isLoading && session.isAuthenticated) {
+      navigate(redirectTo, { replace: true });
+    }
+  }, [isLoading, session.isAuthenticated, navigate, redirectTo]);
 
   const [email, setEmail]           = useState('');
   const [password, setPassword]     = useState('');
