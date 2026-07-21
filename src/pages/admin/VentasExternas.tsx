@@ -393,7 +393,10 @@ export const VentasExternas = () => {
 
       setShowModal(false)
       await loadData()
-      navigate(`/admin/ventas/${ventaData.ventaid}`, { state: { from: '/admin/ventas-externas' } })
+      // Solo admins van al detalle; el vendedor externo se queda en su lista
+      if (isAdmin) {
+        navigate(`/admin/ventas/${ventaData.ventaid}`, { state: { from: '/admin/ventas-externas' } })
+      }
     } catch (err: any) {
       setSubmitError(err.message ?? 'Error desconocido')
     } finally {
