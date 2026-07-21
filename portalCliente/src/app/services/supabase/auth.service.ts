@@ -86,6 +86,7 @@ export const supabaseAuthService: IAuthService = {
       email: credentials.email,
       password: credentials.password,
       options: {
+        emailRedirectTo: `${window.location.origin}/portal/login`,
         data: {
           full_name: credentials.name,
           phone: credentials.phone
