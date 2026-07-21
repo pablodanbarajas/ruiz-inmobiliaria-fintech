@@ -8,8 +8,8 @@ import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { ApartadoExternoForm } from '@/components/forms/ApartadoExternoForm'
 import type { ApartadoExternoFormData } from '@/components/forms/ApartadoExternoForm'
-import { formatDate, getVentaStatusLabel, getVentaStatusColor } from '@/utils/helpers'
-import { Plus, Eye, RefreshCw, XCircle, Pencil } from 'lucide-react'
+import { formatDate, getVentaStatusLabel, getVentaStatusColor, formatCurrency } from '@/utils/helpers'
+import { Plus, Eye, RefreshCw, XCircle, Pencil, CheckCircle2 } from 'lucide-react'
 import type { Venta, Cliente, Lote, Desarrollo } from '@/types/database'
 
 interface VentaExternaRow extends Venta {
@@ -17,10 +17,12 @@ interface VentaExternaRow extends Venta {
   lote?: Lote & { desarrollo?: Desarrollo }
 }
 
+const today = new Date().toISOString().split('T')[0]
+
 // Statuses shown in this module
 const STATUS_OPTIONS = [
   { value: '', label: 'Todos los estatus' },
-  { value: 'P', label: 'Reserva pendiente' },
+  { value: 'P', label: 'Pendiente de formalizar' },
   { value: 'E', label: 'En enganche' },
   { value: 'A', label: 'Activa' },
   { value: 'C', label: 'Cancelada' },
@@ -41,6 +43,19 @@ export const VentasExternas = () => {
   const [cancelingId, setCancelingId] = useState<number | null>(null)
   const [confirmCancel, setConfirmCancel] = useState<VentaExternaRow | null>(null)
 
+  // ── Formalizar state ────────────────────────────────────
+  const [formalizarRow, setFormalizarRow] = useState<VentaExternaRow | null>(null)
+  const [formalizarData, setFormalizarData] = useState({
+    preciolote: '',
+    enganche: '',
+    fechacontrato: today,
+    fechaenganche: today,
+    plazo: '',
+    fechaprimeramensualidad: '',
+  })
+  const [formalizarErrors, setFormalizarErrors] = useState<Record<string, string>>({})
+  const [formalizando, setFormalizando] = useState(false)
+
   // ── Edit client state ────────────────────────────────
   const [editClienteRow, setEditClienteRow] = useState<VentaExternaRow | null>(null)
   const [editClienteForm, setEditClienteForm] = useState<Partial<Cliente>>({})
@@ -51,7 +66,84 @@ export const VentasExternas = () => {
   const [filterVendedor, setFilterVendedor] = useState('')
   const [filterEstatus, setFilterEstatus] = useState('')
   const [vendorEmailMap, setVendorEmailMap] = useState<Record<string, string>>({})
+  // ── Open formalizar modal ─────────────────────────────────
+  const openFormalizar = (row: VentaExternaRow) => {
+    setFormalizarRow(row)
+    setFormalizarData({
+      preciolote: row.lote?.preciolote?.toString() ?? '',
+      enganche: '',
+      fechacontrato: today,
+      fechaenganche: today,
+      plazo: '',
+      fechaprimeramensualidad: '',
+    })
+    setFormalizarErrors({})
+  }
 
+  const handleFormalizar = async () => {
+    const errs: Record<string, string> = {}
+    const precio = parseFloat(formalizarData.preciolote)
+    const engancheNum = parseFloat(formalizarData.enganche)
+    const plazoNum = parseInt(formalizarData.plazo)
+    if (!precio || precio <= 0) errs.preciolote = 'Requerido'
+    if (isNaN(engancheNum) || engancheNum < 0) errs.enganche = 'Requerido'
+    if (!isNaN(precio) && !isNaN(engancheNum) && engancheNum >= precio)
+      errs.enganche = 'El enganche no puede ser mayor o igual al precio'
+    if (!plazoNum || plazoNum <= 0) errs.plazo = 'Requerido'
+    if (!formalizarData.fechacontrato) errs.fechacontrato = 'Requerida'
+    if (!formalizarData.fechaenganche) errs.fechaenganche = 'Requerida'
+    if (!formalizarData.fechaprimeramensualidad) errs.fechaprimeramensualidad = 'Requerida'
+    setFormalizarErrors(errs)
+    if (Object.keys(errs).length > 0) return
+
+    setFormalizando(true)
+    try {
+      const porcenganche = parseFloat(((engancheNum / precio) * 100).toFixed(2))
+
+      // 1. Actualizar venta con campos financieros y cambiar a 'E' (En enganche)
+      const { error: updateErr } = await supabase
+        .from('venta')
+        .update({
+          preciolote: precio,
+          enganche: engancheNum,
+          porcenganche,
+          fechacontrato: formalizarData.fechacontrato,
+          fechaenganche: formalizarData.fechaenganche,
+          estatus: 'E',
+        })
+        .eq('ventaid', formalizarRow!.ventaid)
+      if (updateErr) throw new Error(updateErr.message)
+
+      // 2. Llamar edge function formalize-sale para generar corrida financiera
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/formalize-sale`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            ventaid: formalizarRow!.ventaid,
+            plazo: plazoNum,
+            fechaprimeramensualidad: formalizarData.fechaprimeramensualidad,
+          }),
+        }
+      )
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Error al formalizar')
+
+      setFormalizarRow(null)
+      await loadData()
+    } catch (err: any) {
+      setFormalizarErrors({ _general: err.message })
+    } finally {
+      setFormalizando(false)
+    }
+  }
   // ── Load data ────────────────────────────────────────────
   const loadData = async () => {
     setLoading(true)
@@ -455,6 +547,15 @@ export const VentasExternas = () => {
                             Ver
                           </button>
                         )}
+                        {isAdmin && row.estatus === 'P' && (
+                          <button
+                            onClick={() => openFormalizar(row)}
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-green-50 hover:bg-green-100 text-green-700 transition-colors"
+                          >
+                            <CheckCircle2 size={13} />
+                            Formalizar
+                          </button>
+                        )}
                         {row.estatus !== 'C' && (
                           <button
                             onClick={() => openEditCliente(row)}
@@ -659,6 +760,143 @@ export const VentasExternas = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Formalizar venta modal */}
+      {formalizarRow && (() => {
+        const precio = parseFloat(formalizarData.preciolote) || 0
+        const engancheNum = parseFloat(formalizarData.enganche) || 0
+        const plazoNum = parseInt(formalizarData.plazo) || 0
+        const saldo = precio - engancheNum
+        const mensualidadPreview = plazoNum > 0 && saldo > 0 ? saldo / plazoNum : null
+        return (
+          <Modal
+            isOpen
+            onClose={() => !formalizando && setFormalizarRow(null)}
+            title="Formalizar Venta"
+          >
+            <div className="space-y-5">
+              {/* Info del apartado */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm">
+                <p className="font-semibold text-amber-800">
+                  {formalizarRow.cliente?.nombre ?? `Cliente #${formalizarRow.clienteid}`}
+                </p>
+                <p className="text-amber-700">
+                  {formalizarRow.lote
+                    ? `Mza ${formalizarRow.lote.manzana} Lote ${formalizarRow.lote.nolote} · ${formalizarRow.lote.desarrollo?.nombre ?? ''}`
+                    : `Lote #${formalizarRow.loteid}`}
+                </p>
+              </div>
+
+              {formalizarErrors._general && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+                  {formalizarErrors._general}
+                </div>
+              )}
+
+              {/* Precios */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Precio del lote *</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="0.00"
+                    value={formalizarData.preciolote}
+                    onChange={(e) => setFormalizarData({ ...formalizarData, preciolote: e.target.value })}
+                  />
+                  {formalizarErrors.preciolote && <p className="text-red-500 text-xs mt-1">{formalizarErrors.preciolote}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Enganche *
+                    {precio > 0 && engancheNum > 0 && (
+                      <span className="ml-2 text-gray-400 font-normal">
+                        ({((engancheNum / precio) * 100).toFixed(1)}%)
+                      </span>
+                    )}
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="0.00"
+                    value={formalizarData.enganche}
+                    onChange={(e) => setFormalizarData({ ...formalizarData, enganche: e.target.value })}
+                  />
+                  {formalizarErrors.enganche && <p className="text-red-500 text-xs mt-1">{formalizarErrors.enganche}</p>}
+                </div>
+              </div>
+
+              {/* Fechas */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de contrato *</label>
+                  <Input
+                    type="date"
+                    value={formalizarData.fechacontrato}
+                    onChange={(e) => setFormalizarData({ ...formalizarData, fechacontrato: e.target.value })}
+                  />
+                  {formalizarErrors.fechacontrato && <p className="text-red-500 text-xs mt-1">{formalizarErrors.fechacontrato}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha límite enganche *</label>
+                  <Input
+                    type="date"
+                    value={formalizarData.fechaenganche}
+                    onChange={(e) => setFormalizarData({ ...formalizarData, fechaenganche: e.target.value })}
+                  />
+                  {formalizarErrors.fechaenganche && <p className="text-red-500 text-xs mt-1">{formalizarErrors.fechaenganche}</p>}
+                </div>
+              </div>
+
+              {/* Plazo */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Plazo (meses) *</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="ej. 120"
+                    value={formalizarData.plazo}
+                    onChange={(e) => setFormalizarData({ ...formalizarData, plazo: e.target.value })}
+                  />
+                  {formalizarErrors.plazo && <p className="text-red-500 text-xs mt-1">{formalizarErrors.plazo}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Primera mensualidad *</label>
+                  <Input
+                    type="date"
+                    value={formalizarData.fechaprimeramensualidad}
+                    onChange={(e) => setFormalizarData({ ...formalizarData, fechaprimeramensualidad: e.target.value })}
+                  />
+                  {formalizarErrors.fechaprimeramensualidad && <p className="text-red-500 text-xs mt-1">{formalizarErrors.fechaprimeramensualidad}</p>}
+                </div>
+              </div>
+
+              {/* Preview mensualidad */}
+              {mensualidadPreview !== null && (
+                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm">
+                  <p className="text-green-800">
+                    <span className="font-semibold">Mensualidad estimada: </span>
+                    {formatCurrency(mensualidadPreview)} / mes × {plazoNum} meses
+                  </p>
+                  <p className="text-green-700 mt-0.5">
+                    Saldo a financiar: {formatCurrency(saldo)}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-1">
+                <Button variant="secondary" onClick={() => setFormalizarRow(null)} disabled={formalizando}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleFormalizar} disabled={formalizando}>
+                  {formalizando ? 'Formalizando…' : 'Confirmar y generar corrida'}
+                </Button>
+              </div>
+            </div>
+          </Modal>
+        )
+      })()}
 
       {/* Confirm cancel modal */}
       <Modal

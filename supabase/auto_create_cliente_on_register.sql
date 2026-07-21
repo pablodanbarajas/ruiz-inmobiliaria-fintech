@@ -52,8 +52,8 @@ BEGIN
       ''
     );
 
-    INSERT INTO public.cliente (nombre, email, telefonocelular, user_id)
-    SELECT v_nombre, NEW.email, v_telefono, NEW.id
+    INSERT INTO public.cliente (nombre, email, telefonocelular, user_id, estatus)
+    SELECT v_nombre, NEW.email, v_telefono, NEW.id, 'A'
     WHERE NOT EXISTS (
       SELECT 1 FROM public.cliente
       WHERE LOWER(email) = LOWER(NEW.email)
@@ -109,8 +109,8 @@ BEGIN
       ''
     );
 
-    INSERT INTO public.cliente (nombre, email, telefonocelular, user_id)
-    VALUES (v_nombre, r.email, v_telefono, r.id)
+    INSERT INTO public.cliente (nombre, email, telefonocelular, user_id, estatus)
+    VALUES (v_nombre, r.email, v_telefono, r.id, 'A')
     ON CONFLICT DO NOTHING;
   END LOOP;
 END;

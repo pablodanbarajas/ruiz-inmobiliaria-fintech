@@ -110,7 +110,7 @@ export const getLoteStatusColor = (status: string | null | undefined): string =>
 export const getVentaStatusLabel = (status: string | null | undefined): string => {
   switch (status?.toUpperCase()) {
     case 'P':
-      return 'Reserva pendiente'
+      return 'Pendiente de formalizar'
     case 'E':
       return 'En enganche'
     case 'A':
