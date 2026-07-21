@@ -56,7 +56,7 @@ interface CorridaWithPagos extends CorridaFinanciera {
   recargoRequired?: number
 }
 
-const today = () => new Date().toISOString().split('T')[0]
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
 // ── PagoForm ───────────────────────────────────────────────────────
 export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExtra = [], onSubmit, isLoading }: PagoFormProps) => {
@@ -237,7 +237,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
               const pagosList = pagosData || []
               const total = pagosList.reduce((s: number, p: Pago) => s + getPagoAplicado(p), 0)
               const maxStoredRecargo = pagosList.reduce((max: number, p: Pago) => Math.max(max, p.recargo ?? 0), 0)
-              const todayStr = new Date().toISOString().split('T')[0]
+              const _d1 = new Date(); const todayStr = `${_d1.getFullYear()}-${String(_d1.getMonth() + 1).padStart(2, '0')}-${String(_d1.getDate()).padStart(2, '0')}`
               const diasTol = ventaData?.dias_tolerancia ?? 0
               const recargoRequired = pagosList.length > 0
                 ? maxStoredRecargo
@@ -301,7 +301,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
           : []
         const totalCargosExtra = cargosAplicables.reduce((s, c) => s + (c.monto || 0), 0)
         const maxStoredRecargo = pagosList.reduce((max: number, p: Pago) => Math.max(max, p.recargo ?? 0), 0)
-        const todayStr = new Date().toISOString().split('T')[0]
+        const _d2 = new Date(); const todayStr = `${_d2.getFullYear()}-${String(_d2.getMonth() + 1).padStart(2, '0')}-${String(_d2.getDate()).padStart(2, '0')}`
         const recargoRequired = pagosList.length > 0
           ? maxStoredRecargo
           : (data.nopago !== 0 && data.fecha ? calcularRecargo(data.fecha, todayStr, diasTolInitial) : 0)
