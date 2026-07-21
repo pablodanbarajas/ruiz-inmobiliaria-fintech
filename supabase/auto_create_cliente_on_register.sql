@@ -36,7 +36,10 @@ BEGIN
 
   GET DIAGNOSTICS v_linked = ROW_COUNT;
 
-  -- 2) Si no había cliente previo, crear uno nuevo (auto-registro del portal)
+  -- 2) Si no había cliente previo Y tampoco existe uno con ese email,
+  --    crear uno nuevo (auto-registro del portal).
+  --    Usamos NOT EXISTS en lugar de ON CONFLICT porque la columna email
+  --    no tiene restricción UNIQUE definida en la tabla.
   IF v_linked = 0 THEN
     v_nombre := TRIM(COALESCE(
       NEW.raw_user_meta_data->>'full_name',
@@ -50,10 +53,11 @@ BEGIN
     );
 
     INSERT INTO public.cliente (nombre, email, telefonocelular, user_id)
-    VALUES (v_nombre, NEW.email, v_telefono, NEW.id)
-    ON CONFLICT (email) DO UPDATE
-      SET user_id = EXCLUDED.user_id
-      WHERE public.cliente.user_id IS NULL;
+    SELECT v_nombre, NEW.email, v_telefono, NEW.id
+    WHERE NOT EXISTS (
+      SELECT 1 FROM public.cliente
+      WHERE LOWER(email) = LOWER(NEW.email)
+    );
   END IF;
 
   RETURN NEW;

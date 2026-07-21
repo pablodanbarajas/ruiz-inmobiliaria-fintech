@@ -97,23 +97,6 @@ export const supabaseAuthService: IAuthService = {
       throw new Error(error.message);
     }
 
-    // Garantizar que exista un registro en la tabla cliente.
-    // Se ejecuta ANTES de verificar la sesión para cubrir también el caso en
-    // que Supabase requiere confirmación de email (data.session = null pero
-    // data.user ya existe). El trigger de DB hace lo mismo, este upsert es
-    // el fallback de aplicación.
-    if (data.user) {
-      await supabase.from('cliente').upsert(
-        {
-          nombre: credentials.name.trim(),
-          email: credentials.email.toLowerCase(),
-          telefonocelular: credentials.phone ?? '',
-          user_id: data.user.id,
-        },
-        { onConflict: 'email', ignoreDuplicates: false }
-      );
-    }
-
     // Si Supabase requiere confirmación de email, data.session será null
     if (!data.session) {
       throw new Error('Confirma tu correo electrónico para activar tu cuenta.');
