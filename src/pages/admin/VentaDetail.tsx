@@ -141,7 +141,8 @@ export const VentaDetail = () => {
 
       const paymentDate = initialPaymentDate || today
       const ventaMarker = `[VENTA:${venta.ventaid}]`
-      const paymentReference = initialPaymentReference.trim() || `Pago ${initialPaymentType === 'apartado' ? 'de apartado' : 'de enganche'} · Venta ${venta.ventaid}`
+      const rawReference = initialPaymentReference.trim() || `Pago ${initialPaymentType === 'apartado' ? 'de apartado' : 'de enganche'} · Venta ${venta.ventaid}`
+      const paymentReference = rawReference.includes(ventaMarker) ? rawReference : `${rawReference} ${ventaMarker}`
       const baseComment = initialPaymentComment.trim() || `Registro de ${initialPaymentType === 'apartado' ? 'apartado' : 'enganche'} desde administración`
       const paymentComment = baseComment.includes(ventaMarker) ? baseComment : `${baseComment} ${ventaMarker}`
 

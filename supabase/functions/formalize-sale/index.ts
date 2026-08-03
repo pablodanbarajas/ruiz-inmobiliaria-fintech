@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
     // Obtener datos de la venta
     const { data: venta, error: ventaErr } = await serviceClient
       .from('venta')
-      .select('ventaid, preciolote, enganche, fechaenganche, loteid, estatus')
+      .select('ventaid, preciolote, enganche, fechaenganche, loteid, estatus, clienteid, fecha, monto_apartado_pagado')
       .eq('ventaid', ventaId)
       .single()
 
@@ -163,11 +163,40 @@ Deno.serve(async (req: Request) => {
 
     if (corrida0) {
       // Enlazar pagos sin corrida asociada (apartado y enganche) a nopago=0
-      await serviceClient
+      const { data: linkedByMarker } = await serviceClient
         .from('pagos')
         .update({ corridafinancieraid: corrida0.corridafinancieraid })
         .is('corridafinancieraid', null)
         .or(`referencia.ilike.%Venta ${ventaId}%,comentario.ilike.%Venta ${ventaId}%,comentario.ilike.%[VENTA:${ventaId}]%`)
+        .select('pagoid')
+
+      // Fallback para ventas históricas sin marcador: usa montos esperados de apartado/enganche.
+      if (!linkedByMarker || linkedByMarker.length === 0) {
+        const engancheTotal = Number(venta.enganche ?? 0)
+        const apartadoPagado = Number(venta.monto_apartado_pagado ?? 0)
+        const engancheRestante = Math.max(0, engancheTotal - apartadoPagado)
+        const expectedAmounts = [apartadoPagado, engancheRestante, engancheTotal].filter((n) => Number.isFinite(n) && n > 0)
+
+        const fromDate = venta.fecha || new Date(Date.now() - (45 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]
+        const { data: looseCandidates } = await serviceClient
+          .from('pagos')
+          .select('pagoid, montopagado, fechapago')
+          .is('corridafinancieraid', null)
+          .gte('fechapago', fromDate)
+          .order('fechapago', { ascending: false })
+          .limit(20)
+
+        const ids = (looseCandidates || [])
+          .filter((p: any) => expectedAmounts.some((e) => Math.abs(Number(p.montopagado ?? 0) - e) < 0.01))
+          .map((p: any) => Number(p.pagoid))
+
+        if (ids.length > 0) {
+          await serviceClient
+            .from('pagos')
+            .update({ corridafinancieraid: corrida0.corridafinancieraid })
+            .in('pagoid', ids)
+        }
+      }
     }
 
     // 3. Actualizar venta con plazo y mensualidad

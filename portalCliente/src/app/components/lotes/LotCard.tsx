@@ -96,8 +96,8 @@ export function LotCard({ lote }: LotCardProps) {
 
   const handlePrimaryAction = async () => {
     if (lote.status === 'en_formalizacion') {
-      // El enganche está pagado, esperando que el admin active las mensualidades
-      alert('Tu enganche fue recibido. Un asesor se pondrá en contacto para formalizar tu contrato y activar el plan de pagos.');
+      // El enganche está pagado, enviar al cliente a soporte para seguimiento.
+      navigate('/portal-soporte');
       return;
     }
 
