@@ -111,9 +111,29 @@ SELECT
   v.fechacontrato,
   v.enganche,
   v.mensualidad,
-  (SELECT MIN(cf.fecha) FROM corridafinanciera cf 
-   WHERE cf.ventaid = v.ventaid AND cf.nopago > 0) as next_due_date,
-  v.mensualidad as next_payment_amount
+  (SELECT MIN(cf.fecha)
+   FROM corridafinanciera cf
+   WHERE cf.ventaid = v.ventaid
+     AND cf.nopago > 0
+     AND NOT EXISTS (
+       SELECT 1 FROM pagos p
+       WHERE p.corridafinancieraid = cf.corridafinancieraid AND p.estatus IN ('P', 'R')
+     )
+  ) as next_due_date,
+  -- mensualidad + cargos extra del desarrollo + recargo por mora si aplica
+  (SELECT cf2.mensualidad
+     + COALESCE((SELECT SUM(ce.monto) FROM cargos_extra ce WHERE ce.desarrolloid = d.desarrolloid), 0)
+     + CASE WHEN cf2.fecha < CURRENT_DATE THEN calcular_recargo(cf2.fecha, v.dias_tolerancia) ELSE 0 END
+   FROM corridafinanciera cf2
+   WHERE cf2.ventaid = v.ventaid
+     AND cf2.nopago > 0
+     AND NOT EXISTS (
+       SELECT 1 FROM pagos p
+       WHERE p.corridafinancieraid = cf2.corridafinancieraid AND p.estatus IN ('P', 'R')
+     )
+   ORDER BY cf2.fecha ASC
+   LIMIT 1
+  ) as next_payment_amount
 FROM cliente c
 INNER JOIN venta v ON v.clienteid = c.clienteid
 INNER JOIN lote l ON l.loteid = v.loteid
