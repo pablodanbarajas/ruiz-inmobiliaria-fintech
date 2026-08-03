@@ -162,40 +162,33 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (corrida0) {
-      // Enlazar pagos sin corrida asociada (apartado y enganche) a nopago=0
-      const { data: linkedByMarker } = await serviceClient
-        .from('pagos')
-        .update({ corridafinancieraid: corrida0.corridafinancieraid })
-        .is('corridafinancieraid', null)
-        .or(`referencia.ilike.%Venta ${ventaId}%,comentario.ilike.%Venta ${ventaId}%,comentario.ilike.%[VENTA:${ventaId}]%`)
-        .select('pagoid')
-
-      // Fallback para ventas históricas sin marcador: usa montos esperados de apartado/enganche.
-      if (!linkedByMarker || linkedByMarker.length === 0) {
-        const engancheTotal = Number(venta.enganche ?? 0)
-        const apartadoPagado = Number(venta.monto_apartado_pagado ?? 0)
-        const engancheRestante = Math.max(0, engancheTotal - apartadoPagado)
-        const expectedAmounts = [apartadoPagado, engancheRestante, engancheTotal].filter((n) => Number.isFinite(n) && n > 0)
-
-        const fromDate = venta.fecha || new Date(Date.now() - (45 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]
-        const { data: looseCandidates } = await serviceClient
+      // Usar .ilike() como método independiente para evitar que .or() con % o [ rompa el parser de PostgREST.
+      // Buscar primero por referencia, luego por comentario, combinar IDs únicos.
+      const [{ data: byRef }, { data: byComment }] = await Promise.all([
+        serviceClient
           .from('pagos')
-          .select('pagoid, montopagado, fechapago')
+          .select('pagoid')
           .is('corridafinancieraid', null)
-          .gte('fechapago', fromDate)
-          .order('fechapago', { ascending: false })
-          .limit(20)
+          .ilike('referencia', `%Venta ${ventaId}%`),
+        serviceClient
+          .from('pagos')
+          .select('pagoid')
+          .is('corridafinancieraid', null)
+          .ilike('comentario', `%Venta ${ventaId}%`),
+      ])
 
-        const ids = (looseCandidates || [])
-          .filter((p: any) => expectedAmounts.some((e) => Math.abs(Number(p.montopagado ?? 0) - e) < 0.01))
-          .map((p: any) => Number(p.pagoid))
+      const seen = new Set<number>()
+      const pagoIds: number[] = []
+      for (const p of [...(byRef ?? []), ...(byComment ?? [])]) {
+        const id = Number((p as any).pagoid)
+        if (!seen.has(id)) { seen.add(id); pagoIds.push(id) }
+      }
 
-        if (ids.length > 0) {
-          await serviceClient
-            .from('pagos')
-            .update({ corridafinancieraid: corrida0.corridafinancieraid })
-            .in('pagoid', ids)
-        }
+      if (pagoIds.length > 0) {
+        await serviceClient
+          .from('pagos')
+          .update({ corridafinancieraid: corrida0.corridafinancieraid })
+          .in('pagoid', pagoIds)
       }
     }
 
