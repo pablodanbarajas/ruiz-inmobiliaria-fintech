@@ -223,14 +223,6 @@ Deno.serve(async (req: Request) => {
       (invoiceBody.input as Record<string, unknown>).subscriptionId = venta.quentli_subscription_id
     }
 
-    // Adjuntar política de recargos por mora si está configurada en variables de entorno
-    const surchargeModifierId = Deno.env.get('QUENTLI_SURCHARGE_MODIFIER_ID') ?? ''
-    if (surchargeModifierId) {
-      (invoiceBody.input as Record<string, unknown>).modifiers = [
-        { modifierId: surchargeModifierId },
-      ]
-    }
-
     // ── 7. Crear el invoice en Quentli ──
     const invoiceRes = await fetch(`${QUENTLI_API}/v1/invoices`, {
       method: 'POST',
