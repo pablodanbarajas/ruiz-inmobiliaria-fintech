@@ -71,7 +71,7 @@ export const VentasExternas = () => {
     setFormalizarRow(row)
     setFormalizarData({
       preciolote: row.lote?.preciolote?.toString() ?? '',
-      enganche: '',
+      enganche: row.enganche?.toString() ?? '',
       fechacontrato: today,
       fechaenganche: today,
       plazo: '',
@@ -109,7 +109,7 @@ export const VentasExternas = () => {
           porcenganche,
           fechacontrato: formalizarData.fechacontrato,
           fechaenganche: formalizarData.fechaenganche,
-          estatus: 'E',
+          estatus: 'A',
         })
         .eq('ventaid', formalizarRow!.ventaid)
       if (updateErr) throw new Error(updateErr.message)
@@ -388,7 +388,28 @@ export const VentasExternas = () => {
         throw new Error('El lote seleccionado ya no está disponible. Fue reservado por otro usuario.')
       }
 
-      // ── 3. Insert venta (apartado) ────────────────────────
+      // ── 3. Cargar precio de lote y enganche de desarrollo ─
+      const { data: loteData, error: loteDataError } = await supabase
+        .from('lote')
+        .select('preciolote, desarrolloid')
+        .eq('loteid', data.loteid)
+        .single()
+      if (loteDataError) throw new Error(`Error al obtener datos del lote: ${loteDataError.message}`)
+
+      let engancheConfig: number | null = null
+      if (loteData?.desarrolloid) {
+        const { data: desarrolloData, error: desarrolloError } = await supabase
+          .from('desarrollo')
+          .select('enganche')
+          .eq('desarrolloid', loteData.desarrolloid)
+          .single()
+        if (desarrolloError) throw new Error(`Error al obtener enganche del desarrollo: ${desarrolloError.message}`)
+        const rawEnganche = desarrolloData?.enganche
+        const parsedEnganche = rawEnganche ? Number(String(rawEnganche).replace(/[$,\s]/g, '')) : NaN
+        engancheConfig = Number.isFinite(parsedEnganche) && parsedEnganche > 0 ? parsedEnganche : null
+      }
+
+      // ── 4. Insert venta (apartado) ────────────────────────
       const today = new Date().toISOString().split('T')[0]
       const { data: ventaData, error: ventaError } = await supabase
         .from('venta')
@@ -403,10 +424,14 @@ export const VentasExternas = () => {
             vendedor: vendedorNombre,
             estatus: 'P',
             comentarios: data.comentarios || null,
-            // Financial fields intentionally null — to be completed by contratos/admin
-            preciolote: null,
-            enganche: null,
-            porcenganche: null,
+            // Base financial fields are prefilled to match portal flow and avoid $0 states.
+            preciolote: loteData?.preciolote ?? null,
+            enganche: engancheConfig,
+            porcenganche:
+              loteData?.preciolote && engancheConfig
+                ? parseFloat(((engancheConfig / loteData.preciolote) * 100).toFixed(2))
+                : null,
+            monto_apartado_pagado: 0,
             fechaenganche: null,
             plazo: null,
             fechaprimeramensualidad: null,

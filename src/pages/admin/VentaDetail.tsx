@@ -97,11 +97,25 @@ export const VentaDetail = () => {
     return Number.isFinite(parsed) ? parsed : 0
   }
 
+  const getFallbackPrecio = () => {
+    if (!venta) return 0
+    if ((venta.preciolote ?? 0) > 0) return venta.preciolote ?? 0
+    return venta.lote?.preciolote ?? 0
+  }
+
+  const getFallbackEngancheTotal = () => {
+    if (!venta) return 0
+    if ((venta.enganche ?? 0) > 0) return venta.enganche ?? 0
+    return parseCurrencyValue(venta.lote?.desarrollo?.enganche)
+  }
+
   const openInitialPaymentModal = (type: 'apartado' | 'enganche') => {
     if (!venta) return
+    const engancheTotal = getFallbackEngancheTotal()
+    const apartadoPagado = venta.monto_apartado_pagado ?? 0
     const defaultAmount = type === 'apartado'
       ? (venta.lote?.desarrollo?.montominimoapartado ? parseCurrencyValue(venta.lote.desarrollo.montominimoapartado) : 0)
-      : (venta.enganche ?? venta.lote?.desarrollo?.enganche ? parseCurrencyValue(venta.enganche ?? venta.lote?.desarrollo?.enganche) : 0)
+      : Math.max(0, engancheTotal - apartadoPagado)
 
     setInitialPaymentType(type)
     setInitialPaymentAmount(defaultAmount > 0 ? String(defaultAmount) : '')
@@ -133,13 +147,31 @@ export const VentaDetail = () => {
       if (initialPaymentType === 'apartado') {
         updates.estatus = 'E'
         updates.monto_apartado_pagado = amount
+        if ((venta.enganche ?? 0) <= 0) {
+          const fallbackEnganche = getFallbackEngancheTotal()
+          if (fallbackEnganche > 0) updates.enganche = fallbackEnganche
+        }
+        if ((venta.preciolote ?? 0) <= 0) {
+          const fallbackPrecio = getFallbackPrecio()
+          if (fallbackPrecio > 0) updates.preciolote = fallbackPrecio
+        }
         const fechaLimite = new Date()
         fechaLimite.setDate(fechaLimite.getDate() + 15)
         updates.fecha_limite_enganche = fechaLimite.toISOString().split('T')[0]
       } else {
+        const apartadoPagado = venta.monto_apartado_pagado ?? 0
+        const engancheTotal = (venta.enganche ?? 0) > 0
+          ? (venta.enganche ?? 0)
+          : Math.max(0, amount + apartadoPagado)
+        const precioActual = (venta.preciolote ?? 0) > 0 ? (venta.preciolote ?? 0) : getFallbackPrecio()
         updates.estatus = 'A'
         updates.fechaenganche = paymentDate
         updates.fechacontrato = venta.fechacontrato || paymentDate
+        if (engancheTotal > 0) updates.enganche = engancheTotal
+        if (precioActual > 0) updates.preciolote = precioActual
+        if (engancheTotal > 0 && precioActual > 0) {
+          updates.porcenganche = parseFloat(((engancheTotal / precioActual) * 100).toFixed(2))
+        }
       }
 
       const { error: ventaError } = await supabase
@@ -709,7 +741,9 @@ export const VentaDetail = () => {
     (sum, c) => sum + (c.pagos?.filter((p) => p.estatus !== 'C').reduce((ps, p) => ps + getPagoAplicado(p), 0) || 0),
     0
   )
-  const saldoPendiente = (venta.preciolote || 0) - totalPagado
+  const precioVenta = getFallbackPrecio()
+  const engancheVenta = getFallbackEngancheTotal()
+  const saldoPendiente = precioVenta - totalPagado
   
   // Calcular cargos extra totales aplicables
   const totalCargosExtras = corridas.reduce((sum, corrida) => {
@@ -733,9 +767,9 @@ export const VentaDetail = () => {
   }, 0)
   
   const totalAPagar = saldoPendiente + totalCargosExtras + totalRecargos
-  const porcPagado = (venta.preciolote ?? 0) > 0 ? totalPagado / (venta.preciolote ?? 1) : 0
+  const porcPagado = precioVenta > 0 ? totalPagado / precioVenta : 0
   const aplicaDevolucion = porcPagado > 0.20
-  const montoDevolucion = (venta.preciolote ?? 0) * 0.20
+  const montoDevolucion = precioVenta * 0.20
   const isExternalVenta = Boolean(venta.vendedor_user_id || venta.vendedor)
 
   // Corridas vencidas sin pago activo (para alerta de cancelación)
@@ -927,16 +961,18 @@ export const VentaDetail = () => {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-6 pt-6 border-t border-gray-100">
             <div>
               <p className="text-sm text-gray-500">Precio del Lote</p>
-              <p className="text-lg font-bold text-blue-600">{formatCurrency(venta.preciolote)}</p>
+              <p className="text-lg font-bold text-blue-600">{formatCurrency(precioVenta)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Enganche</p>
-              <p className="text-lg font-bold text-green-600">{formatCurrency(venta.enganche)}</p>
+              <p className="text-lg font-bold text-green-600">{formatCurrency(engancheVenta)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">% Enganche</p>
               <p className="text-lg font-bold text-gray-700">
-                {venta.porcenganche != null ? `${venta.porcenganche}%` : '-'}
+                {venta.porcenganche != null
+                  ? `${venta.porcenganche}%`
+                  : (precioVenta > 0 && engancheVenta > 0 ? `${((engancheVenta / precioVenta) * 100).toFixed(2)}%` : '-')}
               </p>
             </div>
             <div>
@@ -1063,7 +1099,7 @@ export const VentaDetail = () => {
         <div className="grid grid-cols-6 gap-4 mb-8">
           <div className="bg-white rounded-lg shadow p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Precio Total</p>
-            <p className="text-xl md:text-2xl font-bold text-blue-600">{formatCurrency(venta.preciolote)}</p>
+            <p className="text-xl md:text-2xl font-bold text-blue-600">{formatCurrency(precioVenta)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Total Pagado</p>
@@ -1515,9 +1551,9 @@ export const VentaDetail = () => {
               Define los términos del plan de pagos. La mensualidad se calculará automáticamente.
             </p>
             <div className="bg-gray-50 rounded-lg p-4 grid grid-cols-3 gap-4 text-sm">
-              <div><p className="text-gray-500">Precio lote</p><p className="font-bold text-blue-600">{formatCurrency(venta.preciolote)}</p></div>
-              <div><p className="text-gray-500">Enganche pagado</p><p className="font-bold text-green-600">{formatCurrency(venta.enganche)}</p></div>
-              <div><p className="text-gray-500">Saldo a financiar</p><p className="font-bold text-orange-600">{formatCurrency((venta.preciolote ?? 0) - (venta.enganche ?? 0))}</p></div>
+              <div><p className="text-gray-500">Precio lote</p><p className="font-bold text-blue-600">{formatCurrency(precioVenta)}</p></div>
+              <div><p className="text-gray-500">Enganche pagado</p><p className="font-bold text-green-600">{formatCurrency(engancheVenta)}</p></div>
+              <div><p className="text-gray-500">Saldo a financiar</p><p className="font-bold text-orange-600">{formatCurrency(precioVenta - engancheVenta)}</p></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -1542,7 +1578,7 @@ export const VentaDetail = () => {
             {formalizarData.plazo && parseInt(formalizarData.plazo) > 0 && (
               <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 text-sm text-teal-800">
                 <span className="font-semibold">Mensualidad calculada: </span>
-                {formatCurrency(((venta.preciolote ?? 0) - (venta.enganche ?? 0)) / parseInt(formalizarData.plazo))} / mes
+                {formatCurrency((precioVenta - engancheVenta) / parseInt(formalizarData.plazo))} / mes
                 {' · '}{formalizarData.plazo} meses
               </div>
             )}
