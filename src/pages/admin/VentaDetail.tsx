@@ -52,6 +52,7 @@ export const VentaDetail = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { role } = useAuth()
+  const today = new Date().toISOString().split('T')[0]
   const [venta, setVenta] = useState<VentaWithDetails | null>(null)
   const [corridas, setCorridas] = useState<CorridaWithPagos[]>([])
   const [corridaPage, setCorridaPage] = useState(0)
@@ -70,6 +71,14 @@ export const VentaDetail = () => {
   const [showConvenioModal, setShowConvenioModal] = useState(false)
   const [isSubmittingConvenio, setIsSubmittingConvenio] = useState(false)
   const [numParcialidades, setNumParcialidades] = useState(3)
+  const [showInitialPaymentModal, setShowInitialPaymentModal] = useState(false)
+  const [initialPaymentType, setInitialPaymentType] = useState<'apartado' | 'enganche' | null>(null)
+  const [initialPaymentAmount, setInitialPaymentAmount] = useState('')
+  const [initialPaymentDate, setInitialPaymentDate] = useState(today)
+  const [initialPaymentReference, setInitialPaymentReference] = useState('')
+  const [initialPaymentComment, setInitialPaymentComment] = useState('')
+  const [initialPaymentError, setInitialPaymentError] = useState<string | null>(null)
+  const [isSubmittingInitialPayment, setIsSubmittingInitialPayment] = useState(false)
   const [devolucion, setDevolucion] = useState<(Devolucion & { parcialidades?: DevolucionParcialidad[] }) | null>(null)
   const [cargosExtra, setCargosExtra] = useState<CargoExtra[]>([])
   const [traspasos, setTraspasos] = useState<(Traspaso & { cliente_anterior?: { nombre: string | null }; cliente_nuevo?: { nombre: string | null } })[]>([])
@@ -80,6 +89,108 @@ export const VentaDetail = () => {
   const [traspasoNotas, setTraspasoNotas] = useState('')
   const [traspasoClientes, setTraspasoClientes] = useState<ComboOption[]>([])
   const canManageConvenios = role === 'admin'
+  const canManagePayments = role === 'admin' || role === 'finanzas'
+
+  const parseCurrencyValue = (value: string | number | null | undefined) => {
+    if (value == null || value === '') return 0
+    const parsed = Number(String(value).replace(/[$,\s]/g, ''))
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const openInitialPaymentModal = (type: 'apartado' | 'enganche') => {
+    if (!venta) return
+    const defaultAmount = type === 'apartado'
+      ? (venta.lote?.desarrollo?.montominimoapartado ? parseCurrencyValue(venta.lote.desarrollo.montominimoapartado) : 0)
+      : (venta.enganche ?? venta.lote?.desarrollo?.enganche ? parseCurrencyValue(venta.enganche ?? venta.lote?.desarrollo?.enganche) : 0)
+
+    setInitialPaymentType(type)
+    setInitialPaymentAmount(defaultAmount > 0 ? String(defaultAmount) : '')
+    setInitialPaymentDate(today)
+    setInitialPaymentReference('')
+    setInitialPaymentComment('')
+    setInitialPaymentError(null)
+    setShowInitialPaymentModal(true)
+  }
+
+  const handleSubmitInitialPayment = async () => {
+    if (!venta || !initialPaymentType) return
+
+    const amount = parseFloat(initialPaymentAmount)
+    if (!amount || amount <= 0) {
+      setInitialPaymentError('Ingresa un monto válido')
+      return
+    }
+
+    try {
+      setIsSubmittingInitialPayment(true)
+      setInitialPaymentError(null)
+
+      const paymentDate = initialPaymentDate || today
+      const paymentReference = initialPaymentReference.trim() || `Pago ${initialPaymentType === 'apartado' ? 'de apartado' : 'de enganche'} · Venta ${venta.ventaid}`
+      const paymentComment = initialPaymentComment.trim() || `Registro de ${initialPaymentType === 'apartado' ? 'apartado' : 'enganche'} desde administración`
+
+      const updates: Record<string, any> = {}
+      if (initialPaymentType === 'apartado') {
+        updates.estatus = 'E'
+        updates.monto_apartado_pagado = amount
+        const fechaLimite = new Date()
+        fechaLimite.setDate(fechaLimite.getDate() + 15)
+        updates.fecha_limite_enganche = fechaLimite.toISOString().split('T')[0]
+      } else {
+        updates.estatus = 'A'
+        updates.fechaenganche = paymentDate
+        updates.fechacontrato = venta.fechacontrato || paymentDate
+      }
+
+      const { error: ventaError } = await supabase
+        .from('venta')
+        .update(updates)
+        .eq('ventaid', venta.ventaid)
+      if (ventaError) throw ventaError
+
+      const pagoPayload = {
+        corridafinancieraid: null,
+        fechapago: paymentDate,
+        montopagado: amount,
+        formapago: 1,
+        estatus: 'P',
+        referencia: paymentReference,
+        comentario: paymentComment,
+      }
+
+      let insertResult = await supabase.from('pagos').insert(pagoPayload)
+      if (insertResult.error && /corridafinancieraid/i.test(insertResult.error.message || '')) {
+        insertResult = await supabase.from('pagos').insert({
+          fechapago: paymentDate,
+          montopagado: amount,
+          formapago: 1,
+          estatus: 'P',
+          referencia: paymentReference,
+          comentario: paymentComment,
+        })
+      }
+      if (insertResult.error) throw insertResult.error
+
+      setShowInitialPaymentModal(false)
+      setInitialPaymentType(null)
+      setInitialPaymentAmount('')
+      setInitialPaymentDate(today)
+      setInitialPaymentReference('')
+      setInitialPaymentComment('')
+
+      const { data: ventaData } = await supabase
+        .from('venta')
+        .select('*, cliente:cliente(*), lote:lote(*, desarrollo:desarrollo(*))')
+        .eq('ventaid', id)
+        .single()
+      setVenta(ventaData as VentaWithDetails)
+    } catch (err: any) {
+      console.error('Error registrando pago inicial:', err)
+      setInitialPaymentError(err.message || 'No se pudo registrar el pago inicial')
+    } finally {
+      setIsSubmittingInitialPayment(false)
+    }
+  }
 
   useEffect(() => {
     const fetchVentaDetail = async () => {
@@ -601,7 +712,6 @@ export const VentaDetail = () => {
   const saldoPendiente = (venta.preciolote || 0) - totalPagado
   
   // Calcular cargos extra totales aplicables
-  const today = new Date().toISOString().split('T')[0]
   const totalCargosExtras = corridas.reduce((sum, corrida) => {
     // Cargos extra aplicables: no cancelados por error (estatus != 'X') y fecha <= fecha de corrida (solo en mensualidades)
     const cargosAplicables = corrida.nopago !== 0
@@ -626,6 +736,7 @@ export const VentaDetail = () => {
   const porcPagado = (venta.preciolote ?? 0) > 0 ? totalPagado / (venta.preciolote ?? 1) : 0
   const aplicaDevolucion = porcPagado > 0.20
   const montoDevolucion = (venta.preciolote ?? 0) * 0.20
+  const isExternalVenta = Boolean(venta.vendedor_user_id || venta.vendedor)
 
   // Corridas vencidas sin pago activo (para alerta de cancelación)
   const corridasVencidas = corridas.filter((c) => {
@@ -660,6 +771,24 @@ export const VentaDetail = () => {
               <Edit2 size={16} />
               Editar
             </Button>
+            {isExternalVenta && canManagePayments && venta.estatus === 'P' && (
+              <Button
+                variant="outline"
+                onClick={() => openInitialPaymentModal('apartado')}
+                className="inline-flex items-center gap-2"
+              >
+                Registrar pago de apartado
+              </Button>
+            )}
+            {isExternalVenta && canManagePayments && venta.estatus === 'E' && (
+              <Button
+                variant="outline"
+                onClick={() => openInitialPaymentModal('enganche')}
+                className="inline-flex items-center gap-2"
+              >
+                Registrar pago de enganche
+              </Button>
+            )}
             {venta.estatus === 'A' && (
               <Button
                 variant="outline"
@@ -697,16 +826,16 @@ export const VentaDetail = () => {
           <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
             <span className="text-amber-500 mt-0.5">⏳</span>
             <div>
-              <p className="font-semibold">Reserva pendiente — esperando pago de apartado</p>
+              <p className="font-semibold">Reserva activa — pendiente pago de apartado</p>
               <p className="text-xs text-amber-600 mt-0.5">
-                El cliente tiene 24 horas para pagar el apartado desde que hizo la reserva.
+                El lote quedó reservado por el vendedor externo y espera el registro del pago de apartado en administración.
                 {venta.fecha_reserva && ` Reserva realizada el ${new Date(venta.fecha_reserva).toLocaleString('es-MX')}.`}
               </p>
             </div>
           </div>
         )}
 
-        {/* Banner: enganche pagado desde portal, admin debe crear corrida */}
+        {/* Banner: enganche pagado, admin debe formalizar */}
         {venta.estatus === 'A' && corridas.length === 0 && (
           <div className="mb-4 flex items-start justify-between gap-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800">
             <div className="flex items-start gap-3">
@@ -727,16 +856,15 @@ export const VentaDetail = () => {
           </div>
         )}
 
-        {/* Banner: enganche pagado, pendiente firma de contrato */}
-        {venta.estatus === 'E' && !venta.fechacontrato && (
+        {/* Banner: pendiente pago de enganche */}
+        {venta.estatus === 'E' && (
           <div className="mb-4 flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800">
             <span className="text-blue-500 mt-0.5">📋</span>
             <div>
-              <p className="font-semibold">Pendiente firma de contrato</p>
+              <p className="font-semibold">Pendiente pago de enganche</p>
               <p className="text-xs text-blue-600 mt-0.5">
-                El cliente pagó el apartado. Tienes <strong>7 días desde el pago del enganche</strong> para coordinar y firmar el contrato.
+                El apartado ya quedó registrado. Falta capturar el pago de enganche para avanzar al proceso de formalización.
                 {venta.fecha_limite_enganche && ` Fecha límite de enganche: ${new Date(venta.fecha_limite_enganche + 'T12:00:00').toLocaleDateString('es-MX')}.`}
-                {' '}Contacta al cliente para agendar la firma.
               </p>
             </div>
           </div>
@@ -962,6 +1090,67 @@ export const VentaDetail = () => {
             <p className="text-xl md:text-2xl font-bold text-red-600">{formatCurrency(totalAPagar)}</p>
           </div>
         </div>
+
+        {/* Modal de pago inicial */}
+        <Modal
+          isOpen={showInitialPaymentModal}
+          onClose={() => !isSubmittingInitialPayment && setShowInitialPaymentModal(false)}
+          title={initialPaymentType === 'apartado' ? 'Registrar pago de apartado' : 'Registrar pago de enganche'}
+        >
+          <div className="space-y-4">
+            {initialPaymentError && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {initialPaymentError}
+              </div>
+            )}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Monto *</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={initialPaymentAmount}
+                onChange={(e) => setInitialPaymentAmount(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Fecha de pago *</label>
+              <input
+                type="date"
+                value={initialPaymentDate}
+                onChange={(e) => setInitialPaymentDate(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Referencia</label>
+              <input
+                type="text"
+                value={initialPaymentReference}
+                onChange={(e) => setInitialPaymentReference(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Comentario</label>
+              <textarea
+                value={initialPaymentComment}
+                onChange={(e) => setInitialPaymentComment(e.target.value)}
+                rows={3}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-1">
+              <Button variant="secondary" onClick={() => setShowInitialPaymentModal(false)} disabled={isSubmittingInitialPayment}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSubmitInitialPayment} disabled={isSubmittingInitialPayment}>
+                {isSubmittingInitialPayment ? 'Guardando…' : 'Registrar pago'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
 
         {/* Contrato Firmado */}
         <ContratoFirmado ventaid={venta.ventaid} />

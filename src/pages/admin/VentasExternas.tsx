@@ -22,9 +22,9 @@ const today = new Date().toISOString().split('T')[0]
 // Statuses shown in this module
 const STATUS_OPTIONS = [
   { value: '', label: 'Todos los estatus' },
-  { value: 'P', label: 'Pendiente de formalizar' },
-  { value: 'E', label: 'En enganche' },
-  { value: 'A', label: 'Activa' },
+  { value: 'P', label: 'Apartado reservado' },
+  { value: 'E', label: 'Pendiente enganche' },
+  { value: 'A', label: 'Enganche pagado' },
   { value: 'C', label: 'Cancelada' },
 ]
 
@@ -145,6 +145,37 @@ export const VentasExternas = () => {
     }
   }
   // ── Load data ────────────────────────────────────────────
+  const syncExpiredExternalRows = async (list: VentaExternaRow[]) => {
+    const expiredIds = new Set<number>()
+    const now = Date.now()
+    const today = new Date().toISOString().split('T')[0]
+
+    list.forEach((row) => {
+      if (row.estatus === 'P' && row.fecha_reserva) {
+        const reservaTime = new Date(row.fecha_reserva).getTime()
+        if (!Number.isNaN(reservaTime) && now - reservaTime > 24 * 60 * 60 * 1000) {
+          expiredIds.add(row.ventaid)
+        }
+      } else if (row.estatus === 'E' && row.fecha_limite_enganche) {
+        if ((row.fecha_limite_enganche ?? '') < today) {
+          expiredIds.add(row.ventaid)
+        }
+      }
+    })
+
+    if (expiredIds.size === 0) return expiredIds
+
+    await Promise.all([...expiredIds].map(async (ventaid) => {
+      await supabase.from('venta').update({ estatus: 'C' }).eq('ventaid', ventaid)
+      const row = list.find((item) => item.ventaid === ventaid)
+      if (row?.loteid) {
+        await supabase.from('lote').update({ estatus: 'D' }).eq('loteid', row.loteid)
+      }
+    }))
+
+    return expiredIds
+  }
+
   const loadData = async () => {
     setLoading(true)
     try {
@@ -198,7 +229,9 @@ export const VentasExternas = () => {
 
       const { data, error } = await query
       if (error) throw error
-      setRows((data ?? []) as VentaExternaRow[])
+      const rowsData = (data ?? []) as VentaExternaRow[]
+      const expiredIds = await syncExpiredExternalRows(rowsData)
+      setRows(rowsData.map((row) => (expiredIds.has(row.ventaid) ? { ...row, estatus: 'C' } : row)))
     } catch (err) {
       console.error('Error loading ventas externas:', err)
       setRows([])
@@ -550,13 +583,22 @@ export const VentasExternas = () => {
                             Ver
                           </button>
                         )}
-                        {isAdmin && row.estatus === 'P' && (
+                        {isAdmin && row.estatus === 'A' && (
                           <button
                             onClick={() => openFormalizar(row)}
                             className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-green-50 hover:bg-green-100 text-green-700 transition-colors"
                           >
                             <CheckCircle2 size={13} />
                             Formalizar
+                          </button>
+                        )}
+                        {isAdmin && row.estatus === 'P' && (
+                          <button
+                            onClick={() => navigate(`/admin/ventas/${row.ventaid}`, { state: { from: '/admin/ventas-externas' } })}
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-amber-50 hover:bg-amber-100 text-amber-700 transition-colors"
+                          >
+                            <CheckCircle2 size={13} />
+                            Registrar apartado
                           </button>
                         )}
                         {row.estatus !== 'C' && (
