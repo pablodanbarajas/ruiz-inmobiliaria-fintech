@@ -62,7 +62,7 @@ async function createPaymentLink(corridafinancieraid: string): Promise<{ url: st
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-  const res = await fetch(`${supabaseUrl}/functions/v1/create-payment-link`, {
+  const res = await fetch(`${supabaseUrl}/functions/v1/create-quentli-invoice`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -74,7 +74,8 @@ async function createPaymentLink(corridafinancieraid: string): Promise<{ url: st
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? 'Error al generar link de pago');
-  return { url: data.url as string, sessionId: data.sessionId as string ?? '' };
+  // invoiceId reemplaza sessionId — verify-payment detecta el prefijo inv_ automáticamente
+  return { url: data.url as string, sessionId: data.invoiceId as string ?? '' };
 }
 
 async function verifyPayment(corridafinancieraid: string, sessionId: string): Promise<{ ok: boolean; alreadyRegistered?: boolean; registered?: boolean }> {

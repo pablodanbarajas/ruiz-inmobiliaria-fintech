@@ -53,6 +53,9 @@ Deno.serve(async (req: Request) => {
       })
     }
 
+    // Detectar si se envió un invoice ID (nuevo flujo) o un session ID (legado)
+    const isInvoice = String(sessionId).startsWith('inv_')
+
     const corridaId = Number(corridafinancieraid)
     if (isNaN(corridaId)) {
       return new Response(JSON.stringify({ error: 'corridafinancieraid inválido' }), {
@@ -96,39 +99,65 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Consultar el estado de la sesión de pago en Quentli
+    // Consultar el estado del pago en Quentli según el tipo de referencia
     const apiKey = Deno.env.get('QUENTLI_API_KEY') ?? ''
-    const qRes = await fetch(`${QUENTLI_API}/v1/payment-sessions/${sessionId}`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-    })
-
-    if (!qRes.ok) {
-      const errText = await qRes.text()
-      throw new Error(`Error consultando Quentli (${qRes.status}): ${errText}`)
+    const qHeaders = {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
     }
 
-    const session = await qRes.json()
+    let montopagado = 0
+    let metaCorridaId = corridaId
+    let referencia = sessionId
 
-    if (session?.status !== 'FINALIZED') {
-      return new Response(
-        JSON.stringify({ ok: false, sessionStatus: session?.status ?? 'UNKNOWN', message: 'El pago aún no se ha completado' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
+    if (isInvoice) {
+      // ── Nuevo flujo: verificar invoice ──
+      const qRes = await fetch(`${QUENTLI_API}/v1/invoices/${sessionId}`, { headers: qHeaders })
+      if (!qRes.ok) {
+        const errText = await qRes.text()
+        throw new Error(`Error consultando invoice en Quentli (${qRes.status}): ${errText}`)
+      }
+      const invoice = await qRes.json()
+      const inv = invoice?.invoice ?? invoice
+
+      if (!inv?.isPaid) {
+        return new Response(
+          JSON.stringify({ ok: false, status: 'UNPAID', message: 'El pago aún no se ha completado' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
+      }
+
+      montopagado = (inv.amountPaid ?? inv.totalAmount ?? 0) / 100
+      // Extraer corridafinancieraid desde meta del invoice
+      const metaMap: Record<string, string> = inv.meta ?? {}
+      if (metaMap['corridafinancieraid']) {
+        const parsed = parseInt(metaMap['corridafinancieraid'], 10)
+        if (!isNaN(parsed)) metaCorridaId = parsed
+      }
+    } else {
+      // ── Flujo legado: verificar payment-session ──
+      const qRes = await fetch(`${QUENTLI_API}/v1/payment-sessions/${sessionId}`, { headers: qHeaders })
+      if (!qRes.ok) {
+        const errText = await qRes.text()
+        throw new Error(`Error consultando Quentli (${qRes.status}): ${errText}`)
+      }
+      const session = await qRes.json()
+
+      if (session?.status !== 'FINALIZED') {
+        return new Response(
+          JSON.stringify({ ok: false, sessionStatus: session?.status ?? 'UNKNOWN', message: 'El pago aún no se ha completado' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
+      }
+
+      montopagado = (session.totalAmount ?? 0) / 100
+      const metadataList: Array<{ key: string; value: string }> = session.metadata ?? []
+      const metaMapLegacy = Object.fromEntries(metadataList.map((m) => [m.key, m.value]))
+      if (metaMapLegacy['corridafinancieraid']) {
+        const parsed = parseInt(metaMapLegacy['corridafinancieraid'], 10)
+        if (!isNaN(parsed)) metaCorridaId = parsed
+      }
     }
-
-    // Sesión FINALIZED → extraer datos del pago
-    const totalCentavos: number = session.totalAmount ?? 0
-    const montopagado = totalCentavos / 100
-
-    // Extraer metadata (corridafinancieraid, ventaid, clienteid)
-    const metadataList: Array<{ key: string; value: string }> = session.metadata ?? []
-    const metaMap = Object.fromEntries(metadataList.map((m) => [m.key, m.value]))
-    const metaCorridaId = metaMap['corridafinancieraid']
-      ? parseInt(metaMap['corridafinancieraid'], 10)
-      : corridaId
 
     // Registrar el pago en Supabase
     const { data: pago, error: pagoError } = await serviceClient
@@ -139,8 +168,10 @@ Deno.serve(async (req: Request) => {
         montopagado,
         formapago: 4, // Tarjeta
         estatus: 'P',
-        referencia: sessionId,
-        comentario: `Pago verificado desde portal (sesión Quentli: ${sessionId})`,
+        referencia,
+        comentario: isInvoice
+          ? `Pago verificado desde portal (invoice Quentli: ${referencia})`
+          : `Pago verificado desde portal (sesión Quentli: ${referencia})`,
       })
       .select()
       .single()
