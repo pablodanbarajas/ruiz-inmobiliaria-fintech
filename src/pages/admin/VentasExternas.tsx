@@ -539,7 +539,7 @@ export const VentasExternas = () => {
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-sm table-auto">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold text-gray-600">Fecha</th>
@@ -577,11 +577,11 @@ export const VentasExternas = () => {
                       {row.lote?.desarrollo?.nombre ?? '—'}
                     </td>
                     {isAdmin && (
-                      <td className="px-4 py-3 text-gray-700">
+                      <td className="px-4 py-3 text-gray-700 max-w-[220px]">
                         {row.vendedor
-                          ? row.vendedor
+                          ? <span className="block truncate" title={row.vendedor}>{row.vendedor}</span>
                           : row.vendedor_user_id
-                            ? <span className="text-gray-400 italic text-xs">{vendorEmailMap[row.vendedor_user_id] ?? row.vendedor_user_id.substring(0, 8) + '…'}</span>
+                            ? <span className="text-gray-400 italic text-xs block truncate" title={vendorEmailMap[row.vendedor_user_id] ?? row.vendedor_user_id}>{vendorEmailMap[row.vendedor_user_id] ?? row.vendedor_user_id.substring(0, 8) + '…'}</span>
                             : '—'
                         }
                       </td>
@@ -593,8 +593,8 @@ export const VentasExternas = () => {
                         {getVentaStatusLabel(row.estatus)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="inline-flex items-center gap-1.5">
+                    <td className="px-4 py-3 text-center min-w-[300px]">
+                      <div className="mx-auto flex max-w-[360px] flex-wrap justify-center gap-1.5">
                         {isAdmin && (
                           <button
                             onClick={() =>
@@ -602,7 +602,7 @@ export const VentasExternas = () => {
                                 state: { from: '/admin/ventas-externas' },
                               })
                             }
-                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors whitespace-nowrap"
                           >
                             <Eye size={13} />
                             Ver
@@ -611,7 +611,7 @@ export const VentasExternas = () => {
                         {isAdmin && row.estatus === 'A' && (
                           <button
                             onClick={() => openFormalizar(row)}
-                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-green-50 hover:bg-green-100 text-green-700 transition-colors"
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-green-50 hover:bg-green-100 text-green-700 transition-colors whitespace-nowrap"
                           >
                             <CheckCircle2 size={13} />
                             Formalizar
@@ -620,7 +620,7 @@ export const VentasExternas = () => {
                         {isAdmin && row.estatus === 'P' && (
                           <button
                             onClick={() => navigate(`/admin/ventas/${row.ventaid}`, { state: { from: '/admin/ventas-externas' } })}
-                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-amber-50 hover:bg-amber-100 text-amber-700 transition-colors"
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-amber-50 hover:bg-amber-100 text-amber-700 transition-colors whitespace-nowrap"
                           >
                             <CheckCircle2 size={13} />
                             Registrar apartado
@@ -629,7 +629,7 @@ export const VentasExternas = () => {
                         {row.estatus !== 'C' && (
                           <button
                             onClick={() => openEditCliente(row)}
-                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors whitespace-nowrap"
                           >
                             <Pencil size={13} />
                             Editar cliente
@@ -639,7 +639,7 @@ export const VentasExternas = () => {
                           <button
                             onClick={() => setConfirmCancel(row)}
                             disabled={cancelingId === row.ventaid}
-                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-red-50 hover:bg-red-100 text-red-600 transition-colors disabled:opacity-50"
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-red-50 hover:bg-red-100 text-red-600 transition-colors disabled:opacity-50 whitespace-nowrap"
                           >
                             <XCircle size={13} />
                             {cancelingId === row.ventaid ? '…' : 'Cancelar'}

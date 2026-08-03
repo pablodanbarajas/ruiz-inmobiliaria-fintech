@@ -140,8 +140,10 @@ export const VentaDetail = () => {
       setInitialPaymentError(null)
 
       const paymentDate = initialPaymentDate || today
+      const ventaMarker = `[VENTA:${venta.ventaid}]`
       const paymentReference = initialPaymentReference.trim() || `Pago ${initialPaymentType === 'apartado' ? 'de apartado' : 'de enganche'} · Venta ${venta.ventaid}`
-      const paymentComment = initialPaymentComment.trim() || `Registro de ${initialPaymentType === 'apartado' ? 'apartado' : 'enganche'} desde administración`
+      const baseComment = initialPaymentComment.trim() || `Registro de ${initialPaymentType === 'apartado' ? 'apartado' : 'enganche'} desde administración`
+      const paymentComment = baseComment.includes(ventaMarker) ? baseComment : `${baseComment} ${ventaMarker}`
 
       const updates: Record<string, any> = {}
       if (initialPaymentType === 'apartado') {

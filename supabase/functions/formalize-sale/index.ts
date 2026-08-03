@@ -167,7 +167,7 @@ Deno.serve(async (req: Request) => {
         .from('pagos')
         .update({ corridafinancieraid: corrida0.corridafinancieraid })
         .is('corridafinancieraid', null)
-        .or(`comentario.ilike.%Venta ${ventaid}%`)
+        .or(`referencia.ilike.%Venta ${ventaId}%,comentario.ilike.%Venta ${ventaId}%,comentario.ilike.%[VENTA:${ventaId}]%`)
     }
 
     // 3. Actualizar venta con plazo y mensualidad
