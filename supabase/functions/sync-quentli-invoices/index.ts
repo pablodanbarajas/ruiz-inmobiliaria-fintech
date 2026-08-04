@@ -57,20 +57,21 @@ Deno.serve(async (req: Request) => {
     .from('corridafinanciera')
     .select(`
       corridafinancieraid, ventaid, fecha, mensualidad, nopago,
-      venta:ventaid (clienteid, dias_tolerancia, quentli_customer_id, lote:loteid(desarrolloid))
+      venta:ventaid (clienteid, dias_tolerancia, quentli_customer_id, estatus, lote:loteid(loteid, desarrolloid))
     `)
     .gte('fecha', todayStr)
     .lte('fecha', futureLimitStr)
     .gt('nopago', 0)
     .is('quentli_invoice_id', null)
   const { data: upcomingRaw } = await upcomingQuery
-  const upcoming = filterDesarrolloId
-    ? (upcomingRaw ?? []).filter((c: any) => {
-        const v = Array.isArray(c.venta) ? c.venta[0] : c.venta
-        const l = Array.isArray(v?.lote) ? v?.lote[0] : v?.lote
-        return String(l?.desarrolloid) === filterDesarrolloId
-      })
-    : (upcomingRaw ?? [])
+  const upcoming = (upcomingRaw ?? []).filter((c: any) => {
+    const v = Array.isArray(c.venta) ? c.venta[0] : c.venta
+    const l = Array.isArray(v?.lote) ? v?.lote[0] : v?.lote
+    // Solo ventas activas; excluir canceladas
+    if (!v || v.estatus === 'C') return false
+    if (filterDesarrolloId && String(l?.desarrolloid) !== filterDesarrolloId) return false
+    return true
+  })
 
   for (const corrida of (upcoming ?? [])) {
     try {
@@ -99,20 +100,17 @@ Deno.serve(async (req: Request) => {
         if (!customerId) { results.skipped++; continue }
       }
 
-      // Obtener cargos extra del desarrollo
-      const { data: lotData } = await supabase
-        .from('venta')
-        .select('loteid, lote:loteid(desarrolloid)')
-        .eq('ventaid', corrida.ventaid)
-        .single()
-      const desarrolloid = (lotData?.lote as any)?.desarrolloid ?? null
+      // Cargos extra por lote con filtro de fechas (igual que la vista del admin)
+      const loteid = (Array.isArray(venta.lote) ? venta.lote[0] : venta.lote)?.loteid ?? null
       let cargoExtra = 0
-      if (desarrolloid) {
+      if (loteid) {
         const { data: cargos } = await supabase
           .from('cargos_extra')
           .select('monto')
-          .eq('desarrolloid', desarrolloid)
+          .eq('loteid', loteid)
           .neq('estatus', 'X')
+          .lte('fecha', corrida.fecha)
+          .or(`fecha_fin.is.null,fecha_fin.gte.${corrida.fecha}`)
         cargoExtra = (cargos ?? []).reduce((s: number, c: any) => s + Number(c.monto), 0)
       }
 
@@ -172,19 +170,19 @@ Deno.serve(async (req: Request) => {
     .from('corridafinanciera')
     .select(`
       corridafinancieraid, ventaid, fecha, mensualidad, nopago, quentli_invoice_id,
-      venta:ventaid (clienteid, dias_tolerancia, lote:loteid(desarrolloid))
+      venta:ventaid (clienteid, dias_tolerancia, estatus, lote:loteid(loteid, desarrolloid))
     `)
     .lt('fecha', todayStr)
     .gt('nopago', 0)
     .not('quentli_invoice_id', 'is', null)
   const { data: overdueRaw } = await overdueQuery
-  const overdue = filterDesarrolloId
-    ? (overdueRaw ?? []).filter((c: any) => {
-        const v = Array.isArray(c.venta) ? c.venta[0] : c.venta
-        const l = Array.isArray(v?.lote) ? v?.lote[0] : v?.lote
-        return String(l?.desarrolloid) === filterDesarrolloId
-      })
-    : (overdueRaw ?? [])
+  const overdue = (overdueRaw ?? []).filter((c: any) => {
+    const v = Array.isArray(c.venta) ? c.venta[0] : c.venta
+    const l = Array.isArray(v?.lote) ? v?.lote[0] : v?.lote
+    if (!v || v.estatus === 'C') return false
+    if (filterDesarrolloId && String(l?.desarrolloid) !== filterDesarrolloId) return false
+    return true
+  })
 
   for (const corrida of (overdue ?? [])) {
     try {
@@ -206,20 +204,17 @@ Deno.serve(async (req: Request) => {
 
       if (recargo === 0) { results.skipped++; continue }
 
-      // Obtener cargos extra
-      const { data: lotData } = await supabase
-        .from('venta')
-        .select('loteid, lote:loteid(desarrolloid)')
-        .eq('ventaid', corrida.ventaid)
-        .single()
-      const desarrolloid = (lotData?.lote as any)?.desarrolloid ?? null
+      // Cargos extra por lote con filtro de fechas (igual que la vista del admin)
+      const loteid = (Array.isArray(venta?.lote) ? venta?.lote[0] : venta?.lote)?.loteid ?? null
       let cargoExtra = 0
-      if (desarrolloid) {
+      if (loteid) {
         const { data: cargos } = await supabase
           .from('cargos_extra')
           .select('monto')
-          .eq('desarrolloid', desarrolloid)
+          .eq('loteid', loteid)
           .neq('estatus', 'X')
+          .lte('fecha', corrida.fecha)
+          .or(`fecha_fin.is.null,fecha_fin.gte.${corrida.fecha}`)
         cargoExtra = (cargos ?? []).reduce((s: number, c: any) => s + Number(c.monto), 0)
       }
 
@@ -248,14 +243,12 @@ Deno.serve(async (req: Request) => {
         results.updated++
       } else {
         const errText = await patchRes.text()
-        // Invoice puede estar expirado/cancelado — limpiar el ID para recrear
-        if (patchRes.status === 404 || patchRes.status === 400) {
-          await supabase
-            .from('corridafinanciera')
-            .update({ quentli_invoice_id: null })
-            .eq('corridafinancieraid', corrida.corridafinancieraid)
-        }
-        console.error(`Error PATCH invoice ${corrida.quentli_invoice_id}: ${errText}`)
+        // Limpiar siempre el ID para que el siguiente ciclo recree el invoice
+        await supabase
+          .from('corridafinanciera')
+          .update({ quentli_invoice_id: null })
+          .eq('corridafinancieraid', corrida.corridafinancieraid)
+        console.error(`Error PATCH invoice ${corrida.quentli_invoice_id} (${patchRes.status}), ID limpiado: ${errText}`)
         results.errors++
       }
     } catch (e) {
