@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
-const QUENTLI_API = 'https://api.demo.quentli.com'
+const QUENTLI_API = Deno.env.get('QUENTLI_API_URL') ?? 'https://api.demo.quentli.com'
 
 /**
  * Verifica el estado de una sesión de pago de Quentli y registra el pago en Supabase

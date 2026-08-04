@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const QUENTLI_API = 'https://api.demo.quentli.com'
+const QUENTLI_API = Deno.env.get('QUENTLI_API_URL') ?? 'https://api.demo.quentli.com'
 
 /**
  * Cron diario que sincroniza invoices de Quentli con el estado actual de Supabase.
