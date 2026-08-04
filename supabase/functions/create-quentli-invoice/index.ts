@@ -112,22 +112,58 @@ Deno.serve(async (req: Request) => {
       'Content-Type': 'application/json',
     }
 
-    // Si ya existe el invoice, solo devolver su link (sin crear duplicado)
+    // ── 3b. Calcular monto actual (incluye recargo si ya venció) ──
+    const base = Number(row.scheduled_amount ?? 0)
+    const extra = Number(row.cargo_extra_amount ?? 0)
+    const recargo = Number(row.recargo_pendiente ?? 0)
+    const totalCentavos = Math.round((base + extra + recargo) * 100)
+    const itemsPayload = [
+      {
+        concept: {
+          displayName: `${row.payment_type ?? 'Mensualidad'} · ${row.lot_key ?? ''} (Venta #${row.ventaid})`,
+          amount: totalCentavos,
+          currency: 'MXN',
+        },
+        quantity: 1,
+      },
+    ]
+
+    // Si ya existe el invoice: actualizar el monto al valor actual y devolver el link
     if (corridaRow?.quentli_invoice_id) {
       const existingInvoiceId = corridaRow.quentli_invoice_id
-      const linkRes = await fetch(
-        `${QUENTLI_API}/v1/invoices/${existingInvoiceId}/payment-link`,
-        { headers: qHeaders },
-      )
-      if (linkRes.ok) {
-        const linkData = await linkRes.json()
-        return new Response(
-          JSON.stringify({ url: linkData.url, invoiceId: existingInvoiceId }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-        )
+
+      // Verificar si el invoice sigue vigente en Quentli
+      const checkRes = await fetch(`${QUENTLI_API}/v1/invoices/${existingInvoiceId}`, { headers: qHeaders })
+      if (checkRes.ok) {
+        const inv = await checkRes.json()
+        const invoiceData = inv?.invoice ?? inv
+        // Si ya está pagado, limpiar el ID para que se cree uno nuevo
+        if (invoiceData?.isPaid || invoiceData?.canceledAt) {
+          await serviceClient
+            .from('corridafinanciera')
+            .update({ quentli_invoice_id: null })
+            .eq('corridafinancieraid', Number(corridafinancieraid))
+        } else {
+          // Actualizar el monto con el recargo actual antes de devolver el link
+          await fetch(`${QUENTLI_API}/v1/invoices/${existingInvoiceId}`, {
+            method: 'PATCH',
+            headers: qHeaders,
+            body: JSON.stringify({ input: { data: { items: itemsPayload } } }),
+          })
+          const linkRes = await fetch(
+            `${QUENTLI_API}/v1/invoices/${existingInvoiceId}/payment-link`,
+            { headers: qHeaders },
+          )
+          if (linkRes.ok) {
+            const linkData = await linkRes.json()
+            return new Response(
+              JSON.stringify({ url: linkData.url, invoiceId: existingInvoiceId }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+            )
+          }
+        }
       }
-      // Si el invoice ya no existe en Quentli (expirado / cancelado), crear uno nuevo
-      console.warn(`Invoice ${existingInvoiceId} no encontrado en Quentli (${linkRes.status}), creando nuevo`)
+      console.warn(`Invoice ${existingInvoiceId} no válido en Quentli, creando nuevo`)
     }
 
     // ── 4. Resolver quentli_customer_id ──
@@ -180,11 +216,7 @@ Deno.serve(async (req: Request) => {
       throw new Error('No se pudo obtener el ID del cliente en Quentli')
     }
 
-    // ── 5. Calcular monto total ──
-    const base = Number(row.scheduled_amount ?? 0)
-    const extra = Number(row.cargo_extra_amount ?? 0)
-    const recargo = Number(row.recargo_pendiente ?? 0)
-    const totalCentavos = Math.round((base + extra + recargo) * 100)
+    // ── 5. Monto ya calculado en paso 3b (base + cargos + recargo actual)
 
     const dueDateLabel = row.due_date ?? new Date().toISOString().split('T')[0]
     // Convertir fecha a ISO 8601 con hora para Quentli
@@ -199,16 +231,7 @@ Deno.serve(async (req: Request) => {
         dueDate: dueDateTime,
         collectionMethod: 'SEND_REMINDER', // Quentli envía recordatorios automáticos
         allowOfftimePayment: true,          // Puede pagar antes de la fecha límite
-        items: [
-          {
-            concept: {
-              displayName: `${row.payment_type ?? 'Mensualidad'} · ${row.lot_key ?? ''} (Venta #${row.ventaid})`,
-              amount: totalCentavos,
-              currency: 'MXN',
-            },
-            quantity: 1,
-          },
-        ],
+        items: itemsPayload,
         metadata: [
           { key: 'corridafinancieraid', value: String(corridafinancieraid) },
           { key: 'ventaid', value: String(row.ventaid) },
