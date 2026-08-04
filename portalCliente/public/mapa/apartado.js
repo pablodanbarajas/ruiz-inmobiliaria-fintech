@@ -2,8 +2,8 @@
    apartado.js ÔÇö Flujo de reserva de lote con Quentli
    ========================================================= */
 
-const SUPABASE_URL = 'https://ivbyroqxyfclzfhaixjd.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2Ynlyb3F4eWZjbHpmaGFpeGpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MjMxOTksImV4cCI6MjA4ODI5OTE5OX0.804JjH0MBZqfjvKLMkXmjlwXNkt7hUiiK1vFA2Zv0LI';
+const SUPABASE_URL = window.__ENV__?.SUPABASE_URL || 'https://ivbyroqxyfclzfhaixjd.supabase.co';
+const SUPABASE_KEY = window.__ENV__?.SUPABASE_KEY || '';
 
 function getAccessToken() {
   try {
