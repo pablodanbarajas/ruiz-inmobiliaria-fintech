@@ -49,17 +49,28 @@ Deno.serve(async (req: Request) => {
 
   const results = { created: 0, updated: 0, skipped: 0, errors: 0 }
 
+  // Si está definido, solo procesa ese desarrollo (útil para pruebas)
+  const filterDesarrolloId = Deno.env.get('CRON_FILTER_DESARROLLOID') ?? ''
+
   // ── 1. Corridas próximas sin invoice: crear ──────────────────────────────
-  const { data: upcoming } = await supabase
+  const upcomingQuery = supabase
     .from('corridafinanciera')
     .select(`
       corridafinancieraid, ventaid, fecha, mensualidad, nopago,
-      venta:ventaid (clienteid, dias_tolerancia, quentli_customer_id)
+      venta:ventaid (clienteid, dias_tolerancia, quentli_customer_id, lote:loteid(desarrolloid))
     `)
     .gte('fecha', todayStr)
     .lte('fecha', futureLimitStr)
     .gt('nopago', 0)
     .is('quentli_invoice_id', null)
+  const { data: upcomingRaw } = await upcomingQuery
+  const upcoming = filterDesarrolloId
+    ? (upcomingRaw ?? []).filter((c: any) => {
+        const v = Array.isArray(c.venta) ? c.venta[0] : c.venta
+        const l = Array.isArray(v?.lote) ? v?.lote[0] : v?.lote
+        return String(l?.desarrolloid) === filterDesarrolloId
+      })
+    : (upcomingRaw ?? [])
 
   for (const corrida of (upcoming ?? [])) {
     try {
@@ -157,15 +168,23 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── 2. Corridas vencidas con invoice: actualizar monto con recargo actual ──
-  const { data: overdue } = await supabase
+  const overdueQuery = supabase
     .from('corridafinanciera')
     .select(`
       corridafinancieraid, ventaid, fecha, mensualidad, nopago, quentli_invoice_id,
-      venta:ventaid (clienteid, dias_tolerancia)
+      venta:ventaid (clienteid, dias_tolerancia, lote:loteid(desarrolloid))
     `)
     .lt('fecha', todayStr)
     .gt('nopago', 0)
     .not('quentli_invoice_id', 'is', null)
+  const { data: overdueRaw } = await overdueQuery
+  const overdue = filterDesarrolloId
+    ? (overdueRaw ?? []).filter((c: any) => {
+        const v = Array.isArray(c.venta) ? c.venta[0] : c.venta
+        const l = Array.isArray(v?.lote) ? v?.lote[0] : v?.lote
+        return String(l?.desarrolloid) === filterDesarrolloId
+      })
+    : (overdueRaw ?? [])
 
   for (const corrida of (overdue ?? [])) {
     try {
