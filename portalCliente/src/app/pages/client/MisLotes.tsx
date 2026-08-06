@@ -67,11 +67,8 @@ export function MisLotes() {
     const engancheVentaid = searchParams.get('enganche_ventaid');
     if (!engancheVentaid) return;
 
-    const sessionId = sessionStorage.getItem(`enganche_session_${engancheVentaid}`) ?? '';
     sessionStorage.removeItem(`enganche_session_${engancheVentaid}`);
     navigate('/mis-lotes', { replace: true });
-
-    if (!sessionId) return;
 
     setVerifyFlow('enganche');
     setVerifyState('verifying');
@@ -86,7 +83,7 @@ export function MisLotes() {
           Authorization: `Bearer ${session.access_token}`,
           apikey: SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ ventaid: Number(engancheVentaid), sessionId }),
+        body: JSON.stringify({ ventaid: Number(engancheVentaid) }),
       })
         .then((r) => r.json())
         .then((data) => {
@@ -122,6 +119,32 @@ export function MisLotes() {
         })
           .then(r => r.json())
           .then(data => { if (data.ok && !data.alreadyVerified) refreshLots(); })
+          .catch(() => {});
+      });
+    });
+  }, [lots, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-recovery: lotes en 'apartado_confirmado' con sesión de enganche pendiente en BD
+  useEffect(() => {
+    if (isLoading || verifyState !== 'idle') return;
+    const pending = lots.filter(l => l.status === 'apartado_confirmado' && !autoVerifiedRef.current.has(`eng_${l.ventaid}`));
+    if (pending.length === 0) return;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      pending.forEach(lot => {
+        autoVerifiedRef.current.add(`eng_${lot.ventaid}`);
+        fetch(`${SUPABASE_URL}/functions/v1/verify-enganche-payment`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ ventaid: Number(lot.ventaid) }),
+        })
+          .then(r => r.json())
+          .then(data => { if (data.ok && !data.alreadyRegistered) refreshLots(); })
           .catch(() => {});
       });
     });

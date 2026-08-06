@@ -142,6 +142,13 @@ Deno.serve(async (req: Request) => {
     const qData = await qRes.json()
     const sessionId: string = qData.url?.split('/s/')?.[1]?.split('?')?.[0] ?? ''
 
+    if (sessionId) {
+      await serviceClient
+        .from('venta')
+        .update({ quentli_enganche_session_id: sessionId })
+        .eq('ventaid', venta.ventaid)
+    }
+
     return new Response(JSON.stringify({
       ok: true,
       url: qData.url,

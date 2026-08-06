@@ -42,15 +42,10 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    const { ventaid, sessionId } = await req.json()
+    const { ventaid } = await req.json()
     const ventaId = Number(ventaid)
     if (!Number.isInteger(ventaId) || ventaId <= 0) {
       return new Response(JSON.stringify({ error: 'ventaid debe ser un entero válido' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-    if (!sessionId || typeof sessionId !== 'string') {
-      return new Response(JSON.stringify({ error: 'sessionId es requerido' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -70,7 +65,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: venta, error: ventaErr } = await serviceClient
       .from('venta')
-      .select('ventaid, estatus, enganche, monto_apartado_pagado, loteid, clienteid')
+      .select('ventaid, estatus, enganche, monto_apartado_pagado, loteid, clienteid, quentli_enganche_session_id')
       .eq('ventaid', ventaId)
       .eq('clienteid', cliente.clienteid)
       .single()
@@ -78,6 +73,13 @@ Deno.serve(async (req: Request) => {
     if (ventaErr || !venta) {
       return new Response(JSON.stringify({ error: 'Venta no encontrada o sin acceso' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const sessionId: string = venta.quentli_enganche_session_id ?? ''
+    if (!sessionId) {
+      return new Response(JSON.stringify({ ok: false, message: 'No hay sesión de pago de enganche registrada' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
