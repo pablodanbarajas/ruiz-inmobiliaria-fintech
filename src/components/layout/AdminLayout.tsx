@@ -21,7 +21,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col ml-0 lg:ml-64 min-w-0">
         <Header onMenuToggle={() => setSidebarOpen((v) => !v)} />
-        <main className="flex-1 bg-[#f8f8f8] p-4 lg:p-6 pt-20 lg:pt-6">
+        <main className="flex-1 bg-[#f8f8f8] p-3 lg:p-6 pt-16 lg:pt-6">
           {children}
         </main>
       </div>
