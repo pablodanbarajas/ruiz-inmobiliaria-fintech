@@ -247,6 +247,7 @@
     const tooltip = document.getElementById('tooltip');
     const overlay = document.getElementById('modalOverlay');
     const modal = document.getElementById('modal');
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     let hasDragged = false;
     const counts = { D: 0, V: 0, A: 0, R: 0, B: 0, N: 0 };
 
@@ -291,7 +292,7 @@
         });
 
         path.addEventListener('mousemove', (e) => {
-          if (!clickable) return;
+          if (!clickable || isTouchDevice) return;
           tooltip.style.opacity = '1';
           tooltip.style.left = e.clientX + 14 + 'px';
           tooltip.style.top = e.clientY - 40 + 'px';
@@ -320,6 +321,7 @@
             tooltip.style.opacity = '0';
           });
           path.addEventListener('mousemove', (e) => {
+            if (isTouchDevice) return;
             tooltip.style.opacity = '1';
             tooltip.style.left = e.clientX + 14 + 'px';
             tooltip.style.top = e.clientY - 40 + 'px';
@@ -401,6 +403,7 @@
     const overlay = document.getElementById('modalOverlay');
     const modal = document.getElementById('modal');
     const cta = document.getElementById('modalCTA');
+    document.getElementById('tooltip').style.opacity = '0';
 
     const badge = document.getElementById('modalBadge');
     badge.textContent = st.label;
