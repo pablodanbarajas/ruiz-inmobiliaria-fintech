@@ -30,11 +30,8 @@ export function MisLotes() {
     const apartadoVentaid = searchParams.get('apartado_ventaid');
     if (!apartadoVentaid) return;
 
-    const sessionId = sessionStorage.getItem(`apartado_session_${apartadoVentaid}`) ?? '';
     sessionStorage.removeItem(`apartado_session_${apartadoVentaid}`);
     navigate('/mis-lotes', { replace: true });
-
-    if (!sessionId) return;
 
     setVerifyFlow('apartado');
     setVerifyState('verifying');
@@ -69,11 +66,8 @@ export function MisLotes() {
     const engancheVentaid = searchParams.get('enganche_ventaid');
     if (!engancheVentaid) return;
 
-    const sessionId = sessionStorage.getItem(`enganche_session_${engancheVentaid}`) ?? '';
     sessionStorage.removeItem(`enganche_session_${engancheVentaid}`);
     navigate('/mis-lotes', { replace: true });
-
-    if (!sessionId) return;
 
     setVerifyFlow('enganche');
     setVerifyState('verifying');
