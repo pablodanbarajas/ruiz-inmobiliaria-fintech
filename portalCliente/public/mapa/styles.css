@@ -509,25 +509,34 @@ main { flex: 1; padding: 0 16px 16px; }
   align-items: center;
   justify-content: center;
   gap: 8px;
-  width: 100%;
-  padding: 13px;
-  background: var(--gold);
+  width: calc(100% + 40px);
+  margin-left: -20px;
+  margin-right: -20px;
+  margin-bottom: -20px;
+  padding: 14px 20px 22px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 24px 24px;
   color: white;
-  border: none;
-  border-radius: 12px;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
   font-family: var(--sans);
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   text-decoration: none;
   transition: all 0.18s;
-  box-shadow: 0 4px 18px rgba(224,142,0,0.4);
   letter-spacing: 0.02em;
+  /* Siempre visible al fondo del modal scrolleable */
+  position: sticky;
+  bottom: -20px;
+  background: var(--gold);
+  box-shadow: 0 -8px 20px rgba(255,255,255,0.9);
 }
 #modalCTA:hover {
   background: var(--gold2);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 24px rgba(224,142,0,0.55);
+  box-shadow: 0 -8px 20px rgba(255,255,255,0.9);
 }
 #modalCTA:active { transform: translateY(0); }
 #modalCTA.reservado {
