@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MapPin, Calendar, CheckCircle, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useSearchParams, useNavigate } from 'react-router';
@@ -22,6 +22,7 @@ export function MisLotes() {
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('todos');
   const [verifyState, setVerifyState] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
   const [verifyFlow, setVerifyFlow] = useState<VerifyFlow>(null);
+  const autoVerifiedRef = useRef<Set<string>>(new Set());
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -66,8 +67,11 @@ export function MisLotes() {
     const engancheVentaid = searchParams.get('enganche_ventaid');
     if (!engancheVentaid) return;
 
+    const sessionId = sessionStorage.getItem(`enganche_session_${engancheVentaid}`) ?? '';
     sessionStorage.removeItem(`enganche_session_${engancheVentaid}`);
     navigate('/mis-lotes', { replace: true });
+
+    if (!sessionId) return;
 
     setVerifyFlow('enganche');
     setVerifyState('verifying');
@@ -96,6 +100,32 @@ export function MisLotes() {
         .catch(() => setVerifyState('error'));
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-recovery: si hay lotes en estado 'apartado' con sesión pendiente en DB, verificar en background
+  useEffect(() => {
+    if (isLoading || verifyState !== 'idle') return;
+    const pending = lots.filter(l => l.status === 'apartado' && !autoVerifiedRef.current.has(l.ventaid));
+    if (pending.length === 0) return;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      pending.forEach(lot => {
+        autoVerifiedRef.current.add(lot.ventaid);
+        fetch(`${SUPABASE_URL}/functions/v1/verify-apartado-payment`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ ventaid: Number(lot.ventaid) }),
+        })
+          .then(r => r.json())
+          .then(data => { if (data.ok && !data.alreadyVerified) refreshLots(); })
+          .catch(() => {});
+      });
+    });
+  }, [lots, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeLots   = lots.filter((l) => l.status !== 'finalizado').length;
   const finishedLots = lots.filter((l) => l.status === 'finalizado').length;
