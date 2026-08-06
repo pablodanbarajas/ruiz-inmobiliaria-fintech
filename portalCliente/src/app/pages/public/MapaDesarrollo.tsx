@@ -57,8 +57,8 @@ export function MapaDesarrollo() {
   }
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 80px)', overflow: 'hidden' }}>
-      <div className="bg-white border-b border-gray-200 px-8 py-3 flex-shrink-0">
+    <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100dvh - 80px)' }}>
+      <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-3 flex-shrink-0">
         <div className="flex items-center">
           <div className="flex items-center gap-4">
             <Link
@@ -78,7 +78,7 @@ export function MapaDesarrollo() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden pb-16 md:pb-0">
         {development.hasInteractiveMap ? (
           /*
            * RUTA CORRECTA: public/mapa/index.html → servido en /mapa/index.html
