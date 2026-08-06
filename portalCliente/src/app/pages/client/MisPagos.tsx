@@ -345,7 +345,7 @@ function LoteSection({
   return (
     <div className="mb-10">
       {/* Tarjetas resumen del lote (igual que admin) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <p className="text-xs text-gray-500 mb-1">Precio Total</p>
           <p className="text-base font-bold text-blue-600">{fmt(lote.preciolote)}</p>

@@ -168,7 +168,7 @@ export function LotCard({ lote }: LotCardProps) {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
       <div className="flex flex-col lg:flex-row">
-        <div className="w-full lg:w-48 h-48 lg:h-auto flex-shrink-0">
+        <div className="w-full lg:w-48 h-36 md:h-48 lg:h-auto flex-shrink-0">
           {showPlaceholder ? (
             <div className="w-full h-full bg-gradient-to-br from-teal-50 to-teal-100 flex flex-col items-center justify-center gap-2 text-teal-400">
               <ImageOff className="w-10 h-10" />
@@ -213,8 +213,8 @@ export function LotCard({ lote }: LotCardProps) {
             </div>
 
             {/* Progreso de compra */}
-            <div className="mb-3 overflow-x-auto">
-              <div className="flex justify-between mb-1.5 min-w-[380px]">
+            <div className="mb-3">
+              <div className="flex justify-between mb-1.5">
                 {lote.progress.stages.map((etapa, index) => (
                   <div key={index} className="flex flex-col items-center flex-1">
                     <div
@@ -227,7 +227,7 @@ export function LotCard({ lote }: LotCardProps) {
                       {index + 1}
                     </div>
                     <span
-                      className={`text-[10px] mt-0.5 text-center leading-tight ${
+                      className={`text-[9px] mt-0.5 text-center leading-tight hidden sm:block ${
                         index <= lote.progress.currentStage
                           ? 'text-gray-700 font-medium'
                           : 'text-gray-400'
@@ -238,7 +238,7 @@ export function LotCard({ lote }: LotCardProps) {
                   </div>
                 ))}
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5 min-w-[380px]">
+              <div className="w-full bg-gray-200 rounded-full h-1.5">
                 <div
                   className="bg-teal-700 h-1.5 rounded-full transition-all"
                   style={{ width: `${progressPct}%` }}

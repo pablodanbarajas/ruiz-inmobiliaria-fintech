@@ -1,1 +1,8 @@
 @import "tailwindcss";
+
+/* Prevent iOS Safari auto-zoom on focused inputs */
+@layer base {
+  input, select, textarea {
+    font-size: max(16px, 1em);
+  }
+}

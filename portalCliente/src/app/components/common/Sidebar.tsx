@@ -51,12 +51,7 @@ export function Sidebar() {
         </nav>
       </aside>
 
-      <div className="md:hidden bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
-        <h1 className="text-xl font-bold text-teal-700">Ruiz Inmobiliaria</h1>
-        <p className="text-xs text-gray-500">Portal web</p>
-      </div>
-
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-gray-200 bg-white/95 backdrop-blur-sm px-2 py-2 safe-area-inset-bottom">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-gray-200 bg-white/95 backdrop-blur-sm px-2 pb-2 pt-1 safe-area-inset-bottom">
         <div className="grid grid-cols-4 gap-1">
           {items.map((item) => {
             const Icon = item.icon;
@@ -66,13 +61,13 @@ export function Sidebar() {
               <Link
                 key={item.to}
                 to={item.to}
-                className={`flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-medium transition-colors ${
+                className={`flex flex-col items-center justify-center gap-1 rounded-xl px-2 min-h-[52px] text-[11px] font-medium transition-colors ${
                   active
                     ? 'bg-teal-700 text-white'
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-5 h-5" />
                 <span className="leading-none">{item.label}</span>
               </Link>
             );
