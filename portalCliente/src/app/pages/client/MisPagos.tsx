@@ -18,7 +18,7 @@ function Pagination({
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 md:px-6 py-3 border-t border-gray-200 text-sm text-gray-600">
       <span>{Math.min((page - 1) * PAGE_SIZE + 1, total)}–{Math.min(page * PAGE_SIZE, total)} de {total}</span>
-      <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+      <div className="flex items-center gap-1">
         <button
           onClick={() => onPage(page - 1)}
           disabled={page === 1}
@@ -26,17 +26,28 @@ function Pagination({
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-          <button
-            key={p}
-            onClick={() => onPage(p)}
-            className={`w-7 h-7 rounded text-xs font-medium ${
-              p === page ? 'bg-teal-700 text-white' : 'hover:bg-gray-100'
-            }`}
-          >
-            {p}
-          </button>
-        ))}
+        {Array.from({ length: totalPages }, (_, i) => i + 1)
+          .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+          .reduce<(number | '...')[]>((acc, p, i, arr) => {
+            if (i > 0 && typeof arr[i - 1] === 'number' && (p as number) - (arr[i - 1] as number) > 1) acc.push('...');
+            acc.push(p);
+            return acc;
+          }, [])
+          .map((p, i) =>
+            p === '...' ? (
+              <span key={`ellipsis-${i}`} className="w-7 h-7 flex items-center justify-center text-xs text-gray-400">…</span>
+            ) : (
+              <button
+                key={p}
+                onClick={() => onPage(p as number)}
+                className={`w-7 h-7 rounded text-xs font-medium ${
+                  p === page ? 'bg-teal-700 text-white' : 'hover:bg-gray-100'
+                }`}
+              >
+                {p}
+              </button>
+            )
+          )}
         <button
           onClick={() => onPage(page + 1)}
           disabled={page === totalPages}
@@ -345,30 +356,30 @@ function LoteSection({
   return (
     <div className="mb-10">
       {/* Tarjetas resumen del lote (igual que admin) */}
-      <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-xs text-gray-500 mb-1">Precio Total</p>
-          <p className="text-base font-bold text-blue-600">{fmt(lote.preciolote)}</p>
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-2 md:p-4">
+          <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1">Precio Total</p>
+          <p className="text-xs md:text-base font-bold text-blue-600 break-all">{fmt(lote.preciolote)}</p>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-xs text-gray-500 mb-1">Total Pagado</p>
-          <p className="text-base font-bold text-green-600">{fmt(lote.totalPagado)}</p>
+        <div className="bg-white rounded-lg border border-gray-200 p-2 md:p-4">
+          <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1">Total Pagado</p>
+          <p className="text-xs md:text-base font-bold text-green-600 break-all">{fmt(lote.totalPagado)}</p>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-xs text-gray-500 mb-1">Deuda del Lote</p>
-          <p className="text-base font-bold text-orange-500">{fmt(lote.saldoLote)}</p>
+        <div className="bg-white rounded-lg border border-gray-200 p-2 md:p-4">
+          <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1">Deuda del Lote</p>
+          <p className="text-xs md:text-base font-bold text-orange-500 break-all">{fmt(lote.saldoLote)}</p>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-xs text-gray-500 mb-1">Cargos Extra</p>
-          <p className="text-base font-bold text-purple-600">{fmt(lote.totalCargosExtras)}</p>
+        <div className="bg-white rounded-lg border border-gray-200 p-2 md:p-4">
+          <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1">Cargos Extra</p>
+          <p className="text-xs md:text-base font-bold text-purple-600 break-all">{fmt(lote.totalCargosExtras)}</p>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-xs text-gray-500 mb-1">Recargos</p>
-          <p className="text-base font-bold text-orange-600">{fmt(lote.totalRecargos)}</p>
+        <div className="bg-white rounded-lg border border-gray-200 p-2 md:p-4">
+          <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1">Recargos</p>
+          <p className="text-xs md:text-base font-bold text-orange-600 break-all">{fmt(lote.totalRecargos)}</p>
         </div>
-        <div className="bg-white rounded-lg border border-blue-100 bg-blue-50 p-4">
-          <p className="text-xs text-gray-500 mb-1">Total Adeudado</p>
-          <p className="text-base font-bold text-red-600">{fmt(lote.totalAdeudado)}</p>
+        <div className="rounded-lg border border-blue-100 bg-blue-50 p-2 md:p-4">
+          <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1">Total Adeudado</p>
+          <p className="text-xs md:text-base font-bold text-red-600 break-all">{fmt(lote.totalAdeudado)}</p>
         </div>
       </div>
 
