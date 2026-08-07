@@ -8,6 +8,7 @@ const ASSIGNABLE_ADMIN_ROLES = [
   'vendedor_externo',
   'contratos',
   'cobranza_caja',
+  'desarrollo_ri',
 ] as const
 
 type AssignableAdminRole = (typeof ASSIGNABLE_ADMIN_ROLES)[number]
