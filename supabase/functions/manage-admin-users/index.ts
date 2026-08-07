@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
       const roleMap = new Map<string, string>()
       for (const r of roleRows || []) roleMap.set(r.user_id, r.role)
 
-      // Excluir cuentas del portal cliente
+      // Excluir usuarios que son solo clientes del portal (sin rol en user_roles)
       const { data: clientRows, error: clientRowsError } = await supabaseAdmin
         .from('cliente')
         .select('user_id')
@@ -118,9 +118,10 @@ Deno.serve(async (req: Request) => {
       if (clientRowsError) throw clientRowsError
 
       const clientUserIds = new Set((clientRows || []).map((c: any) => c.user_id))
+      const adminUserIds = new Set((roleRows || []).map((r: any) => r.user_id))
 
       const users = allUsers
-        .filter((u) => !clientUserIds.has(u.id))
+        .filter((u) => adminUserIds.has(u.id) || !clientUserIds.has(u.id))
         .map((u) => {
           const rawRole = roleMap.get(u.id)
           const role = isAssignableRole(rawRole) ? rawRole : null
