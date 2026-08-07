@@ -57,6 +57,11 @@ function mapProgressStage(portalStatus: string | null): number {
   return 1;
 }
 
+// Mirrors the fallback images used in developments.service.ts
+const DEVELOPMENT_IMAGES: Record<number, string> = {
+  11: '/images/Pueblos-de-la-barranca.jpeg',
+};
+
 export const supabaseLotsService: ILotsService = {
   async getClientLots(clientId: string): Promise<ClientLot[]> {
     const { data, error } = await supabase
@@ -104,7 +109,7 @@ export const supabaseLotsService: ILotsService = {
       location: 'Ubicación pendiente',
       surface: row.superficie ? `${row.superficie} m²` : 'N/D',
       price: toNumber(row.preciolote, 0),
-      imageUrl: '',
+      imageUrl: DEVELOPMENT_IMAGES[row.development_id] ?? '',
       status: mapLotStatus(row.portal_lot_status),
       nextPayment: (() => {
         // Lote en fase de enganche: mostrar monto restante y fecha limite
