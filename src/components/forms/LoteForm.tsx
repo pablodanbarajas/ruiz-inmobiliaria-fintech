@@ -15,6 +15,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
   const [formData, setFormData] = useState({
     desarrolloid: '',
     duenioid: '',
+    clavelote: '',
     coto: '',
     manzana: '',
     nolote: '',
@@ -37,12 +38,24 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
   const [duenios, setDuenios] = useState<Duenio[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [calcularPrecio, setCalcularPrecio] = useState(!lote)
+  const [autoClaveKey, setAutoClaveKey] = useState(!lote)
+
+  const buildClave = (desarrolloid: string, coto: string, manzana: string, nolote: string) => {
+    const des = desarrollos.find(d => d.desarrolloid?.toString() === desarrolloid)
+    if (!des?.clavedesarrollo) return ''
+    const parts = [des.clavedesarrollo]
+    if (coto) parts.push(coto.padStart(2, '0'))
+    if (manzana) parts.push(manzana.padStart(2, '0'))
+    if (nolote) parts.push(nolote.padStart(3, '0'))
+    return parts.join('-')
+  }
 
   useEffect(() => {
     if (lote) {
       setFormData({
         desarrolloid: lote.desarrolloid?.toString() || '',
         duenioid: lote.duenioid?.toString() || '',
+        clavelote: lote.clavelote || '',
         coto: lote.coto || '',
         manzana: lote.manzana || '',
         nolote: lote.nolote || '',
@@ -142,6 +155,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
       coto: formData.coto || null,
       manzana: formData.manzana || null,
       nolote: formData.nolote || null,
+      clavelote: formData.clavelote || null,
       tipolote: formData.tipolote || null,
       linderonte: formData.linderonte ? parseFloat(formData.linderonte) : null,
       colindanciante: formData.colindanciante || null,
@@ -175,7 +189,11 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
           </label>
           <select
             value={formData.desarrolloid}
-            onChange={(e) => setFormData({ ...formData, desarrolloid: e.target.value })}
+            onChange={(e) => {
+              const id = e.target.value
+              const clave = buildClave(id, formData.coto, formData.manzana, formData.nolote)
+              setFormData(prev => ({ ...prev, desarrolloid: id, ...(autoClaveKey ? { clavelote: clave } : {}) }))
+            }}
             disabled={isLoading}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
           >
@@ -234,7 +252,11 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
           <Input
             type="text"
             value={formData.coto}
-            onChange={(e) => setFormData({ ...formData, coto: e.target.value })}
+            onChange={(e) => {
+              const val = e.target.value
+              const clave = buildClave(formData.desarrolloid, val, formData.manzana, formData.nolote)
+              setFormData(prev => ({ ...prev, coto: val, ...(autoClaveKey ? { clavelote: clave } : {}) }))
+            }}
             placeholder="Ej: 01, 00"
             disabled={isLoading}
           />
@@ -247,7 +269,11 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
           <Input
             type="text"
             value={formData.manzana}
-            onChange={(e) => setFormData({ ...formData, manzana: e.target.value })}
+            onChange={(e) => {
+              const val = e.target.value
+              const clave = buildClave(formData.desarrolloid, formData.coto, val, formData.nolote)
+              setFormData(prev => ({ ...prev, manzana: val, ...(autoClaveKey ? { clavelote: clave } : {}) }))
+            }}
             placeholder="Ej: 02, 03"
             disabled={isLoading}
           />
@@ -261,7 +287,11 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
           <Input
             type="text"
             value={formData.nolote}
-            onChange={(e) => setFormData({ ...formData, nolote: e.target.value })}
+            onChange={(e) => {
+              const val = e.target.value
+              const clave = buildClave(formData.desarrolloid, formData.coto, formData.manzana, val)
+              setFormData(prev => ({ ...prev, nolote: val, ...(autoClaveKey ? { clavelote: clave } : {}) }))
+            }}
             placeholder="Ej: 001, 002"
             disabled={isLoading}
           />
@@ -285,6 +315,38 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             <option value="N">No disponible</option>
           </select>
         </div>
+      </div>
+
+      {/* Clave del lote */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Clave del Lote
+        </label>
+        <div className="flex items-center gap-2">
+          <Input
+            type="text"
+            value={formData.clavelote}
+            onChange={(e) => {
+              setAutoClaveKey(false)
+              setFormData(prev => ({ ...prev, clavelote: e.target.value }))
+            }}
+            placeholder="Ej: PUB-01-03-009"
+            disabled={isLoading}
+            className="font-mono"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setAutoClaveKey(true)
+              setFormData(prev => ({ ...prev, clavelote: buildClave(prev.desarrolloid, prev.coto, prev.manzana, prev.nolote) }))
+            }}
+            className="whitespace-nowrap text-xs px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-gray-600"
+            title="Regenerar clave automáticamente"
+          >
+            Auto
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mt-1">Se genera automáticamente. Puedes editar manualmente o pulsar Auto para regenerar.</p>
       </div>
 
       {/* Row 3: Medidas (Linderos) */}
