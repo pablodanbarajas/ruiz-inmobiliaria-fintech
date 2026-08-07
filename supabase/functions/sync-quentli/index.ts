@@ -74,6 +74,58 @@ Deno.serve(async (req: Request) => {
       'Content-Type': 'application/json',
     }
 
+    // ── MODO CANCELAR INVOICES DE UNA VENTA ─────────────────
+    if (action === 'cancelInvoices') {
+      const { ventaid: ventaToCancel } = body
+      if (!ventaToCancel) {
+        return new Response(
+          JSON.stringify({ error: 'Falta ventaid para cancelar invoices' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
+      }
+
+      // Get unpaid corridas with a Quentli invoice
+      const { data: corridaRows } = await supabaseAdmin
+        .from('corridafinanciera')
+        .select('corridafinancieraid, quentli_invoice_id')
+        .eq('ventaid', ventaToCancel)
+        .not('quentli_invoice_id', 'is', null)
+
+      const unpaidCorridas = []
+      for (const c of corridaRows ?? []) {
+        const { count } = await supabaseAdmin
+          .from('pagos')
+          .select('pagoid', { count: 'exact', head: true })
+          .eq('corridafinancieraid', c.corridafinancieraid)
+          .in('estatus', ['P', 'R'])
+        if ((count ?? 0) === 0) unpaidCorridas.push(c)
+      }
+
+      let cancelled = 0
+      for (const c of unpaidCorridas) {
+        // Cancel invoice in Quentli (best effort — don't fail if Quentli rejects)
+        try {
+          await fetch(`${QUENTLI_API}/v1/invoices/${c.quentli_invoice_id}`, {
+            method: 'DELETE',
+            headers: qHeaders,
+          })
+          cancelled++
+        } catch {
+          console.warn('No se pudo cancelar invoice en Quentli:', c.quentli_invoice_id)
+        }
+        // Always clear the ID in DB so the cron no longer tracks this invoice
+        await supabaseAdmin
+          .from('corridafinanciera')
+          .update({ quentli_invoice_id: null })
+          .eq('corridafinancieraid', c.corridafinancieraid)
+      }
+
+      return new Response(
+        JSON.stringify({ ok: true, cancelled, total: unpaidCorridas.length }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
     // ── MODO CANCELAR SUSCRIPCIÓN ────────────────────────────
     if (action === 'cancel') {
       const { subscriptionId: subToCancel } = body

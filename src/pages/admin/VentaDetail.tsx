@@ -563,6 +563,28 @@ export const VentaDetail = () => {
         }
       }
 
+      // 5. Cancelar invoices de corridas pendientes en Quentli
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const accessToken = sessionData.session?.access_token
+        if (accessToken) {
+          await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-quentli`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+                apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+              },
+              body: JSON.stringify({ action: 'cancelInvoices', ventaid: venta.ventaid }),
+            },
+          )
+        }
+      } catch (qErr) {
+        console.warn('No se pudieron cancelar invoices en Quentli (no bloquea):', qErr)
+      }
+
       // Refetch
       const { data: ventaData } = await supabase
         .from('venta')
