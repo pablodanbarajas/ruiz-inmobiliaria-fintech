@@ -20,8 +20,10 @@ const FALLBACK_DEVELOPMENT_IMAGES: Record<number, string> = {
 
 export const supabaseDevelopmentsService: IDevelopmentsService = {
   async getPublicDevelopments(): Promise<PublicDevelopment[]> {
-    const ALLOWED_IDS = [11, 20]; // Pueblos de la Barranca, Desarrollo de Prueba
-    const ORDER = [11, 20];
+    const _envIds = import.meta.env.VITE_ALLOWED_DESARROLLOIDS
+    const _parsed = _envIds ? String(_envIds).split(',').map(Number).filter(Boolean) : []
+    const ALLOWED_IDS = _parsed.length > 0 ? _parsed : [11, 20]
+    const ORDER = ALLOWED_IDS
 
     const { data, error } = await supabase
       .from('public_developments')
