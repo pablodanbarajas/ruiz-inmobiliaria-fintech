@@ -39,8 +39,12 @@ export function invalidateCache(keyPrefix?: string): void {
  */
 export function onFocusRefetch(refetch: () => void, keyPrefix: string, inactivityMs = 10 * 60 * 1000): () => void {
   const handler = () => {
-    const entry = store.get(keyPrefix)
-    const stale = !entry || (Date.now() - entry.ts > inactivityMs)
+    // Find the most recently updated entry that matches the prefix
+    let latestTs = 0
+    for (const [key, entry] of store.entries()) {
+      if (key.startsWith(keyPrefix) && entry.ts > latestTs) latestTs = entry.ts
+    }
+    const stale = latestTs === 0 || (Date.now() - latestTs > inactivityMs)
     if (stale) {
       invalidateCache(keyPrefix)
       refetch()
