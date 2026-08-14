@@ -410,6 +410,7 @@ export const Pagos = () => {
   const filteredPagosForPagination = pagos
 
   const exportPagosCsv = () => {
+    const fmtDate = (d: string | null | undefined) => d ? d.slice(0, 10).split('-').reverse().join('/') : ''
     const csv = toCsv(
       ['Pago ID', 'Fecha', 'Cliente', 'Venta ID', 'Desarrollo', 'Metodo', 'Cobrador', 'Monto', 'Estado'],
       filteredPagos.map((pago) => {
@@ -417,7 +418,7 @@ export const Pagos = () => {
 
         return [
           pago.pagoid || '',
-          pago.fechapago || '',
+          fmtDate(pago.fechapago),
           cliente?.nombre || '',
           venta?.ventaid || '',
           desarrollo?.nombre || '',
@@ -540,9 +541,10 @@ export const Pagos = () => {
   }
 
   const exportConciliacionDiariaCsv = () => {
+    const fmtDate = (d: string) => d !== 'Sin fecha' ? d.slice(0, 10).split('-').reverse().join('/') : d
     const csv = toCsv(
       ['Fecha', 'Pagos', 'Monto cobrado', 'Monto aplicado', 'Diferencia ajustes'],
-      conciliacionDiaria.map((row) => [row.fecha, row.pagos, row.monto, row.aplicado, row.diferenciaAjustes])
+      conciliacionDiaria.map((row) => [fmtDate(row.fecha), row.pagos, row.monto, row.aplicado, row.diferenciaAjustes])
     )
 
     downloadCsv(`tesoreria_conciliacion_diaria_${new Date().toISOString().split('T')[0]}.csv`, csv)
