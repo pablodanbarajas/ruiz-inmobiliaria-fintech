@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
@@ -61,6 +62,8 @@ const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(
 // ── PagoForm ───────────────────────────────────────────────────────
 export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExtra = [], onSubmit, isLoading }: PagoFormProps) => {
   const isEditMode = !!pago
+  const { user } = useAuth()
+  const currentUserName = user ? `${user.nombre} ${user.apellido}`.trim() || user.email : ''
 
   // Venta search (only when no initialCorridaId and not edit mode)
   const [ventaOptions, setVentaOptions] = useState<ComboOption[]>([])
@@ -84,7 +87,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
   const [referencia, setReferencia] = useState(pago?.referencia ?? '')
   const [comentario, setComentario] = useState(pago?.comentario ?? '')
   const [recargo, setRecargo] = useState<number>(pago?.recargo ?? 0)
-  const [cobrador, setCobrador] = useState<string>(pago?.cobrador ?? '')
+  const [cobrador, setCobrador] = useState<string>(pago?.cobrador ?? currentUserName)
   const [activeConvenio, setActiveConvenio] = useState<{ recargo_acordado: number | null; meses_atraso: number | null; meses_convenio: number | null } | null>(null)
   const [checkingConvenio, setCheckingConvenio] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -476,7 +479,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
     if (formapago === 2 && cuentasDisponibles.length > 0 && !cuentaBancariaId) {
       newErrors.cuenta_bancaria_id = 'Selecciona la cuenta bancaria de destino'
     }
-    if (formapago === 6 && !cobrador.trim()) newErrors.cobrador = 'El nombre del cobrador es requerido'
+    if (formapago === 6 && !cuentaBancariaId) newErrors.cuenta_bancaria_id = 'Selecciona una cuenta bancaria'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -497,7 +500,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
       referencia: referencia.trim() || null,
       comentario: comentario.trim() || null,
       recargo,
-      cobrador: formapago === 6 ? cobrador.trim() || null : null,
+      cobrador: cobrador.trim() || currentUserName || null,
     })
   }
 
@@ -856,20 +859,13 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
             </div>
           )}
 
-          {/* Cobrador — solo cuando Ruta de cobranza */}
-          {formapago === 6 && (
-            <div>
-              <label className="block text-sm font-medium text-black mb-1">Cobrador <span className="text-red-500">*</span></label>
-              <Input
-                type="text"
-                value={cobrador}
-                onChange={(e) => setCobrador(e.target.value)}
-                placeholder="Nombre del cobrador que recibió el pago..."
-                className={errors.cobrador ? 'border-red-500' : ''}
-              />
-              {errors.cobrador && <p className="text-xs text-red-500 mt-1">{errors.cobrador}</p>}
+          {/* Cobrador auto-poblado con el usuario actual */}
+          <div>
+            <label className="block text-sm font-medium text-black mb-1">Cobrador / Registrado por</label>
+            <div className="px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm text-gray-700">
+              {cobrador || currentUserName || '—'}
             </div>
-          )}
+          </div>
 
           {/* Recargo */}
           {!isEditMode && (
