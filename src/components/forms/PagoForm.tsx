@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/context/AuthContext'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
@@ -135,14 +136,16 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
         while (hasMore) {
           const { data, error } = await supabase
             .from('venta')
-            .select('ventaid, clienteid, loteid, estatus, cliente:cliente(clienteid, nombre), lote:lote(loteid, manzana, nolote, clavelote)')
+            .select('ventaid, clienteid, loteid, estatus, cliente:cliente(clienteid, nombre), lote:lote(loteid, manzana, nolote, clavelote, desarrolloid)')
             .neq('estatus', 'C')
             .order('ventaid', { ascending: false })
             .range(page * pageSize, (page + 1) * pageSize - 1)
 
           if (error) throw error
 
-          const items = (data || []).map((v: any) => ({
+          const items = (data || [])
+            .filter((v: any) => DEMO_DESARROLLOIDS.length === 0 || DEMO_DESARROLLOIDS.includes(v.lote?.desarrolloid))
+            .map((v: any) => ({
             ventaid: v.ventaid,
             label: `#${v.ventaid} — ${v.cliente?.nombre ?? 'Sin cliente'} | Mza ${v.lote?.manzana ?? '-'} Lote ${v.lote?.nolote ?? '-'}${v.lote?.clavelote ? ` (${v.lote.clavelote})` : ''}`,
             cliente: v.cliente,
