@@ -87,7 +87,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
   const [referencia, setReferencia] = useState(pago?.referencia ?? '')
   const [comentario, setComentario] = useState(pago?.comentario ?? '')
   const [recargo, setRecargo] = useState<number>(pago?.recargo ?? 0)
-  const [cobrador, setCobrador] = useState<string>(pago?.cobrador ?? currentUserName)
+  const cobrador = pago?.cobrador ?? currentUserName ?? ''
   const [activeConvenio, setActiveConvenio] = useState<{ recargo_acordado: number | null; meses_atraso: number | null; meses_convenio: number | null } | null>(null)
   const [checkingConvenio, setCheckingConvenio] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
