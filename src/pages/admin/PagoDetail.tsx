@@ -288,7 +288,7 @@ export const PagoDetail = () => {
             </div>
             {pago.cobrador && (
               <div>
-                <p className="text-sm text-gray-500">Cobrador (ruta)</p>
+                <p className="text-sm text-gray-500">Registrado por</p>
                 <p className="text-base font-semibold text-gray-900">{pago.cobrador}</p>
               </div>
             )}
