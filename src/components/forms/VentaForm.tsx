@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
@@ -57,6 +58,8 @@ const VENDEDOR_OPTIONS = [
 export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, allowFinancialEdit = false }: VentaFormProps) => {
   const isEditMode = !!venta
   const today = new Date().toISOString().split('T')[0]
+  const { role } = useAuth()
+  const isAdmin = role === 'admin'
 
   const [formData, setFormData] = useState({
     loteid: venta?.loteid?.toString() ?? (defaultLoteId?.toString() ?? ''),
@@ -239,7 +242,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
         errs.preciolote = 'Precio del lote requerido y debe ser mayor a 0'
       if (!formData.enganche || engancheNum <= 0)
         errs.enganche = 'Enganche requerido y debe ser mayor a 0'
-      else if (enganchemin > 0 && engancheNum < enganchemin)
+      else if (!isAdmin && enganchemin > 0 && engancheNum < enganchemin)
         errs.enganche = `El enganche mínimo del desarrollo es ${formatCurrency(enganchemin)}`
       else if (engancheNum >= precioNum)
         errs.enganche = 'El enganche no puede ser igual o mayor al precio total'
@@ -429,7 +432,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
             <Input
               type="number"
               step="0.01"
-              min={enganchemin > 0 ? enganchemin : 0}
+              min={!isAdmin && enganchemin > 0 ? enganchemin : 0}
               placeholder="0.00"
               value={formData.enganche}
               onChange={(e) => setFormData({ ...formData, enganche: e.target.value })}
@@ -439,7 +442,12 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
               <p className="text-red-500 text-xs mt-1">{errors.enganche}</p>
             )}
             {!isEditMode && enganchemin > 0 && !errors.enganche && (
-              <p className="text-xs text-gray-500 mt-1">Mínimo: {formatCurrency(enganchemin)}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Mínimo: {formatCurrency(enganchemin)}
+                {isAdmin && engancheNum > 0 && engancheNum < enganchemin && (
+                  <span className="text-amber-600 font-medium"> — Valor por debajo del mínimo (autorizado como Admin)</span>
+                )}
+              </p>
             )}
           </div>
           <div>
