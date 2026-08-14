@@ -15,6 +15,7 @@ export interface ReciboPagoData {
   comentario?: string | null
   corridafinancieraid: number | null
   nopago?: number | null
+  totalPagos?: number | null
   mensualidad?: number | null
   saldo?: number | null
   // Venta
@@ -393,7 +394,9 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
           {data.nopago != null && (
             <div>
               <div style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>No. de Pago</div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{data.nopago === 0 ? 'Enganche (0)' : data.nopago}</div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>
+                {data.nopago === 0 ? 'Enganche (0)' : `${data.nopago}${data.totalPagos ? ` de ${data.totalPagos}` : ''}`}
+              </div>
             </div>
           )}
           {data.referencia && (

@@ -483,6 +483,7 @@ export const PagoDetail = () => {
           manzana: lote?.manzana,
           nolote: lote?.nolote,
           desarrollo: (lote as any)?.desarrollo?.nombre,
+          totalPagos: venta?.plazo,
         }}
       />
     )}

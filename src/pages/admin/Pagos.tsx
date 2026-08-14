@@ -252,7 +252,7 @@ export const Pagos = () => {
       const [pagosRes, corridasRes, desarrollosRes] = await Promise.all([
         supabase
           .from('pagos')
-          .select('pagoid, fechapago, montopagado, servicios_extra, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera(corridafinancieraid, venta:venta(ventaid, clienteid, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
+          .select('pagoid, fechapago, montopagado, servicios_extra, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera(corridafinancieraid, venta:venta(ventaid, clienteid, preciolote, plazo, cliente:cliente(clienteid, nombre, email, telefonocelular), lote:lote(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
           .order('fechapago', { ascending: false })
           .limit(10000),
         corridasQuery,
@@ -919,11 +919,12 @@ export const Pagos = () => {
                                 preciolote: ctx.venta?.preciolote,
                                 fechaventa: ctx.venta?.fecha,
                                 clienteNombre: ctx.cliente?.nombre,
-                                clienteEmail: ctx.cliente?.email,
-                                clienteTelefono: (ctx.cliente as any)?.telefono,
+                                clienteEmail: (ctx.cliente as any)?.email,
+                                clienteTelefono: (ctx.cliente as any)?.telefonocelular,
                                 manzana: ctx.lote?.manzana,
                                 nolote: ctx.lote?.nolote,
                                 desarrollo: ctx.desarrollo?.nombre,
+                                totalPagos: (ctx.venta as any)?.plazo,
                               })}
                               className="inline-flex items-center gap-1 text-[#504840] hover:text-[#3d3630]"
                             >
