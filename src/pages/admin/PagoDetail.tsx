@@ -45,7 +45,7 @@ export const PagoDetail = () => {
 
       const { data, error } = await supabase
         .from('pagos')
-        .select('*, corridafinanciera:corridafinanciera(*, venta:venta(*, cliente:cliente(*), lote:lote(*)))')
+        .select('*, corridafinanciera:corridafinanciera(*, venta:venta(*, cliente:cliente(*), lote:lote(*, desarrollo:desarrollo(desarrolloid, nombre))))')
         .eq('pagoid', id)
         .single()
 
@@ -479,7 +479,7 @@ export const PagoDetail = () => {
           fechaventa: venta?.fecha,
           clienteNombre: cliente?.nombre,
           clienteEmail: cliente?.email,
-          clienteTelefono: (cliente as any)?.telefono,
+          clienteTelefono: (cliente as any)?.telefonocelular ?? (cliente as any)?.telefono,
           manzana: lote?.manzana,
           nolote: lote?.nolote,
           desarrollo: (lote as any)?.desarrollo?.nombre,
