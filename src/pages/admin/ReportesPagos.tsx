@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { formatCurrency, formatDate, getPagoFormaLabel, FORMAS_PAGO } from '@/utils/helpers'
 import type { Cliente, Desarrollo, Lote, Pago, Venta } from '@/types/database'
 import { Download, Filter, FileText } from 'lucide-react'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 type PagoRow = Pago & {
   corridafinanciera?: {
@@ -73,7 +74,9 @@ export const ReportesPagos = () => {
 
   useEffect(() => {
     const loadDesarrollos = async () => {
-      const { data } = await supabase.from('desarrollo').select('desarrolloid, nombre').order('nombre', { ascending: true })
+      let q = supabase.from('desarrollo').select('desarrolloid, nombre').order('nombre', { ascending: true })
+      if (DEMO_DESARROLLOIDS.length > 0) q = q.in('desarrolloid', DEMO_DESARROLLOIDS) as typeof q
+      const { data } = await q
       setDesarrollos((data || []) as Desarrollo[])
     }
     loadDesarrollos()

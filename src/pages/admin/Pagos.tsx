@@ -81,7 +81,6 @@ type CorteCtaBancariaRow = {
   aplicado: number
 }
 
-const ALLOWED_DESARROLLOS = ['Desarrollo de Prueba', 'Pueblos de la Barranca']
 
 const toCsv = (headers: string[], rows: (string | number)[][]): string => {
   const esc = (value: string | number) => {
@@ -260,7 +259,7 @@ export const Pagos = () => {
         supabase
           .from('desarrollo')
           .select('desarrolloid, nombre')
-          .in('nombre', ALLOWED_DESARROLLOS)
+          .in('desarrolloid', DEMO_DESARROLLOIDS.length > 0 ? DEMO_DESARROLLOIDS : [-1])
           .order('nombre', { ascending: true }),
       ])
 
