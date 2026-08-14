@@ -349,8 +349,8 @@ export const Pagos = () => {
       if (DEMO_DESARROLLOIDS.length > 0 && desarrolloid && !DEMO_DESARROLLOIDS.includes(desarrolloid)) return false
       if (filters.clienteId && String(cliente?.clienteid || '') !== filters.clienteId) return false
       if (filters.desarrolloId && String(desarrolloid || '') !== filters.desarrolloId) return false
-      if (filters.fechaDesde && (pago.fechapago || '') < filters.fechaDesde) return false
-      if (filters.fechaHasta && (pago.fechapago || '') > filters.fechaHasta) return false
+      if (filters.fechaDesde && (pago.fechapago || '').slice(0, 10) < filters.fechaDesde) return false
+      if (filters.fechaHasta && (pago.fechapago || '').slice(0, 10) > filters.fechaHasta) return false
       if (filters.formaPago && String(pago.formapago || '') !== filters.formaPago) return false
       if (filters.cobrador && !(pago.cobrador || '').toLowerCase().includes(filters.cobrador.toLowerCase())) return false
       return true
