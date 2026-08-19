@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal'
 import { ApartadoExternoForm } from '@/components/forms/ApartadoExternoForm'
 import type { ApartadoExternoFormData } from '@/components/forms/ApartadoExternoForm'
 import { formatDate, getVentaStatusLabel, getVentaStatusColor, formatCurrency } from '@/utils/helpers'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { Plus, Eye, RefreshCw, XCircle, Pencil, CheckCircle2 } from 'lucide-react'
 import type { Venta, Cliente, Lote, Desarrollo } from '@/types/database'
 
@@ -247,6 +248,12 @@ export const VentasExternas = () => {
   // ── Client-side filtering (admin) ────────────────────────
   const filtered = useMemo(() => {
     let list = rows
+    if (DEMO_DESARROLLOIDS.length > 0) {
+      list = list.filter((r) => {
+        const devId = (r.lote as any)?.desarrolloid
+        return devId != null && DEMO_DESARROLLOIDS.includes(devId)
+      })
+    }
     if (filterEstatus) list = list.filter((r) => r.estatus === filterEstatus)
     if (filterVendedor) {
       const term = filterVendedor.toLowerCase()
