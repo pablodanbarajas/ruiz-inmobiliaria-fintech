@@ -887,8 +887,7 @@ export const VentaDetail = () => {
             <div>
               <p className="font-semibold">Reserva activa — pendiente pago de apartado</p>
               <p className="text-xs text-amber-600 mt-0.5">
-                El lote quedó reservado por el vendedor externo y espera el registro del pago de apartado en administración.
-                {venta.fecha_reserva && ` Reserva realizada el ${new Date(venta.fecha_reserva).toLocaleString('es-MX')}.`}
+                {venta.fecha_reserva && `Reserva realizada el ${new Date(venta.fecha_reserva).toLocaleString('es-MX')}.`}
               </p>
             </div>
           </div>
