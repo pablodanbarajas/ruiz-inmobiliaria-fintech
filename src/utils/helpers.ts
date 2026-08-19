@@ -165,7 +165,7 @@ export const getPagoFormaLabel = (formapago: number | null | undefined): string 
 }
 
 /**
- * Calcula el recargo por atraso: $150 por cada 6 días vencidos.
+ * Calcula el recargo por atraso: $150 por cada 7 días vencidos.
  * fechaPago defaults to today if not provided.
  */
 export const calcularRecargo = (fechaVencimiento: string, fechaPago?: string, diasTolerancia = 0): number => {

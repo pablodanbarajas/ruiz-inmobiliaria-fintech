@@ -706,7 +706,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
           <div>
             <p className="font-semibold text-amber-800 text-sm">Pago con atraso</p>
             <p className="text-sm text-amber-700 mt-0.5">
-              Recargo calculado: <span className="font-bold">${recargo.toLocaleString('es-MX')}.00</span> ($150 × cada 6 días de atraso)
+              Recargo calculado: <span className="font-bold">${recargo.toLocaleString('es-MX')}.00</span> ($150 × cada 7 días de atraso)
             </p>
           </div>
         </div>

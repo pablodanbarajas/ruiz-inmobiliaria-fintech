@@ -393,7 +393,7 @@ export const ConvenioForm = ({
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Recargo calculado (total)</p>
                     <p className="text-lg font-bold text-amber-700">{formatCurrency(recargoOriginal)}</p>
-                    <p className="text-xs text-gray-400">$150 × c/6 días por corrida</p>
+                    <p className="text-xs text-gray-400">$150 × c/7 días por corrida</p>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-black mb-1">
