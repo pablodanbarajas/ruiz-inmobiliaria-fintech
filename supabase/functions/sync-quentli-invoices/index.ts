@@ -197,10 +197,10 @@ Deno.serve(async (req: Request) => {
       const venta = Array.isArray(corrida.venta) ? corrida.venta[0] : corrida.venta
       const diasTolerancia = venta?.dias_tolerancia ?? 0
 
-      // Calcular recargo: $150 por cada período de 6 días
+      // Calcular recargo: $150 por cada período de 7 días
       const fechaVenc = new Date(corrida.fecha + 'T12:00:00')
       const diasAtraso = Math.floor((today.getTime() - fechaVenc.getTime()) / 86400000) - diasTolerancia
-      const recargo = diasAtraso > 0 ? Math.ceil(diasAtraso / 6) * 150 : 0
+      const recargo = diasAtraso > 0 ? Math.ceil(diasAtraso / 7) * 150 : 0
 
       if (recargo === 0) { results.skipped++; continue }
 
