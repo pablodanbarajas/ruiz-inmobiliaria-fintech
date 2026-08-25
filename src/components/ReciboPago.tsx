@@ -43,10 +43,10 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
 
   if (!isOpen) return null
 
+  // recargo ya viene incluido en montopagado — no sumar dos veces
   const totalPagado =
     (data.montopagado ?? 0) +
-    (data.servicios_extra || 0) +
-    (data.recargo || 0)
+    (data.servicios_extra || 0)
 
   const handlePrint = () => {
     const printContent = printRef.current?.innerHTML
@@ -424,7 +424,7 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ fontSize: 12, color: '#666' }}>
-                Mensualidad: <strong>{formatCurrency(data.montopagado ?? 0)}</strong>
+                Mensualidad: <strong>{formatCurrency((data.montopagado ?? 0) - (data.recargo || 0))}</strong>
               </div>
               {data.servicios_extra != null && data.servicios_extra > 0 && (
                 <div style={{ fontSize: 12, color: '#5b21b6', marginTop: 2 }}>
