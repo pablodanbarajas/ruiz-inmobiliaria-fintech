@@ -251,7 +251,9 @@ export const PagoDetail = () => {
               <p className="text-sm text-gray-500">Monto Pagado</p>
               <p className="text-2xl font-bold text-green-600">{formatCurrency(pago.montopagado)}</p>
               {pago.recargo != null && pago.recargo > 0 && (
-                <p className="text-sm text-orange-600 mt-1">+ {formatCurrency(pago.recargo)} recargo</p>
+                <p className="text-sm text-orange-600 mt-1">
+                  (incluye {formatCurrency(pago.recargo)} de recargo por atraso)
+                </p>
               )}
               {pago.servicios_extra != null && pago.servicios_extra > 0 && (
                 <p className="text-sm text-indigo-600 mt-1">+ {formatCurrency(pago.servicios_extra)} servicios/extra</p>
