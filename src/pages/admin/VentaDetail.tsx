@@ -44,8 +44,7 @@ interface CorridaWithPagos extends CorridaFinanciera {
 const getPagoAplicado = (pago: Pago) => {
   const monto = pago.montopagado || 0
   const extra = pago.servicios_extra || 0
-  const recargo = pago.recargo || 0
-  return monto + extra + recargo
+  return monto + extra
 }
 
 export const VentaDetail = () => {
