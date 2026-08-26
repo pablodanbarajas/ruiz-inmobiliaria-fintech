@@ -577,6 +577,7 @@ export const Pagos = () => {
         estatus: data.estatus,
         referencia: data.referencia,
         comentario: data.comentario,
+        recargo: data.recargo,
         cobrador: data.cobrador,
       }
 
