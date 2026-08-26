@@ -738,9 +738,6 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
           <div>
             <label className="block text-sm font-medium text-black mb-1">
               Monto Pagado <span className="text-red-500">*</span>
-              {recargo > 0 && (
-                <span className="ml-2 text-xs font-normal text-orange-600">(incluir recargo — total: ${(parseFloat(montopagado || '0') ).toLocaleString('es-MX')})</span>
-              )}
             </label>
             <Input
               type="number"
@@ -748,7 +745,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
               step="0.01"
               value={montopagado}
               onChange={(e) => { autoFilledMonto.current = false; setMontopagado(e.target.value) }}
-              placeholder={recargo > 0 ? `${(parseFloat(montopagado || '0')).toFixed(2)} (mensualidad + $${recargo} recargo)` : '0.00'}
+              placeholder="0.00"
               className={errors.montopagado ? 'border-red-500' : ''}
             />
             {errors.montopagado && <p className="text-xs text-red-500 mt-1">{errors.montopagado}</p>}

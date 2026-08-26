@@ -918,6 +918,7 @@ export const Pagos = () => {
                                 nopago: row.corridafinanciera?.nopago,
                                 mensualidad: row.corridafinanciera?.mensualidad,
                                 saldo: row.corridafinanciera?.saldo,
+                                fechaVencimiento: row.corridafinanciera?.fecha,
                                 ventaid: ctx.venta?.ventaid,
                                 preciolote: ctx.venta?.preciolote,
                                 fechaventa: ctx.venta?.fecha,

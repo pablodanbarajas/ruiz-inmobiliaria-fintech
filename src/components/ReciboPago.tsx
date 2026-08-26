@@ -16,6 +16,7 @@ export interface ReciboPagoData {
   corridafinancieraid: number | null
   nopago?: number | null
   totalPagos?: number | null
+  fechaVencimiento?: string | null
   mensualidad?: number | null
   saldo?: number | null
   // Venta
@@ -387,6 +388,12 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
             <div style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Fecha de Pago</div>
             <div style={{ fontSize: 13, fontWeight: 600 }}>{formatDate(data.fechapago)}</div>
           </div>
+          {data.fechaVencimiento && (
+            <div>
+              <div style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Fecha de Vencimiento</div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{formatDate(data.fechaVencimiento)}</div>
+            </div>
+          )}
           <div>
             <div style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Forma de Pago</div>
             <div style={{ fontSize: 13, fontWeight: 600 }}>{getPagoFormaLabel(data.formapago)}</div>
