@@ -495,7 +495,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
     await onSubmit({
       corridafinancieraid: corridaId,
       fechapago,
-      montopagado: parseFloat(montopagado),
+      montopagado: parseFloat(montopagado) - recargo,
       servicios_extra: parseFloat(serviciosExtra) || 0,
       formapago,
       cuenta_bancaria_id: cuentaBancariaId ? Number(cuentaBancariaId) : null,

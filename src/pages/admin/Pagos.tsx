@@ -111,7 +111,8 @@ const downloadCsv = (filename: string, csvContent: string) => {
 const getPagoAplicado = (pago: Pago) => {
   const monto = pago.montopagado || 0
   const extra = pago.servicios_extra || 0
-  return monto + extra
+  const recargo = pago.recargo || 0
+  return monto + extra + recargo
 }
 
 const pickFirst = <T,>(value: T | T[] | null | undefined): T | undefined => {
