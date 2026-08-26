@@ -486,6 +486,7 @@ export const PagoDetail = () => {
           nolote: lote?.nolote,
           desarrollo: (lote as any)?.desarrollo?.nombre,
           totalPagos: venta?.plazo,
+          fechaVencimiento: pago.corridafinanciera?.fecha,
         }}
       />
     )}
