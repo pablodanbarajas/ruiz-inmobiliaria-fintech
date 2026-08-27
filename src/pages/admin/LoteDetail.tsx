@@ -173,7 +173,6 @@ export const LoteDetail = () => {
 
       // Atomic lock: update lote D→V only if still disponible.
       // A single conditional UPDATE avoids race conditions between concurrent users.
-      const { data: authData } = await supabase.auth.getUser()
       const usuarioid = null // FK fk_venta_usuario references legacy usuario table, not auth.users
 
       const { data: lockedLote, error: lockError } = await supabase
