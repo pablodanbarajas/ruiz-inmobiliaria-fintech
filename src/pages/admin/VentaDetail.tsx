@@ -432,7 +432,7 @@ export const VentaDetail = () => {
     try {
       setIsSubmittingTraspaso(true)
       const { data: authData } = await supabase.auth.getUser()
-      const usuarioid = authData.user?.id ?? null
+      const usuarioid = null // FK fk_venta_usuario references legacy usuario table, not auth.users
       const registrado_por = authData.user?.email ?? null
 
       const { error: insertError } = await supabase.from('traspasos').insert({
