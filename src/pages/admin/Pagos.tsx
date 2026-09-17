@@ -388,7 +388,7 @@ export const Pagos = () => {
 
     return Array.from(byClient.entries())
       .map(([clienteid, v]) => ({ clienteid, ...v }))
-      .sort((a, b) => b.totalPendiente - a.totalPendiente)
+      .sort((a, b) => b.corridasPendientes - a.corridasPendientes || b.totalPendiente - a.totalPendiente)
   }, [filteredPendientes])
 
   const totalItems = filteredPagos.length
@@ -405,6 +405,8 @@ export const Pagos = () => {
     return sum + Number(p.montopagado || 0) + Math.max(0, extra)
   }, 0)
   const totalAplicado = filteredPagos.reduce((sum, p) => sum + getPagoAplicado(p), 0)
+  const totalRecargos = filteredPagos.reduce((sum, p) => sum + Number(p.recargo || 0), 0)
+  const totalServicios = filteredPagos.reduce((sum, p) => sum + Math.max(0, Number(p.servicios_extra || 0)), 0)
 
   // Paginated data for current page
   const filteredPagosForPagination = pagos
@@ -412,7 +414,7 @@ export const Pagos = () => {
   const exportPagosCsv = () => {
     const fmtDate = (d: string | null | undefined) => d ? d.slice(0, 10).split('-').reverse().join('/') : ''
     const csv = toCsv(
-      ['Pago ID', 'Fecha', 'Cliente', 'Venta ID', 'Desarrollo', 'Metodo', 'Cobrador', 'Monto', 'Estado'],
+      ['Pago ID', 'Fecha', 'Cliente', 'Venta ID', 'Desarrollo', 'Metodo', 'Cobrador', 'Monto', 'Recargo', 'Servicios', 'Estado'],
       filteredPagos.map((pago) => {
         const { venta, cliente, desarrollo } = getPagoContext(pago)
 
@@ -425,6 +427,8 @@ export const Pagos = () => {
           getPagoFormaLabel(pago.formapago),
           pago.cobrador || '',
           Number(pago.montopagado || 0),
+          Number(pago.recargo || 0),
+          Math.max(0, Number(pago.servicios_extra || 0)),
           getPagoStatusLabel(pago.estatus),
         ]
       })
@@ -435,7 +439,7 @@ export const Pagos = () => {
 
   const exportPendientesCsv = () => {
     const csv = toCsv(
-      ['Cliente', 'Corridas Pendientes', 'Total Pendiente'],
+      ['Cliente', 'Mensualidades atrasadas', 'Total Pendiente'],
       pendingByClient.map((row) => [row.clienteNombre, row.corridasPendientes, row.totalPendiente])
     )
 
@@ -686,7 +690,7 @@ export const Pagos = () => {
           </div>
 
           {/* KPIs Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
             <div className="bg-white rounded-lg shadow p-4 border-l-4 border-[#eaae4c]">
               <p className="text-sm text-gray-500">Total cobrado</p>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalCobrado)}</p>
@@ -696,6 +700,16 @@ export const Pagos = () => {
               <p className="text-sm text-gray-500">Total aplicado</p>
               <p className="text-2xl font-bold text-blue-700">{formatCurrency(totalAplicado)}</p>
               <p className="text-xs text-gray-400 mt-1">Cobrado ± servicios/ajustes</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4 border-l-4 border-orange-500">
+              <p className="text-sm text-gray-500">Recargos cobrados</p>
+              <p className="text-2xl font-bold text-orange-700">{formatCurrency(totalRecargos)}</p>
+              <p className="text-xs text-gray-400 mt-1">Según pagos registrados</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-600">
+              <p className="text-sm text-gray-500">Servicios cobrados</p>
+              <p className="text-2xl font-bold text-green-700">{formatCurrency(totalServicios)}</p>
+              <p className="text-xs text-gray-400 mt-1">Servicios y cargos extra</p>
             </div>
             <button
               className="bg-white rounded-lg shadow p-4 border-l-4 border-[#9e9f92] text-left hover:bg-gray-50 transition-colors"
@@ -998,7 +1012,7 @@ export const Pagos = () => {
                       <tr>
                         <th className="text-left px-4 py-3 font-semibold text-gray-600 w-8" />
                         <th className="text-left px-4 py-3 font-semibold text-gray-600">Cliente</th>
-                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Corridas vencidas</th>
+                        <th className="text-right px-4 py-3 font-semibold text-gray-600">Mensualidades atrasadas</th>
                         <th className="text-right px-4 py-3 font-semibold text-gray-600">Total pendiente</th>
                         <th className="px-4 py-3 w-32" />
                       </tr>
