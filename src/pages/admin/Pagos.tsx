@@ -213,13 +213,40 @@ export const Pagos = () => {
 
       const todayStr = new Date().toISOString().split('T')[0]
 
-      // Load all overdue corridors (RLS will filter by auth perms);
-      // then apply demo development filter in client-side logic below
-      const corridasQuery = supabase
+      // Pre-load ventaIds for Supabase RLS compatibility (required filter)
+      let demoVentaIds: number[] | null = null
+      if (DEMO_DESARROLLOIDS.length > 0) {
+        const { data: lotesData } = await supabase
+          .from('lote')
+          .select('loteid')
+          .in('desarrolloid', DEMO_DESARROLLOIDS)
+
+        const loteIds = (lotesData || []).map((l: any) => l.loteid as number)
+
+        if (loteIds.length > 0) {
+          const { data: ventasData } = await supabase
+            .from('venta')
+            .select('ventaid')
+            .eq('estatus', 'A')
+            .in('loteid', loteIds)
+            .limit(5000)
+          demoVentaIds = (ventasData || []).map((v: any) => v.ventaid as number)
+        } else {
+          demoVentaIds = []
+        }
+      }
+
+      let corridasQuery = supabase
         .from('corridafinanciera')
         .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, dias_tolerancia, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre))), pagos:pagos(pagoid, montopagado, servicios_extra, estatus, recargo)')
         .lt('fecha', todayStr)
         .limit(5000)
+
+      if (demoVentaIds !== null) {
+        corridasQuery = demoVentaIds.length > 0
+          ? corridasQuery.in('ventaid', demoVentaIds)
+          : corridasQuery.eq('ventaid', -1)
+      }
 
       const [pagosRes, corridasRes, desarrollosRes] = await Promise.all([
         supabase
