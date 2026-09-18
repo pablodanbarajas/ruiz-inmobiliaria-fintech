@@ -7,7 +7,7 @@ import {
 import { supabase } from '@/lib/supabaseClient'
 import { getCached, setCached, invalidateCache, onFocusRefetch } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
-import { formatCurrency, formatDate, getVentaStatusLabel, getVentaStatusColor } from '@/utils/helpers'
+import { formatCurrency, formatDate, getVentaStatusLabel, getVentaStatusColor, calcularRecargo } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, ROLE_LABELS, type AdminPanelRole } from '@/config/roles'
@@ -342,9 +342,8 @@ export const Dashboard = () => {
 
         let corridasQuery = supabase
           .from('corridafinanciera')
-          .select('corridafinancieraid, ventaid, mensualidad, venta:venta!inner(estatus, clienteid, cliente:cliente(nombre), lote:lote(manzana, nolote, desarrolloid)), pagos:pagos(pagoid, montopagado, servicios_extra, estatus)')
+          .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(estatus, clienteid, dias_tolerancia, cliente:cliente(nombre), lote:lote(manzana, nolote, desarrolloid)), pagos:pagos(pagoid, montopagado, servicios_extra, estatus, recargo)')
           .lt('fecha', today)
-          .gt('nopago', 0)
 
         if (demoVentaIds) corridasQuery = corridasQuery.in('ventaid', demoVentaIds)
 
@@ -384,16 +383,26 @@ export const Dashboard = () => {
 
         // Group corridas by ventaid, count vencidas
         // Also sum total cartera vencida (all unpaid, not just 3+)
+        // Same math as Tesorería → Pendientes: skip enganches (nopago===0) and add recargos
         let totalCartera = 0
         const ventaMap = new Map<number, { venta: any; vencidas: number }>()
         for (const c of corridasFiltradas) {
+          if (c.nopago === 0) continue
+
+          const venta = Array.isArray(c.venta) ? c.venta[0] : c.venta
           const pagosCorrida = ((c.pagos || []) as any[]).filter((p) => p.estatus !== 'C')
           const pagado = pagosCorrida.reduce((sum, p) => sum + (p.montopagado || 0) + Math.max(0, p.servicios_extra || 0), 0)
-          const pendiente = Math.max(0, (c.mensualidad || 0) - pagado)
+
+          const diasTolVenta = venta?.dias_tolerancia ?? 0
+          const maxStoredRecargo = pagosCorrida.reduce((max, p) => Math.max(max, Number(p.recargo ?? 0)), 0)
+          const recargoReq = pagosCorrida.length > 0
+            ? maxStoredRecargo
+            : (c.fecha ? calcularRecargo(c.fecha, today, diasTolVenta) : 0)
+
+          const pendiente = Math.max(0, (c.mensualidad || 0) + recargoReq - pagado)
           if (pendiente <= 0) continue  // ya pagada
           totalCartera += pendiente
 
-          const venta = Array.isArray(c.venta) ? c.venta[0] : c.venta
           const entry = ventaMap.get(c.ventaid)
           if (entry) {
             entry.vencidas++
