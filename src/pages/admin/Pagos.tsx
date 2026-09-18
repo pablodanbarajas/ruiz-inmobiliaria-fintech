@@ -154,7 +154,9 @@ export const Pagos = () => {
   const [desarrollos, setDesarrollos] = useState<Desarrollo[]>([])
   const [showCreateModal, setShowCreateModal] = useState(() => searchParams.get('new') === 'true')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [activeTab, setActiveTab] = useState<'pagos' | 'pendientes' | 'reportes'>('pagos')
+  const [activeTab, setActiveTab] = useState<'pagos' | 'pendientes' | 'reportes'>(() =>
+    searchParams.get('tab') === 'pendientes' ? 'pendientes' : 'pagos'
+  )
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [reciboData, setReciboData] = useState<ReciboPagoData | null>(null)
   const [expandedClients, setExpandedClients] = useState<Set<number>>(new Set())
@@ -166,6 +168,8 @@ export const Pagos = () => {
   useEffect(() => {
     if (searchParams.get('new') === 'true') {
       if (canRegistrarPagos) setShowCreateModal(true)
+      setSearchParams({}, { replace: true })
+    } else if (searchParams.get('tab')) {
       setSearchParams({}, { replace: true })
     }
   }, [searchParams, setSearchParams, canRegistrarPagos])
