@@ -265,16 +265,22 @@ export const Pagos = () => {
 
       // Paginate corridafinanciera: a single .limit(5000) can silently truncate
       // before reaching some ventas when a demo development has many sales/installments
+      const seenCorridaIds = new Set<number>()
       const corridasData: any[] = []
       const PAGE_SIZE = 1000
       let from = 0
       while (true) {
         const { data, error } = await corridasQuery
           .order('ventaid', { ascending: true })
+          .order('corridafinancieraid', { ascending: true })
           .range(from, from + PAGE_SIZE - 1)
         if (error) throw error
         if (!data || data.length === 0) break
-        corridasData.push(...data)
+        for (const row of data) {
+          if (seenCorridaIds.has((row as any).corridafinancieraid)) continue
+          seenCorridaIds.add((row as any).corridafinancieraid)
+          corridasData.push(row)
+        }
         if (data.length < PAGE_SIZE) break
         from += PAGE_SIZE
       }
