@@ -688,13 +688,35 @@ export const Dashboard = () => {
   return (
     <AdminLayout>
       <div className="w-full">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Dashboard</h1>
             <p className="text-[#9e9f92] mt-1 capitalize">{monthName}</p>
             {currentRole && (
               <p className="text-xs text-gray-500 mt-1">Vista de rol: {ROLE_LABELS[currentRole]}</p>
             )}
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Accesos rápidos</h2>
+            <div className="flex flex-wrap justify-end gap-2">
+              {[
+                canCreateVenta ? { label: 'Nueva Venta', icon: <Plus size={16} />, path: '/admin/ventas?new=true' } : null,
+                canCreatePago ? { label: 'Nuevo Pago', icon: <CreditCard size={16} />, path: '/admin/pagos?new=true' } : null,
+                canCreateCliente ? { label: 'Nuevo Cliente', icon: <UserPlus size={16} />, path: '/admin/clientes?new=true' } : null,
+                canUseTraspasos ? { label: 'Nuevo Traspaso', icon: <ArrowLeftRight size={16} />, path: '/admin/traspasos?new=true' } : null,
+                canUseMapa ? { label: 'Ver Mapa', icon: <MapPin size={16} />, path: '/admin/mapa' } : null,
+              ].filter(Boolean).map((item) => (
+                <button
+                  key={(item as { path: string }).path}
+                  type="button"
+                  onClick={() => navigate((item as { path: string }).path)}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:border-[#eaae4c] hover:text-[#504840] hover:shadow-sm transition-all"
+                >
+                  {(item as { icon: React.ReactNode }).icon}
+                  {(item as { label: string }).label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -802,30 +824,6 @@ export const Dashboard = () => {
             )}
           </div>
         )}
-
-        {/* ── Accesos rápidos ── */}
-        <div className="mt-8">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Accesos rápidos</h2>
-          <div className="flex flex-wrap gap-3">
-            {[
-              canCreateVenta ? { label: 'Nueva Venta', icon: <Plus size={16} />, path: '/admin/ventas?new=true' } : null,
-              canCreatePago ? { label: 'Nuevo Pago', icon: <CreditCard size={16} />, path: '/admin/pagos?new=true' } : null,
-              canCreateCliente ? { label: 'Nuevo Cliente', icon: <UserPlus size={16} />, path: '/admin/clientes?new=true' } : null,
-              canUseTraspasos ? { label: 'Nuevo Traspaso', icon: <ArrowLeftRight size={16} />, path: '/admin/traspasos?new=true' } : null,
-              canUseMapa ? { label: 'Ver Mapa', icon: <MapPin size={16} />, path: '/admin/mapa' } : null,
-            ].filter(Boolean).map((item) => (
-              <button
-                key={(item as { path: string }).path}
-                type="button"
-                onClick={() => navigate((item as { path: string }).path)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:border-[#eaae4c] hover:text-[#504840] hover:shadow-sm transition-all"
-              >
-                {(item as { icon: React.ReactNode }).icon}
-                {(item as { label: string }).label}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* ── Actividad reciente ── */}
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
