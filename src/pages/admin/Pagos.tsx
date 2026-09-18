@@ -239,6 +239,7 @@ export const Pagos = () => {
       let corridasQuery = supabase
         .from('corridafinanciera')
         .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, dias_tolerancia, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre))), pagos:pagos(pagoid, montopagado, servicios_extra, estatus, recargo)')
+        .lt('fecha', todayStr)
         .limit(5000)
 
       if (demoVentaIds !== null) {
@@ -282,8 +283,8 @@ export const Pagos = () => {
       for (const corrida of (corridasRes.data || []) as any[]) {
         const venta = pickFirst(corrida.venta) as any
         if (venta?.estatus !== 'A') continue
-        // Filter after loading the corrida so stale nopago values cannot hide a real debt.
-        if (!corrida.fecha || corrida.fecha >= todayStr || corrida.nopago === 0) continue
+        // Only skip enganches (nopago === 0); allow stale nopago values since fecha filter ensures vencidas
+        if (corrida.nopago === 0) continue
 
         // Use embedded pagos — avoids the 10k-row global pagos limit issue
         const pagosCorrida = ((corrida.pagos || []) as any[]).filter((p: any) => p.estatus !== 'C')
