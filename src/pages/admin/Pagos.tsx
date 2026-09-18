@@ -213,7 +213,8 @@ export const Pagos = () => {
 
       const todayStr = new Date().toISOString().split('T')[0]
 
-      // Pre-load ventaIds for Supabase RLS compatibility (required filter)
+      // Pre-fetch ventaIds for DEMO developments — query lote and venta directly
+      // (avoids relying on nested joins that can be blocked by RLS)
       let demoVentaIds: number[] | null = null
       if (DEMO_DESARROLLOIDS.length > 0) {
         const { data: lotesData } = await supabase
@@ -235,26 +236,23 @@ export const Pagos = () => {
           demoVentaIds = []
         }
       }
-
       let corridasQuery = supabase
         .from('corridafinanciera')
         .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, dias_tolerancia, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre))), pagos:pagos(pagoid, montopagado, servicios_extra, estatus, recargo)')
         .lt('fecha', todayStr)
-        .limit(5000)
 
       if (demoVentaIds !== null) {
         corridasQuery = demoVentaIds.length > 0
           ? corridasQuery.in('ventaid', demoVentaIds)
-          : corridasQuery.eq('ventaid', -1)
+          : corridasQuery.eq('ventaid', -1) // no results if no matching ventas
       }
 
-      const [pagosRes, corridasRes, desarrollosRes] = await Promise.all([
+      const [pagosRes, desarrollosRes] = await Promise.all([
         supabase
           .from('pagos')
           .select('pagoid, fechapago, montopagado, servicios_extra, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera(corridafinancieraid, nopago, mensualidad, saldo, fecha, venta:venta(ventaid, clienteid, preciolote, plazo, cliente:cliente(clienteid, nombre, email, telefonocelular), lote:lote(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
           .order('fechapago', { ascending: false })
           .limit(10000),
-        corridasQuery,
         supabase
           .from('desarrollo')
           .select('desarrolloid, nombre')
@@ -263,20 +261,23 @@ export const Pagos = () => {
       ])
 
       if (pagosRes.error) throw pagosRes.error
-      if (corridasRes.error) throw corridasRes.error
       if (desarrollosRes.error) throw desarrollosRes.error
 
-      // DEBUG: Log pre-filter and query results
-      console.log('[TESORERIA] demoVentaIds:', {
-        enabled: DEMO_DESARROLLOIDS.length > 0,
-        allowedDevellos: DEMO_DESARROLLOIDS,
-        ventaCount: demoVentaIds?.length ?? 'N/A',
-        includes2596: demoVentaIds?.includes(2596) ?? false,
-        sample: demoVentaIds?.slice(0, 10) ?? []
-      })
-      console.log('[TESORERIA] corridasRes.data count:', (corridasRes.data || []).length)
-      const corridaVentas = ((corridasRes.data || []) as any[]).map((c: any) => c.ventaid).slice(0, 20)
-      console.log('[TESORERIA] sample ventaIds from query:', corridaVentas)
+      // Paginate corridafinanciera: a single .limit(5000) can silently truncate
+      // before reaching some ventas when a demo development has many sales/installments
+      const corridasData: any[] = []
+      const PAGE_SIZE = 1000
+      let from = 0
+      while (true) {
+        const { data, error } = await corridasQuery
+          .order('ventaid', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1)
+        if (error) throw error
+        if (!data || data.length === 0) break
+        corridasData.push(...data)
+        if (data.length < PAGE_SIZE) break
+        from += PAGE_SIZE
+      }
 
       const pagosRows = ((pagosRes.data || []) as unknown) as PagoWithDetails[]
       setAllPagos(pagosRows)
@@ -292,24 +293,13 @@ export const Pagos = () => {
       }
 
       const pendingRows: PendingRow[] = []
-      for (const corrida of (corridasRes.data || []) as any[]) {
+      for (const corrida of corridasData as any[]) {
         const venta = pickFirst(corrida.venta) as any
-        const isDebugVenta = corrida.ventaid === 2596
-        
-        if (isDebugVenta) {
-          console.log(`[TESORERIA DEBUG 2596] venta:`, venta)
-        }
-        
-        if (venta?.estatus !== 'A') {
-          if (isDebugVenta) console.log(`[TESORERIA DEBUG 2596] SKIP: estatus !== A (${venta?.estatus})`)
-          continue
-        }
-        
-        if (corrida.nopago === 0) {
-          if (isDebugVenta) console.log(`[TESORERIA DEBUG 2596] SKIP: nopago === 0 (enganche)`)
-          continue
-        }
+        if (venta?.estatus !== 'A') continue
+        // Only skip enganches (nopago === 0); allow stale nopago values since fecha filter ensures vencidas
+        if (corrida.nopago === 0) continue
 
+        // Use embedded pagos — avoids the 10k-row global pagos limit issue
         const pagosCorrida = ((corrida.pagos || []) as any[]).filter((p: any) => p.estatus !== 'C')
         const totalPagado = pagosCorrida.reduce((sum: number, p: any) => sum + getPagoAplicado(p as any), 0)
 
@@ -320,28 +310,14 @@ export const Pagos = () => {
           : (corrida.nopago !== 0 && corrida.fecha ? calcularRecargo(corrida.fecha, todayStr, diasTolVenta) : 0)
 
         const pendiente = Math.max(0, Number(corrida.mensualidad || 0) + recargoReq - totalPagado)
-        
-        if (isDebugVenta) {
-          console.log(`[TESORERIA DEBUG 2596] mensualidad=${corrida.mensualidad}, recargo=${recargoReq}, pagado=${totalPagado}, pendiente=${pendiente}`)
-        }
-        
-        if (pendiente <= 0) {
-          if (isDebugVenta) console.log(`[TESORERIA DEBUG 2596] SKIP: pendiente <= 0`)
-          continue
-        }
+        if (pendiente <= 0) continue
 
         const cliente = pickFirst(venta?.cliente) as Cliente | undefined
         const lote = pickFirst(venta?.lote) as (Lote & { desarrollo?: Desarrollo | Desarrollo[] }) | undefined
         const desarrollo = pickFirst(lote?.desarrollo) as Desarrollo | undefined
         const desarrolloid = (desarrollo?.desarrolloid ?? lote?.desarrolloid ?? null) as number | null
 
-        if (DEMO_DESARROLLOIDS.length > 0 && desarrolloid && !DEMO_DESARROLLOIDS.includes(desarrolloid)) {
-          if (isDebugVenta) console.log(`[TESORERIA DEBUG 2596] SKIP: desarrolloid ${desarrolloid} not in allowed list`)
-          continue
-        }
-        
-        if (isDebugVenta) console.log(`[TESORERIA DEBUG 2596] ADDED TO PENDIENTES`)
-
+        if (DEMO_DESARROLLOIDS.length > 0 && desarrolloid && !DEMO_DESARROLLOIDS.includes(desarrolloid)) continue
 
         pendingRows.push({
           clienteid: cliente?.clienteid || 0,
