@@ -658,7 +658,7 @@ export const Dashboard = () => {
 
   const monthName = new Date().toLocaleString('es-MX', { month: 'long', year: 'numeric' })
 
-  const StatCard = ({
+  const MiniStat = ({
     title,
     value,
     icon: Icon,
@@ -673,17 +673,14 @@ export const Dashboard = () => {
   }) => (
     <div
       onClick={onClick}
-      className={`bg-white rounded-lg shadow-md border-l-4 p-6 transition-shadow ${onClick ? 'cursor-pointer hover:shadow-lg' : 'hover:shadow-lg'}`}
-      style={{ borderColor: color }}
+      className={`flex items-center gap-3 p-3 rounded-lg border border-gray-100 transition-colors ${onClick ? 'cursor-pointer hover:bg-gray-50' : ''}`}
     >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[#9e9f92] text-sm font-medium">{title}</p>
-          <p className="text-3xl font-bold text-black mt-2">{value}</p>
-        </div>
-        <div className="w-14 h-14 rounded-lg flex items-center justify-center" style={{ backgroundColor: color }}>
-          {Icon}
-        </div>
+      <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color }}>
+        {Icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-lg font-bold text-black leading-tight truncate">{value}</p>
+        <p className="text-xs text-[#9e9f92] leading-tight truncate">{title}</p>
       </div>
     </div>
   )
@@ -713,104 +710,97 @@ export const Dashboard = () => {
             <div className="inline-block h-8 w-8 border-4 border-[#eaae4c] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
-          <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* ── KPIs generales (totales acumulados, no ligados al mes) ── */}
-            <h2 className="text-sm font-semibold text-[#9e9f92] uppercase tracking-wide mb-3">Totales generales</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-              {canViewClientes && (
-                <StatCard
-                  title="Clientes"
-                  value={stats.totalClientes}
-                  icon={<Users className="w-8 h-8 text-white" />}
-                  color="#9e9f92"
-                  onClick={() => navigate('/admin/clientes')}
-                />
-              )}
-              {canViewVentas && (
-                <StatCard
-                  title="Ventas activas"
-                  value={stats.ventasActivas}
-                  icon={<ShoppingCart className="w-8 h-8 text-black" />}
-                  color="#eaae4c"
-                  onClick={() => navigate('/admin/ventas')}
-                />
-              )}
-              {canViewPagos && (
-                <StatCard
-                  title="Cartera vencida"
-                  value={loadingRiesgo ? '…' : formatCurrency(totalCarteraVencida)}
-                  icon={<DollarSign className="w-8 h-8 text-white" />}
-                  color={totalCarteraVencida > 0 ? '#dc2626' : '#16a34a'}
-                  onClick={() => navigate('/admin/pagos')}
-                />
-              )}
-              {canViewLotes && (
-                <StatCard
-                  title="Lotes disponibles"
-                  value={stats.lotesDisponibles}
-                  icon={<Home className="w-8 h-8 text-white" />}
-                  color="#9e9f92"
-                  onClick={() => navigate('/admin/lotes')}
-                />
-              )}
-              {canViewDesarrollos && (
-                <StatCard
-                  title="Desarrollos"
-                  value={stats.totalDesarrollos}
-                  icon={<MapPin className="w-8 h-8 text-white" />}
-                  color="#504840"
-                  onClick={() => navigate('/admin/desarrollos')}
-                />
-              )}
-              {canViewRiesgo && (
-                <div
-                  onClick={() => document.getElementById('riesgo-section')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="bg-white rounded-lg shadow-md border-l-4 border-red-500 p-6 cursor-pointer hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[#9e9f92] text-sm font-medium">En riesgo de cancelación</p>
-                      <p className="text-3xl font-bold text-black mt-2">
-                        {loadingRiesgo ? '…' : ventasEnRiesgo.length}
-                      </p>
-                    </div>
-                    <div className="w-14 h-14 rounded-lg flex items-center justify-center bg-red-500">
-                      <AlertTriangle className="w-8 h-8 text-white" />
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div className="bg-white rounded-lg shadow-md p-5">
+              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Totales generales</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {canViewClientes && (
+                  <MiniStat
+                    title="Clientes"
+                    value={stats.totalClientes}
+                    icon={<Users className="w-5 h-5 text-white" />}
+                    color="#9e9f92"
+                    onClick={() => navigate('/admin/clientes')}
+                  />
+                )}
+                {canViewVentas && (
+                  <MiniStat
+                    title="Ventas activas"
+                    value={stats.ventasActivas}
+                    icon={<ShoppingCart className="w-5 h-5 text-black" />}
+                    color="#eaae4c"
+                    onClick={() => navigate('/admin/ventas')}
+                  />
+                )}
+                {canViewPagos && (
+                  <MiniStat
+                    title="Cartera vencida"
+                    value={loadingRiesgo ? '…' : formatCurrency(totalCarteraVencida)}
+                    icon={<DollarSign className="w-5 h-5 text-white" />}
+                    color={totalCarteraVencida > 0 ? '#dc2626' : '#16a34a'}
+                    onClick={() => navigate('/admin/pagos')}
+                  />
+                )}
+                {canViewLotes && (
+                  <MiniStat
+                    title="Lotes disponibles"
+                    value={stats.lotesDisponibles}
+                    icon={<Home className="w-5 h-5 text-white" />}
+                    color="#9e9f92"
+                    onClick={() => navigate('/admin/lotes')}
+                  />
+                )}
+                {canViewDesarrollos && (
+                  <MiniStat
+                    title="Desarrollos"
+                    value={stats.totalDesarrollos}
+                    icon={<MapPin className="w-5 h-5 text-white" />}
+                    color="#504840"
+                    onClick={() => navigate('/admin/desarrollos')}
+                  />
+                )}
+                {canViewRiesgo && (
+                  <MiniStat
+                    title="En riesgo de cancelación"
+                    value={loadingRiesgo ? '…' : ventasEnRiesgo.length}
+                    icon={<AlertTriangle className="w-5 h-5 text-white" />}
+                    color="#dc2626"
+                    onClick={() => document.getElementById('riesgo-section')?.scrollIntoView({ behavior: 'smooth' })}
+                  />
+                )}
+              </div>
             </div>
 
             {/* ── KPIs del mes en curso ── */}
             {(canViewPagos || canViewVentas) && (
-              <>
-                <h2 className="text-sm font-semibold text-[#9e9f92] uppercase tracking-wide mt-8 mb-3 capitalize">
+              <div className="bg-white rounded-lg shadow-md p-5">
+                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 capitalize">
                   Este mes · {monthName}
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div className="grid grid-cols-2 gap-2">
                   {canViewPagos && (
-                    <StatCard
+                    <MiniStat
                       title="Cobrado este mes"
                       value={loading ? '…' : formatCurrency(stats.pagosDelMes)}
-                      icon={<TrendingUp className="w-8 h-8 text-white" />}
+                      icon={<TrendingUp className="w-5 h-5 text-white" />}
                       color="#504840"
                       onClick={() => navigate('/admin/pagos')}
                     />
                   )}
                   {canViewVentas && (
-                    <StatCard
+                    <MiniStat
                       title="Ventas nuevas este mes"
                       value={loading ? '…' : stats.ventasEsteMes}
-                      icon={<ShoppingCart className="w-8 h-8 text-white" />}
+                      icon={<ShoppingCart className="w-5 h-5 text-white" />}
                       color="#16a34a"
                       onClick={() => navigate('/admin/ventas')}
                     />
                   )}
                 </div>
-              </>
+              </div>
             )}
-          </>
+          </div>
         )}
 
         {/* ── Accesos rápidos ── */}
