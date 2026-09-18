@@ -342,7 +342,7 @@ export const Dashboard = () => {
 
         let corridasQuery = supabase
           .from('corridafinanciera')
-          .select('corridafinancieraid, ventaid, mensualidad, venta:venta!inner(estatus, clienteid, cliente:cliente(nombre), lote:lote(manzana, nolote, desarrolloid))')
+          .select('corridafinancieraid, ventaid, mensualidad, venta:venta!inner(estatus, clienteid, cliente:cliente(nombre), lote:lote(manzana, nolote, desarrolloid)), pagos:pagos(pagoid, montopagado, servicios_extra, estatus)')
           .lt('fecha', today)
           .gt('nopago', 0)
 
@@ -382,28 +382,13 @@ export const Dashboard = () => {
 
         if (!corridasFiltradas.length) { setVentasEnRiesgo([]); setTotalCarteraVencida(0); setLoadingRiesgo(false); return }
 
-        const corridaIds = corridasFiltradas.map((c: any) => c.corridafinancieraid)
-
-        // Query 2: todos los pagos activos de esas corridas (una sola query)
-        const { data: pagosData } = await supabase
-          .from('pagos')
-          .select('corridafinancieraid, montopagado')
-          .in('corridafinancieraid', corridaIds)
-          .neq('estatus', 'C')
-
-        // Build pagos map: corridaId → totalPagado
-        const pagosMap = new Map<number, number>()
-        for (const p of pagosData || []) {
-          const prev = pagosMap.get(p.corridafinancieraid) ?? 0
-          pagosMap.set(p.corridafinancieraid, prev + (p.montopagado || 0))
-        }
-
         // Group corridas by ventaid, count vencidas
         // Also sum total cartera vencida (all unpaid, not just 3+)
         let totalCartera = 0
         const ventaMap = new Map<number, { venta: any; vencidas: number }>()
         for (const c of corridasFiltradas) {
-          const pagado = pagosMap.get(c.corridafinancieraid) ?? 0
+          const pagosCorrida = ((c.pagos || []) as any[]).filter((p) => p.estatus !== 'C')
+          const pagado = pagosCorrida.reduce((sum, p) => sum + (p.montopagado || 0) + Math.max(0, p.servicios_extra || 0), 0)
           const pendiente = Math.max(0, (c.mensualidad || 0) - pagado)
           if (pendiente <= 0) continue  // ya pagada
           totalCartera += pendiente
