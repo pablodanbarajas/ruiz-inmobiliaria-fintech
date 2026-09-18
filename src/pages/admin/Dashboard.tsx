@@ -714,7 +714,8 @@ export const Dashboard = () => {
           </div>
         ) : (
           <>
-            {/* ── KPIs por rol ── */}
+            {/* ── KPIs generales (totales acumulados, no ligados al mes) ── */}
+            <h2 className="text-sm font-semibold text-[#9e9f92] uppercase tracking-wide mb-3">Totales generales</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
               {canViewClientes && (
                 <StatCard
@@ -740,15 +741,6 @@ export const Dashboard = () => {
                   value={loadingRiesgo ? '…' : formatCurrency(totalCarteraVencida)}
                   icon={<DollarSign className="w-8 h-8 text-white" />}
                   color={totalCarteraVencida > 0 ? '#dc2626' : '#16a34a'}
-                  onClick={() => navigate('/admin/pagos')}
-                />
-              )}
-              {canViewPagos && (
-                <StatCard
-                  title="Cobrado"
-                  value={loading ? '…' : formatCurrency(stats.pagosDelMes)}
-                  icon={<TrendingUp className="w-8 h-8 text-white" />}
-                  color="#504840"
                   onClick={() => navigate('/admin/pagos')}
                 />
               )}
@@ -788,16 +780,36 @@ export const Dashboard = () => {
                   </div>
                 </div>
               )}
-              {canViewVentas && (
-                <StatCard
-                  title="Ventas"
-                  value={loading ? '…' : stats.ventasEsteMes}
-                  icon={<ShoppingCart className="w-8 h-8 text-white" />}
-                  color="#16a34a"
-                  onClick={() => navigate('/admin/ventas')}
-                />
-              )}
             </div>
+
+            {/* ── KPIs del mes en curso ── */}
+            {(canViewPagos || canViewVentas) && (
+              <>
+                <h2 className="text-sm font-semibold text-[#9e9f92] uppercase tracking-wide mt-8 mb-3 capitalize">
+                  Este mes · {monthName}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                  {canViewPagos && (
+                    <StatCard
+                      title="Cobrado este mes"
+                      value={loading ? '…' : formatCurrency(stats.pagosDelMes)}
+                      icon={<TrendingUp className="w-8 h-8 text-white" />}
+                      color="#504840"
+                      onClick={() => navigate('/admin/pagos')}
+                    />
+                  )}
+                  {canViewVentas && (
+                    <StatCard
+                      title="Ventas nuevas este mes"
+                      value={loading ? '…' : stats.ventasEsteMes}
+                      icon={<ShoppingCart className="w-8 h-8 text-white" />}
+                      color="#16a34a"
+                      onClick={() => navigate('/admin/ventas')}
+                    />
+                  )}
+                </div>
+              </>
+            )}
           </>
         )}
 
