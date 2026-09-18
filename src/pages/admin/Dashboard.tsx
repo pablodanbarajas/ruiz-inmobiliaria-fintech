@@ -345,13 +345,28 @@ export const Dashboard = () => {
           .select('corridafinancieraid, ventaid, mensualidad, venta:venta!inner(estatus, clienteid, cliente:cliente(nombre), lote:lote(manzana, nolote, desarrolloid))')
           .lt('fecha', today)
           .gt('nopago', 0)
-          .limit(5000)
 
         if (demoVentaIds) corridasQuery = corridasQuery.in('ventaid', demoVentaIds)
 
-        const { data: corridasData, error: corridasErr } = await corridasQuery
+        // Paginate: a single .limit(5000) can silently truncate before
+        // reaching some ventas when a demo development has many sales/installments
+        const corridasData: any[] = []
+        const PAGE_SIZE = 1000
+        let from = 0
+        let pageErr: any = null
+        while (true) {
+          const { data, error } = await corridasQuery
+            .order('ventaid', { ascending: true })
+            .range(from, from + PAGE_SIZE - 1)
+          if (error) { pageErr = error; break }
+          if (!data || data.length === 0) break
+          corridasData.push(...data)
+          if (data.length < PAGE_SIZE) break
+          from += PAGE_SIZE
+        }
 
-        if (corridasErr || !corridasData?.length) { setTotalCarteraVencida(0); setLoadingRiesgo(false); return }
+        if (pageErr || !corridasData.length) { setTotalCarteraVencida(0); setLoadingRiesgo(false); return }
+
 
         // Only active ventas
         const corridasFiltradas = (corridasData as any[]).filter((c) => {
