@@ -7,6 +7,7 @@ import { UploadCloud, Download, CheckCircle2, XCircle, AlertTriangle, ChevronLef
 import { useNavigate } from 'react-router-dom'
 import type { Desarrollo, Duenio } from '@/types/database'
 import { formatCurrency } from '@/utils/helpers'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 const TEMPLATE_COLS = [
   'clavedesarrollo',
@@ -86,10 +87,12 @@ export const CargaMasivaLotes = () => {
   const [fileName, setFileName] = useState('')
 
   useEffect(() => {
+    let devQuery = supabase.from('desarrollo').select('desarrolloid, nombre, clavedesarrollo').order('nombre')
+    if (DEMO_DESARROLLOIDS.length > 0) {
+      devQuery = devQuery.in('desarrolloid', DEMO_DESARROLLOIDS)
+    }
     Promise.all([
-      supabase.from('desarrollo').select('desarrolloid, nombre, clavedesarrollo')
-        .in('clavedesarrollo', ['PRU', 'PUB'])
-        .order('nombre'),
+      devQuery,
       supabase.from('duenio').select('duenioid, nombre').order('nombre'),
     ]).then(([{ data: devData }, { data: duenData }]) => {
       setDesarrollos((devData || []) as Desarrollo[])
