@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import type { Lote, Desarrollo, Duenio } from '@/types/database'
 import { formatCurrency } from '@/utils/helpers'
+import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 interface LoteFormProps {
   lote?: Lote | null
@@ -86,7 +87,12 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
           supabase.from('duenio').select('duenioid, nombre, contacto').order('nombre'),
         ])
 
-        setDesarrollos((desData || []) as Desarrollo[])
+        const allDesarrollos = (desData || []) as Desarrollo[]
+        setDesarrollos(
+          DEMO_DESARROLLOIDS.length > 0
+            ? allDesarrollos.filter((d) => DEMO_DESARROLLOIDS.includes(d.desarrolloid))
+            : allDesarrollos
+        )
         setDuenios((duenData || []) as Duenio[])
       } catch (err) {
         console.error('Error loading catálogos:', err)
