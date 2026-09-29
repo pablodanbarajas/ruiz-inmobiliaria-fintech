@@ -38,7 +38,6 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
   const [desarrollos, setDesarrollos] = useState<Desarrollo[]>([])
   const [duenios, setDuenios] = useState<Duenio[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [calcularPrecio, setCalcularPrecio] = useState(!lote)
   const [autoClaveKey, setAutoClaveKey] = useState(!lote)
 
   const buildClave = (desarrolloid: string, coto: string, manzana: string, nolote: string) => {
@@ -75,7 +74,6 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
         estatus: lote.estatus || 'D',
         comentarios: lote.comentarios || '',
       })
-      setCalcularPrecio(false)
     }
   }, [lote])
 
@@ -122,31 +120,35 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
 
   const handleSuperficieChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-    setFormData({ ...formData, superficie: value })
 
-    if (calcularPrecio && value && formData.preciopormt2) {
+    if (value && formData.preciopormt2) {
       const superficie = parseFloat(value)
       const precioM2 = parseFloat(formData.preciopormt2)
       const precioTotal = superficie * precioM2
       setFormData((prev) => ({
         ...prev,
+        superficie: value,
         preciolote: precioTotal.toFixed(2),
       }))
+    } else {
+      setFormData({ ...formData, superficie: value })
     }
   }
 
   const handlePrecioM2Change = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-    setFormData({ ...formData, preciopormt2: value })
 
-    if (calcularPrecio && value && formData.superficie) {
+    if (value && formData.superficie) {
       const superficie = parseFloat(formData.superficie)
       const precioM2 = parseFloat(value)
       const precioTotal = superficie * precioM2
       setFormData((prev) => ({
         ...prev,
+        preciopormt2: value,
         preciolote: precioTotal.toFixed(2),
       }))
+    } else {
+      setFormData({ ...formData, preciopormt2: value })
     }
   }
 
@@ -508,9 +510,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
                 {formData.preciolote ? formatCurrency(parseFloat(formData.preciolote)) : '$0.00'}
               </p>
             </div>
-            {calcularPrecio && (
-              <p className="text-xs text-green-600 mt-1">Auto-calculado (Superficie × Precio/m²)</p>
-            )}
+            <p className="text-xs text-green-600 mt-1">Auto-calculado (Superficie × Precio/m²)</p>
           </div>
         </div>
       </div>
