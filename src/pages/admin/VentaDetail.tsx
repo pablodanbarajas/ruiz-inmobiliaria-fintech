@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { invalidateCache } from '@/lib/queryCache'
+import { invalidateCache } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
@@ -502,6 +503,8 @@ export const VentaDetail = () => {
           .eq('loteid', venta.loteid)
         if (loteError) {
           console.warn('No se pudo restablecer el estatus del lote:', loteError.message)
+        } else {
+          invalidateCache('lotes:')
         }
       }
 

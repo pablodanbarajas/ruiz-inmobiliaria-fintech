@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { invalidateCache } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
@@ -87,6 +88,7 @@ export const LoteDetail = () => {
         return
       }
 
+      invalidateCache('lotes:')
       setShowEditModal(false)
 
       // Refetch data
@@ -136,6 +138,7 @@ export const LoteDetail = () => {
         return
       }
 
+      invalidateCache('lotes:')
       setShowDeleteModal(false)
       navigate('/admin/lotes')
     } catch (err) {
@@ -187,6 +190,7 @@ export const LoteDetail = () => {
         alert('El lote ya no está disponible. Fue reservado por otro usuario.')
         return
       }
+      invalidateCache('lotes:')
 
       const { data: ventaData, error: ventaError } = await supabase
         .from('venta')

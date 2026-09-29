@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { invalidateCache } from '@/lib/queryCache'
 import { useAuth } from '@/context/AuthContext'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
@@ -341,6 +342,7 @@ export const VentasExternas = () => {
           .update({ estatus: 'D' })
           .eq('loteid', row.loteid)
           .eq('estatus', 'A') // only revert if still 'Apartado'
+        invalidateCache('lotes:')
       }
       await loadData()
     } catch (err: any) {
@@ -394,6 +396,7 @@ export const VentasExternas = () => {
       if (!lockedLote || lockedLote.length === 0) {
         throw new Error('El lote seleccionado ya no está disponible. Fue reservado por otro usuario.')
       }
+      invalidateCache('lotes:')
 
       // ── 3. Cargar precio de lote y enganche de desarrollo ─
       const { data: loteData, error: loteDataError } = await supabase

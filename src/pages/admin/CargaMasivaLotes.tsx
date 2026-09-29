@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabaseClient'
+import { invalidateCache } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { UploadCloud, Download, CheckCircle2, XCircle, AlertTriangle, ChevronLeft } from 'lucide-react'
@@ -248,6 +249,7 @@ export const CargaMasivaLotes = () => {
       const { error } = await supabase.from('lote').insert(batch)
       if (error) { failed += batch.length } else { ok += batch.length }
     }
+    invalidateCache('lotes:')
     setUploadResults({ ok, failed })
     setStatus('done')
   }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
-import { getCached, setCached } from '@/lib/queryCache'
+import { getCached, setCached, invalidateCache } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
 import { Input } from '@/components/ui/Input'
@@ -197,6 +197,7 @@ export const Ventas = () => {
         alert('El lote seleccionado ya no está disponible. Fue reservado por otro usuario.')
         return
       }
+      invalidateCache('lotes:')
 
       // 2. Insert venta
       const { data: ventaData, error: ventaError } = await supabase
