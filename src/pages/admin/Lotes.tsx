@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
-import { getCached, setCached } from '@/lib/queryCache'
+import { getCached, setCached, invalidateCache } from '@/lib/queryCache'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
@@ -142,6 +142,7 @@ export const Lotes = () => {
         return
       }
 
+      invalidateCache('lotes:')
       setShowModal(false)
       setCurrentPage(1)
       setReloadKey((k) => k + 1)
@@ -179,6 +180,7 @@ export const Lotes = () => {
         return
       }
 
+      invalidateCache('lotes:')
       setShowEditModal(false)
       setLoteEnEdicion(null)
       setReloadKey((k) => k + 1)
@@ -221,6 +223,7 @@ export const Lotes = () => {
         return
       }
 
+      invalidateCache('lotes:')
       setShowDeleteConfirm(false)
       setLoteEnEdicion(null)
       setCurrentPage(1)
