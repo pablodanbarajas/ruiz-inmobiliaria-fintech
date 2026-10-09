@@ -21,6 +21,7 @@ export const Clientes = () => {
   const { role } = useAuth()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [allClientsCache, setAllClientsCache] = useState<Cliente[]>([])
+  const [allClientsSearchCache, setAllClientsSearchCache] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
@@ -55,10 +56,11 @@ export const Clientes = () => {
   // Fetch all clientes once on mount
   useEffect(() => {
     const fetchAllClientes = async () => {
-      const CACHE_KEY = 'clientes:all'
-      const cached = getCached<Cliente[]>(CACHE_KEY)
+      const CACHE_KEY = 'clientes:all:v2'
+      const cached = getCached<{ all: Cliente[]; visible: Cliente[] }>(CACHE_KEY)
       if (cached) {
-        setAllClientsCache(cached)
+        setAllClientsSearchCache(cached.all)
+        setAllClientsCache(cached.visible)
         setLoading(false)
         return
       }
@@ -132,7 +134,8 @@ export const Clientes = () => {
         }
 
         setAllClientsCache(finalCache)
-        setCached('clientes:all', finalCache)
+        setAllClientsSearchCache(allData)
+        setCached(CACHE_KEY, { all: allData, visible: finalCache })
       } catch (error) {
         console.error('Error fetching clientes:', error)
         setAllClientsCache([])
@@ -146,7 +149,10 @@ export const Clientes = () => {
 
   // Filter and paginate from cache
   useEffect(() => {
-    let filteredData = [...allClientsCache]
+    const hasSearchFilter = Boolean(
+      filters.nombre.trim() || filters.email.trim() || filters.rfc.trim()
+    )
+    let filteredData = [...(hasSearchFilter ? allClientsSearchCache : allClientsCache)]
 
     if (filters.nombre) {
       const searchNombre = filters.nombre.toLowerCase().trim()
@@ -175,7 +181,7 @@ export const Clientes = () => {
     const paginatedData = filteredData.slice(startIndex, endIndex)
 
     setClientes(paginatedData)
-  }, [filters, currentPage, allClientsCache])
+  }, [filters, currentPage, allClientsCache, allClientsSearchCache])
 
   const handleCreateCliente = async (formData: any) => {
     try {
@@ -190,6 +196,11 @@ export const Clientes = () => {
       // Add new cliente to cache
       if (data && data.length > 0) {
         setAllClientsCache([...allClientsCache, data[0]])
+        setAllClientsSearchCache([...allClientsSearchCache, data[0]])
+        setCached('clientes:all:v2', {
+          all: [...allClientsSearchCache, data[0]],
+          visible: [...allClientsCache, data[0]],
+        })
       }
 
       setShowModal(false)
@@ -218,6 +229,11 @@ export const Clientes = () => {
       // Update in cache
       const updatedCliente = { ...clienteToEdit, ...formData }
       setAllClientsCache(allClientsCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c))
+      setAllClientsSearchCache(allClientsSearchCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c))
+      setCached('clientes:all:v2', {
+        all: allClientsSearchCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c),
+        visible: allClientsCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c),
+      })
       setClientes(clientes.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c))
 
       setClienteToEdit(null)
@@ -259,6 +275,11 @@ export const Clientes = () => {
 
       // Remove from cache
       setAllClientsCache(allClientsCache.filter(c => c.clienteid !== clienteToDelete?.clienteid))
+      setAllClientsSearchCache(allClientsSearchCache.filter(c => c.clienteid !== clienteToDelete?.clienteid))
+      setCached('clientes:all:v2', {
+        all: allClientsSearchCache.filter(c => c.clienteid !== clienteToDelete?.clienteid),
+        visible: allClientsCache.filter(c => c.clienteid !== clienteToDelete?.clienteid),
+      })
 
       setShowDeleteConfirm(false)
       setClienteToDelete(null)
