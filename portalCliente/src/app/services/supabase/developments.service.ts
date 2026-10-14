@@ -20,8 +20,12 @@ const FALLBACK_DEVELOPMENT_IMAGES: Record<number, string> = {
 
 export const supabaseDevelopmentsService: IDevelopmentsService = {
   async getPublicDevelopments(): Promise<PublicDevelopment[]> {
-    const _envIds = import.meta.env.VITE_ALLOWED_DESARROLLOIDS
-    const _parsed = _envIds ? String(_envIds).split(',').map(Number).filter(Boolean) : []
+    const _envIds =
+      import.meta.env.VITE_PORTAL_ALLOWED_DESARROLLOIDS ||
+      import.meta.env.VITE_ALLOWED_DESARROLLOIDS
+    const _parsed = _envIds
+      ? String(_envIds).split(',').map(Number).filter(Boolean)
+      : []
     const ALLOWED_IDS = _parsed.length > 0 ? _parsed : [11, 20]
     const ORDER = ALLOWED_IDS
 
