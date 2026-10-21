@@ -70,6 +70,7 @@ ORDER BY d.nombre;
 
 -- Permitir lectura pública
 ALTER TABLE public.public_developments OWNER TO postgres;
+ALTER VIEW public.public_developments SET (security_invoker = on);
 REVOKE ALL ON public.public_developments FROM anon, authenticated;
 GRANT SELECT ON public.public_developments TO anon, authenticated;
 

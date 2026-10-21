@@ -39,5 +39,9 @@ SELECT
 FROM client_saldos cs
 GROUP BY clienteid, email;
 
+ALTER VIEW public.client_payment_summary SET (security_invoker = on);
+REVOKE ALL ON public.client_payment_summary FROM PUBLIC, anon;
+GRANT SELECT ON public.client_payment_summary TO authenticated;
+
 -- Test
 SELECT * FROM client_payment_summary;
