@@ -22,7 +22,7 @@ WITH client_saldos AS (
   FROM cliente c
   JOIN venta v ON v.clienteid = c.clienteid
   JOIN lote l ON l.loteid = v.loteid
-  WHERE c.email = auth.jwt() ->> 'email'
+  WHERE c.user_id = auth.uid()
     AND v.estatus IN ('A', 'V')
 )
 SELECT 

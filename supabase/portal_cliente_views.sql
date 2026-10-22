@@ -77,7 +77,7 @@ GRANT SELECT ON public.public_developments TO anon, authenticated;
 -- ============================================================================
 -- Vista 2: client_lots
 -- Lotes del cliente (requiere autenticación)
--- Filtra por email del usuario autenticado
+-- Filtra por el vínculo interno del usuario autenticado
 -- ============================================================================
 DROP VIEW IF EXISTS public.client_lots CASCADE;
 
@@ -139,7 +139,7 @@ FROM cliente c
 INNER JOIN venta v ON v.clienteid = c.clienteid
 INNER JOIN lote l ON l.loteid = v.loteid
 INNER JOIN desarrollo d ON d.desarrolloid = l.desarrolloid
-WHERE c.email = auth.jwt() ->> 'email'
+WHERE c.user_id = auth.uid()
   AND v.estatus IN ('A', 'C', 'V')
 ORDER BY d.nombre, l.manzana, l.nolote;
 
@@ -152,7 +152,7 @@ GRANT SELECT ON public.client_lots TO authenticated;
 -- ============================================================================
 -- Vista 3: vista_pagos_cliente
 -- Pagos y corridas financieras del cliente
--- Requiere autenticación y filtra por email
+-- Requiere autenticación y filtra por el vínculo interno
 -- ============================================================================
 DROP VIEW IF EXISTS public.vista_pagos_cliente CASCADE;
 
@@ -210,7 +210,7 @@ INNER JOIN venta v ON v.clienteid = c.clienteid
 INNER JOIN lote l ON l.loteid = v.loteid
 INNER JOIN desarrollo d ON d.desarrolloid = l.desarrolloid
 INNER JOIN corridafinanciera cf ON cf.ventaid = v.ventaid
-WHERE c.email = auth.jwt() ->> 'email'
+WHERE c.user_id = auth.uid()
   AND v.estatus IN ('A', 'C', 'V')
 ORDER BY cf.fecha DESC;
 

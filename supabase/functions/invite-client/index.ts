@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    const { email } = body
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : undefined
 
     if (!email || typeof email !== 'string') {
       return new Response(JSON.stringify({ error: 'Campo email requerido' }), {
@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email.trim())) {
+    if (!emailRegex.test(email)) {
       return new Response(JSON.stringify({ error: 'Email inválido' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -117,7 +117,7 @@ Deno.serve(async (req: Request) => {
     await supabaseAdmin
       .from('cliente')
       .update({ portal_invited_at: new Date().toISOString() })
-      .eq('email', email.trim())
+      .ilike('email', email)
 
     return new Response(
       JSON.stringify({ success: true, userId: data.user?.id }),

@@ -70,7 +70,7 @@ FROM cliente c
 INNER JOIN venta v ON v.clienteid = c.clienteid
 INNER JOIN lote l ON l.loteid = v.loteid
 INNER JOIN desarrollo d ON d.desarrolloid = l.desarrolloid
-WHERE c.email = auth.jwt() ->> 'email'
+WHERE c.user_id = auth.uid()
   AND v.estatus IN ('A', 'V', 'P', 'E')
 ORDER BY d.nombre, l.manzana, l.nolote;
 
