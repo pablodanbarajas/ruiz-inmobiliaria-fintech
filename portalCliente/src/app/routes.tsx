@@ -6,6 +6,7 @@ import { ClientRoute } from './guards/ClientRoute';
 import { Home } from './pages/public/Home';
 import { Soporte } from './pages/public/Soporte';
 import { LoginCliente } from './pages/public/LoginCliente';
+import { ForgotPassword } from './pages/public/ForgotPassword';
 import { RegistroCliente } from './pages/public/RegistroCliente';
 import { MapaDesarrollo } from './pages/public/MapaDesarrollo';
 import { SetPassword } from './pages/public/SetPassword';
@@ -24,6 +25,7 @@ export const router = createBrowserRouter(
         { index: true, Component: Home },
         { path: 'soporte', Component: Soporte },
         { path: 'login', Component: LoginCliente },
+        { path: 'forgot-password', Component: ForgotPassword },
         { path: 'registro', Component: RegistroCliente },
         { path: 'desarrollos/:id/mapa', Component: MapaDesarrollo },
         { path: 'set-password', Component: SetPassword }

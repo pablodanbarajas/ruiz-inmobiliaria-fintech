@@ -16,7 +16,7 @@ export function SetPassword() {
     // de la URL de invitación. Escuchamos onAuthStateChange para
     // saber cuándo la sesión quedó establecida.
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session) {
+      if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || event === 'USER_UPDATED') && session) {
         setIsReady(true);
         setIsLoading(false);
       }

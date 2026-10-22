@@ -122,9 +122,9 @@ export function LoginCliente() {
               Recordarme
             </label>
 
-            <a href="#" className="text-sm font-medium text-teal-600 hover:text-teal-500 sm:text-right">
+            <Link to="/forgot-password" className="text-sm font-medium text-teal-600 hover:text-teal-500 sm:text-right">
               ¿Olvidaste tu contraseña?
-            </a>
+            </Link>
           </div>
 
           <button
