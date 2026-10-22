@@ -3,7 +3,7 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { supabase } from '@/lib/supabaseClient'
 import { getCached, setCached, invalidateCache } from '@/lib/queryCache'
 import { Button } from '@/components/ui/Button'
-import { Mail, CheckCircle, Clock, XCircle, RefreshCw, Users, Send, AlertTriangle } from 'lucide-react'
+import { Mail, CheckCircle, Clock, XCircle, RefreshCw, Users, Send, AlertTriangle, Link } from 'lucide-react'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 type InviteCandidate = {
@@ -19,6 +19,7 @@ type InviteCandidate = {
   num_lotes: number
   can_invite: boolean
   email_issue: string | null
+  portal_status: 'activo' | 'invitacion_pendiente' | 'cuenta_sin_vinculo' | 'sin_email' | 'email_invalido' | 'sin_cuenta'
 }
 
 type InviteStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -115,6 +116,17 @@ export const InvitarClientes = () => {
     }
   }
 
+  const handleRepairLink = async (cliente: InviteCandidate) => {
+    setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'loading' } }))
+    const { error } = await supabase.rpc('repair_cliente_link_by_id', { p_clienteid: cliente.clienteid })
+    if (error) {
+      setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'error', message: error.message } }))
+      return
+    }
+    setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'success', message: 'Vínculo reparado' } }))
+    await fetchCandidates(true)
+  }
+
   const handleInviteAll = async () => {
     const sinAcceso = candidates.filter(c => !c.user_id)
     if (sinAcceso.length === 0) return
@@ -138,10 +150,11 @@ export const InvitarClientes = () => {
     setTimeout(fetchCandidates, 1500)
   }
 
-  const activeCount   = candidates.filter(c => c.user_id && c.email_confirmed_at).length
-  const pendingInvite = candidates.filter(c => c.user_id && !c.email_confirmed_at).length
-  const pendingCount  = candidates.filter(c => !c.user_id && c.can_invite).length
-  const issueCount    = candidates.filter(c => !c.user_id && !c.can_invite).length
+  const activeCount   = candidates.filter(c => c.portal_status === 'activo').length
+  const pendingInvite = candidates.filter(c => c.portal_status === 'invitacion_pendiente').length
+  const unlinkedCount  = candidates.filter(c => c.portal_status === 'cuenta_sin_vinculo').length
+  const pendingCount  = candidates.filter(c => c.portal_status === 'sin_cuenta' && c.can_invite).length
+  const issueCount    = candidates.filter(c => c.portal_status === 'sin_email' || c.portal_status === 'email_invalido').length
 
   return (
     <AdminLayout>
@@ -191,6 +204,12 @@ export const InvitarClientes = () => {
             <Clock className="w-4 h-4" />
             {pendingCount} sin invitar
           </span>
+          {unlinkedCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-sm font-medium">
+              <Link className="w-4 h-4" />
+              {unlinkedCount} cuenta{unlinkedCount !== 1 ? 's' : ''} sin vincular
+            </span>
+          )}
           {issueCount > 0 && (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-sm font-medium">
               <AlertTriangle className="w-4 h-4" />
@@ -255,17 +274,21 @@ export const InvitarClientes = () => {
                         {c.num_lotes}
                       </td>
                       <td className="px-4 py-3">
-                        {c.user_id && c.email_confirmed_at ? (
+                        {c.portal_status === 'activo' ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
                             <CheckCircle className="w-3 h-3" /> Activo
                           </span>
-                        ) : c.user_id && !c.email_confirmed_at ? (
+                        ) : c.portal_status === 'invitacion_pendiente' ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium" title={c.invited_at ? `Invitado el ${new Date(c.invited_at).toLocaleDateString('es-MX')}` : undefined}>
                             <Mail className="w-3 h-3" /> Pendiente de aceptar
                           </span>
                         ) : isDone ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
                             <Mail className="w-3 h-3" /> Enviada
+                          </span>
+                        ) : c.portal_status === 'cuenta_sin_vinculo' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-medium">
+                            <Link className="w-3 h-3" /> Cuenta sin vincular
                           </span>
                         ) : !c.can_invite ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-medium">
@@ -281,7 +304,17 @@ export const InvitarClientes = () => {
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {!c.user_id && c.can_invite && (
+                        {c.portal_status === 'cuenta_sin_vinculo' ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={isBusy}
+                            onClick={() => handleRepairLink(c)}
+                            className="gap-1.5"
+                          >
+                            {isBusy ? 'Reparando...' : <><Link className="w-3 h-3" /> Reparar vínculo</>}
+                          </Button>
+                        ) : c.portal_status === 'sin_cuenta' && c.can_invite ? (
                           <div className="flex flex-col items-end gap-1">
                             <Button
                               size="sm"
@@ -310,7 +343,7 @@ export const InvitarClientes = () => {
                               </p>
                             )}
                           </div>
-                        )}
+                        ) : null}
                       </td>
                     </tr>
                   )

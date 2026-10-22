@@ -54,9 +54,7 @@ CREATE TRIGGER trg_link_on_invite_accept
 -- ─────────────────────────────────────────────────────────────
 -- PASO 3: Vista client_lots
 -- Cada cliente autenticado solo ve sus propios lotes.
--- La vista corre con permisos del dueño (SECURITY DEFINER por
--- defecto) para poder leer las tablas admin, pero filtra
--- con auth.uid() para garantizar aislamiento.
+-- La vista usa los permisos del usuario y las políticas RLS de las tablas base.
 -- ─────────────────────────────────────────────────────────────
 DROP VIEW IF EXISTS public.client_lots;
 CREATE VIEW public.client_lots AS
@@ -145,6 +143,7 @@ WHERE c.user_id IS NOT NULL
 
 REVOKE ALL   ON public.client_lots FROM anon;
 GRANT SELECT ON public.client_lots TO authenticated;
+ALTER VIEW public.client_lots SET (security_invoker = on);
 
 -- ─────────────────────────────────────────────────────────────
 -- PASO 4: Vista vista_pagos_cliente
@@ -223,6 +222,7 @@ WHERE c.user_id IS NOT NULL
 
 REVOKE ALL   ON public.vista_pagos_cliente FROM anon;
 GRANT SELECT ON public.vista_pagos_cliente TO authenticated;
+ALTER VIEW public.vista_pagos_cliente SET (security_invoker = on);
 
 -- ─────────────────────────────────────────────────────────────
 -- PASO 5: Vista portal_invite_candidates (uso exclusivo admin)
@@ -233,6 +233,32 @@ GRANT SELECT ON public.vista_pagos_cliente TO authenticated;
 --   user_id IS NOT NULL, email_confirmed_at NULL → Invitación pendiente
 --   user_id IS NOT NULL, email_confirmed_at NOT NULL → Acceso activo
 -- ─────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.portal_auth_status(p_user_id uuid)
+RETURNS TABLE (
+  email_confirmed_at timestamptz,
+  invited_at timestamptz
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = auth, public
+AS $$
+  SELECT u.email_confirmed_at, u.invited_at
+  FROM auth.users AS u
+  WHERE u.id = p_user_id
+    AND (
+      p_user_id = auth.uid()
+      OR (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
+      OR EXISTS (
+        SELECT 1 FROM public.user_roles
+        WHERE user_id = auth.uid() AND role = 'admin'
+      )
+    );
+$$;
+
+REVOKE ALL ON FUNCTION public.portal_auth_status(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.portal_auth_status(uuid) TO authenticated;
+
 CREATE OR REPLACE VIEW public.portal_invite_candidates AS
 SELECT
   c.clienteid,
@@ -240,8 +266,8 @@ SELECT
   c.email,
   c.telefonocelular,
   c.user_id,
-  au.email_confirmed_at,
-  au.invited_at,
+  au.invited_at AS invited_at,
+  au.email_confirmed_at AS email_confirmed_at,
   d.desarrolloid        AS development_id,
   d.nombre              AS development_name,
   COUNT(DISTINCT l.loteid) AS num_lotes,
@@ -261,12 +287,13 @@ JOIN public.venta         v  ON v.clienteid    = c.clienteid
                              AND v.estatus     IS DISTINCT FROM 'C'
 JOIN public.lote          l  ON l.loteid       = v.loteid
 JOIN public.desarrollo    d  ON d.desarrolloid = l.desarrolloid
-LEFT JOIN auth.users      au ON au.id          = c.user_id::uuid
+LEFT JOIN LATERAL public.portal_auth_status(c.user_id) au ON true
 WHERE c.email IS NOT NULL
   AND TRIM(c.email) <> ''
 GROUP BY
   c.clienteid, c.nombre, c.email, c.telefonocelular, c.user_id,
-  au.email_confirmed_at, au.invited_at,
+  au.invited_at, au.email_confirmed_at,
   d.desarrolloid, d.nombre;
 
 GRANT SELECT ON public.portal_invite_candidates TO authenticated;
+ALTER VIEW public.portal_invite_candidates SET (security_invoker = on);

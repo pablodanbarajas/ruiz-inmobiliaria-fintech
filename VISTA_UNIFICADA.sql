@@ -22,7 +22,7 @@ WITH client_saldos AS (
   FROM cliente c
   JOIN venta v ON v.clienteid = c.clienteid
   JOIN lote l ON l.loteid = v.loteid
-  WHERE c.email = auth.jwt() ->> 'email'
+  WHERE c.user_id = auth.uid()
     AND v.estatus IN ('A', 'V')
 )
 SELECT 
@@ -38,6 +38,10 @@ SELECT
      AND nopago > 0) as pagos_pendientes
 FROM client_saldos cs
 GROUP BY clienteid, email;
+
+ALTER VIEW public.client_payment_summary SET (security_invoker = on);
+REVOKE ALL ON public.client_payment_summary FROM PUBLIC, anon;
+GRANT SELECT ON public.client_payment_summary TO authenticated;
 
 -- Test
 SELECT * FROM client_payment_summary;

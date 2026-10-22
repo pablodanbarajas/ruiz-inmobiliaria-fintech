@@ -28,10 +28,11 @@ DECLARE
   v_telefono  TEXT;
   v_linked    INT;
 BEGIN
-  -- 1) Intentar vincular con cliente existente por email
+  -- 1) Normalizar y vincular con cliente existente por email
   UPDATE public.cliente
-  SET user_id = NEW.id
-  WHERE LOWER(email) = LOWER(NEW.email)
+  SET user_id = NEW.id,
+      email = LOWER(TRIM(NEW.email))
+  WHERE LOWER(TRIM(email)) = LOWER(TRIM(NEW.email))
     AND user_id IS NULL;
 
   GET DIAGNOSTICS v_linked = ROW_COUNT;
@@ -53,10 +54,10 @@ BEGIN
     );
 
     INSERT INTO public.cliente (nombre, email, telefonocelular, user_id, estatus)
-    SELECT v_nombre, NEW.email, v_telefono, NEW.id, 'A'
+    SELECT v_nombre, LOWER(TRIM(NEW.email)), v_telefono, NEW.id, 'A'
     WHERE NOT EXISTS (
       SELECT 1 FROM public.cliente
-      WHERE LOWER(email) = LOWER(NEW.email)
+      WHERE LOWER(TRIM(email)) = LOWER(TRIM(NEW.email))
     );
   END IF;
 
@@ -110,7 +111,7 @@ BEGIN
     );
 
     INSERT INTO public.cliente (nombre, email, telefonocelular, user_id, estatus)
-    VALUES (v_nombre, r.email, v_telefono, r.id, 'A')
+    VALUES (v_nombre, LOWER(TRIM(r.email)), v_telefono, r.id, 'A')
     ON CONFLICT DO NOTHING;
   END LOOP;
 END;
