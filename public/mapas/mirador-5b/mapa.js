@@ -14,7 +14,7 @@
   const estadoBordes = {disponible:'#397E66', vendido:'#A85F59', apartado:'#9A7134', bloqueado:'#596A7C'};
   const SVG_URL = new URL('./mapa.svg', document.currentScript.src);
   // Configurar ruta de los detalles de lote en el proyecto.
-  const DETALLE_LOTE_RUTA = '';
+  const DETALLE_LOTE_RUTA = '/admin/lotes/{loteid}';
    const hoverCard=document.getElementById('lote-hover-card');
    let hoveredLoteId=null;
    let lastHoverPoint=null;
