@@ -289,11 +289,11 @@ export const Desarrollos = () => {
                       <Trash2 size={16} />
                     </Button>
                   )}
-                  {row.desarrolloid === 11 && (
+                  {[7, 11].includes(row.desarrolloid) && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => navigate('/admin/mapa')}
+                      onClick={() => navigate(`/admin/mapa/${row.desarrolloid}`)}
                       className="inline-flex items-center gap-1 text-[#eaae4c] hover:text-[#d99c38]"
                       title="Ver mapa de lotes"
                     >

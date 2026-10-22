@@ -201,7 +201,7 @@ function App() {
 
         {/* Mapa */}
         <Route
-          path="/admin/mapa"
+          path="/admin/mapa/:desarrolloId?"
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <Mapa />
