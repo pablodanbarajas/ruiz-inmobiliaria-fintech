@@ -295,7 +295,8 @@
     if (!DETALLE_LOTE_RUTA.trim()) { showAlert('Falta agregar ruta'); return; }
     if (!selectedLoteId) return;
     const ruta = DETALLE_LOTE_RUTA.replaceAll('{loteid}', encodeURIComponent(selectedLoteId));
-    window.location.assign(new URL(ruta, document.baseURI).href);
+    const destino = new URL(ruta, document.baseURI).href;
+    (window.top || window).location.assign(destino);
   }
   async function initializeMap() {
     try {
