@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MIRADOR 5B — Mapa Admin</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="stylesheet" href="./estilos.css">
+</head>
+<body class="h-screen w-screen flex flex-col overflow-hidden text-slate-800 select-none bg-[#EFEFEF]">
+
+  <!-- ==================== 1. BARRA SUPERIOR (NAVBAR) ==================== -->
+  <header class="bg-navbar border-b-2 border-gold px-4 py-3 flex items-center justify-between text-white shadow-md z-30 shrink-0">
+    <!-- Izquierda: Botón Regresar + Título -->
+    <div class="flex items-center gap-4">
+      <button data-action="regresar" class="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 px-3.5 py-1.5 rounded-lg border border-neutral-700 text-sm font-medium transition-colors">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        <span>Regresar</span>
+      </button>
+
+      <h1 class="text-gold font-bold tracking-wide text-base md:text-lg flex items-center gap-2">
+        MIRADOR 5B <span class="text-neutral-400 font-normal">—</span> MAPA ADMIN
+      </h1>
+    </div>
+
+  </header>
+
+  <!-- ==================== ÁREA DE TRABAJO PRINCIPAL ==================== -->
+  <main class="flex-1 relative flex flex-col items-center justify-start p-3 sm:p-5 overflow-hidden">
+
+    <!-- ==================== 2. TARJETA DE ESTADÍSTICAS FLOTANTE ==================== -->
+    <div class="z-20 mb-3 bg-white border border-slate-200/80 rounded-full shadow-md px-6 py-2.5 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm font-medium">
+      <div class="text-slate-600">
+        Total: <span id="stat-total" class="font-bold text-slate-900">0</span>
+      </div>
+      <div class="h-4 w-px bg-slate-300"></div>
+      <div class="flex items-center gap-2 text-slate-700">
+        <span class="w-2.5 h-2.5 rounded-full color-disponible"></span>
+        Disponibles: <span id="stat-disponibles" class="font-bold text-slate-900">0</span>
+      </div>
+      <div class="flex items-center gap-2 text-slate-700">
+        <span class="w-2.5 h-2.5 rounded-full color-vendido"></span>
+        Vendidos: <span id="stat-vendidos" class="font-bold text-slate-900">0</span>
+      </div>
+      <div class="flex items-center gap-2 text-slate-700">
+        <span class="w-2.5 h-2.5 rounded-full color-reservado"></span>
+        Apartados: <span id="stat-reservados" class="font-bold text-slate-900">0</span>
+      </div>
+      <div class="flex items-center gap-2 text-slate-700">
+        <span class="w-2.5 h-2.5 rounded-full color-bloqueado"></span>
+        Bloqueados: <span id="stat-bloqueados" class="font-bold text-slate-900">0</span>
+      </div>
+    </div>
+
+
+    <!-- ==================== 3. CONTENEDOR CANVAS MAPA ==================== -->
+    <div id="viewport" class="map-container relative w-full flex-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex items-center justify-center">
+      
+      <!-- Capa de Transformación Zoom & Pan -->
+      <div id="map-world" class="map-pending absolute w-full h-full flex items-center justify-center origin-center transition-transform ease-out duration-75">
+        
+         <!-- SVG real cargado desde el archivo exportado con loteid -->
+         <div id="real-map-host" class="w-full h-full flex items-center justify-center"></div>
+
+      </div>
+
+      <!-- Indicador de carga inicial: evita mostrar el mapa sin estados. -->
+      <div id="map-loading" role="status" aria-live="polite" aria-busy="true">
+        <div class="map-spinner" id="map-spinner" aria-hidden="true"></div>
+        <div id="map-loading-title">Preparando mapa de lotes…</div>
+        <div id="map-loading-detail">Consultando estados y aplicando los colores del desarrollo.</div>
+        <button id="map-retry" type="button" hidden>Reintentar carga</button>
+      </div>
+
+      <!-- CONTROLES FLOTANTES DE ZOOM (Arriba Derecha) -->
+      <div class="absolute top-4 right-4 flex flex-col bg-white border border-slate-200/90 rounded-2xl shadow-md overflow-hidden z-20">
+        <button data-action="acercar" class="p-3 hover:bg-slate-100 border-b border-slate-100 text-slate-700 transition-colors" title="Acercar (+)">
+          <i data-lucide="plus" class="w-5 h-5"></i>
+        </button>
+        <button data-action="alejar" class="p-3 hover:bg-slate-100 border-b border-slate-100 text-slate-700 transition-colors" title="Alejar (-)">
+          <i data-lucide="minus" class="w-5 h-5"></i>
+        </button>
+        <button data-action="restablecer" class="p-3 hover:bg-slate-100 text-slate-700 transition-colors" title="Restablecer vista">
+          <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- INDICADOR DE PORCENTAJE ZOOM (Abajo Derecha) -->
+      <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm text-xs font-semibold text-slate-600 z-20">
+        <span id="zoom-level">64%</span>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ==================== DRAWER / PANEL LATERAL EXACTO A CAPTURAS ==================== -->
+  <div id="lote-drawer-backdrop" class="fixed inset-0 bg-black/35 backdrop-blur-[1px] z-50 opacity-0 pointer-events-none drawer-overlay transition-opacity duration-300">
+    <div id="lote-drawer" class="fixed top-0 right-0 h-full w-full max-w-[430px] bg-white shadow-2xl z-50 flex flex-col translate-x-full drawer-panel font-sans">
+      
+      <!-- HEADER DRAWER (Color café/marrón oscuro exacto de las capturas: #48413a) -->
+      <div class="bg-[#48413a] text-white px-7 pt-6 pb-6 shrink-0 relative">
+        <button data-action="cerrar" class="absolute top-5 right-5 text-neutral-300 hover:text-white transition-colors p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+
+        <!-- Badge de Estado (DISPONIBLE verde suave con letra verde oscura) -->
+        <div class="mb-2">
+          <span id="drawer-badge" class="inline-block px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-[#d7f5e8] text-[#1e7853]">
+            DISPONIBLE
+          </span>
+        </div>
+
+        <!-- Título del Lote y Subtítulo Exactos -->
+        <h2 class="text-[26px] font-bold tracking-tight text-white leading-tight" id="drawer-title">—</h2>
+        <p class="text-sm text-[#b8b3ad] font-medium mt-0.5" id="drawer-subtitle">—</p>
+      </div>
+
+      <!-- CUERPO SCROLLABLE CON TARJETAS RECTANGULARES SOFT -->
+      <div class="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-white drawer-content-scroll text-slate-800">
+
+        <!-- 1. IDENTIFICACIÓN -->
+        <div>
+          <h4 class="text-[11px] font-bold text-[#8c8c8c] tracking-widest uppercase mb-3">
+            IDENTIFICACIÓN
+          </h4>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">Clave</span>
+              <span class="text-sm font-bold text-[#18181b] block" id="drawer-clave">—</span>
+            </div>
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">No. Lote</span>
+              <span class="text-sm font-bold text-[#18181b] block" id="drawer-nolote">—</span>
+            </div>
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">Manzana</span>
+              <span class="text-sm font-bold text-[#18181b] block" id="drawer-manzana-val">—</span>
+            </div>
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">Coto</span>
+              <span class="text-sm font-bold text-[#18181b] block" id="drawer-coto">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. SUPERFICIE Y PRECIO -->
+        <div>
+          <h4 class="text-[11px] font-bold text-[#8c8c8c] tracking-widest uppercase mb-3">
+            SUPERFICIE Y PRECIO
+          </h4>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">Tipo de Lote</span>
+              <span class="text-sm font-bold text-[#18181b] block" id="drawer-tipo">—</span>
+            </div>
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">Superficie</span>
+              <span class="text-sm font-bold text-[#18181b] block" id="drawer-superficie">—</span>
+            </div>
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">Precio / m²</span>
+              <span class="text-sm font-bold text-[#18181b] block" id="drawer-preciom2">—</span>
+            </div>
+            <!-- Tarjeta Dorada/Beige resaltada -->
+            <div class="bg-[#fef8e7] p-3.5 rounded-[12px] border border-[#f1e1b3]">
+              <span class="text-[11px] text-[#856404] block font-medium mb-1">Precio Total</span>
+              <span class="text-base font-extrabold text-[#c88318] block" id="drawer-preciototal">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. LINDEROS (M) -->
+        <div>
+          <h4 class="text-[11px] font-bold text-[#8c8c8c] tracking-widest uppercase mb-3">
+            LINDEROS (M)
+          </h4>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">Norte</span>
+              <span class="text-sm font-bold text-[#18181b] block" id="drawer-lind-norte">—</span>
+            </div>
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">Sur</span>
+              <span class="text-sm font-bold text-[#18181b] block" id="drawer-lind-sur">—</span>
+            </div>
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">Este</span>
+              <span class="text-sm font-bold text-[#18181b] block" id="drawer-lind-este">—</span>
+            </div>
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">Oeste</span>
+              <span class="text-sm font-bold text-[#18181b] block" id="drawer-lind-oeste">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. COLINDANCIAS -->
+        <div>
+          <h4 class="text-[11px] font-bold text-[#8c8c8c] tracking-widest uppercase mb-3">
+            COLINDANCIAS
+          </h4>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">Norte</span>
+              <span class="text-sm font-bold text-[#18181b] block truncate" id="drawer-col-norte">—</span>
+            </div>
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">Sur</span>
+              <span class="text-sm font-bold text-[#18181b] block truncate" id="drawer-col-sur">—</span>
+            </div>
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">Este</span>
+              <span class="text-sm font-bold text-[#18181b] block truncate" id="drawer-col-este">—</span>
+            </div>
+            <div class="bg-[#f7f7f8] p-3.5 rounded-[12px] border border-slate-200/60">
+              <span class="text-[11px] text-[#71717a] block font-medium mb-1">Oeste</span>
+              <span class="text-sm font-bold text-[#18181b] block truncate" id="drawer-col-oeste">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. COMENTARIOS -->
+        <div>
+          <h4 class="text-[11px] font-bold text-[#8c8c8c] tracking-widest uppercase mb-3">
+            COMENTARIOS
+          </h4>
+          <div class="bg-[#f0f8ff] p-4 rounded-[12px] border border-[#d2e8fc] text-sm text-[#1e5f8a] font-medium" id="drawer-comentarios">—</div>
+        </div>
+
+
+      </div>
+
+      <!-- BOTÓN INFERIOR -->
+      <div class="p-4 bg-white border-t border-slate-100 shrink-0">
+        <button id="ver-detalle-completo" type="button" data-action="detalle" class="w-full bg-[#eeb34b] hover:bg-[#e2a439] text-[#1f190e] font-bold py-3.5 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 text.sm tracking-wide">
+          <i data-lucide="external-link" class="w-4 h-4 stroke-[2.2]"></i>
+          <span>Ver detalle completo</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-5 py-2.5 rounded-full shadow-2xl text-xs font-medium z-50 opacity-0 pointer-events-none transition-opacity duration-200">
+    Mensaje
+  </div>
+
+  <!-- ==================== LÓGICA Y SCRIPT DE INTERACCIÓN ==================== -->
+  <div id="lote-hover-card" role="tooltip" aria-hidden="true">
+    <div class="flex items-center justify-between gap-3">
+      <div class="hover-title" id="hover-title">Lote</div>
+      <span class="hover-state" id="hover-state">—</span>
+    </div>
+    <div class="hover-data" id="hover-data">—</div>
+    <div class="hover-price" id="hover-price">—</div>
+    <div class="hover-accent" id="hover-accent"></div>
+  </div>
+  <script src="/env-config.js"></script>
+  <script src="./mapa.js"></script>
+</body>
+</html>
