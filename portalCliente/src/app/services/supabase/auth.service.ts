@@ -23,7 +23,7 @@ async function mapSupabaseSessionWithClientData(session: any): Promise<AuthSessi
     const { data } = await supabase
       .from('cliente')
       .select('clienteid, nombre, email, telefonocelular')
-      .eq('email', session.user.email)
+      .eq('user_id', session.user.id)
       .maybeSingle();
     
     clientData = data as ClientRecord | null;
@@ -71,6 +71,7 @@ export const supabaseAuthService: IAuthService = {
       throw new Error(error.message);
     }
 
+    await repairClientLink();
     return mapSupabaseSessionWithClientData(data.session);
   },
 
@@ -103,6 +104,14 @@ export const supabaseAuthService: IAuthService = {
       throw new Error('Confirma tu correo electrónico para activar tu cuenta.');
     }
 
+    await repairClientLink();
     return mapSupabaseSessionWithClientData(data.session);
   }
 };
+
+export async function repairClientLink(): Promise<void> {
+  const { error } = await supabase.rpc('repair_my_cliente_link');
+  if (error) {
+    console.warn('No se pudo reparar el vínculo del cliente:', error.message);
+  }
+}

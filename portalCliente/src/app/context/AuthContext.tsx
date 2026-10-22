@@ -9,6 +9,7 @@ import {
 import type { AuthSession, LoginCredentials, RegisterCredentials } from '../types/auth.types';
 import { authService } from '../services';
 import { supabase } from '../services/supabase/client';
+import { repairClientLink } from '../services/supabase/auth.service';
 
 interface AuthContextValue {
   session: AuthSession;
@@ -33,10 +34,11 @@ async function enrichWithClientData(session: AuthSession): Promise<AuthSession> 
   if (!session.isAuthenticated || !session.user?.email) return session;
   
   try {
+    await repairClientLink();
     const { data } = await supabase
       .from('cliente')
       .select('clienteid, nombre')
-      .eq('email', session.user.email)
+      .eq('user_id', session.user.id)
       .maybeSingle();
     
     if (data) {
