@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── Parsear y validar el body ──────────────────────────────
-    let body: { email?: string }
+    let body: { email?: string; resend?: boolean }
     try {
       body = await req.json()
     } catch {
@@ -63,6 +63,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : undefined
+    const resend = body.resend === true
 
     if (!email || typeof email !== 'string') {
       return new Response(JSON.stringify({ error: 'Campo email requerido' }), {
@@ -93,7 +94,6 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // ── Enviar invitación ──────────────────────────────────────
     // Construye la URL de set-password a partir de PORTAL_URL
     const basePortalUrl = (Deno.env.get('PORTAL_URL') ?? 'https://ruiz-inmobiliaria.trustcapitalia.com/portal')
       .replace(/\/$/, '')
@@ -101,10 +101,15 @@ Deno.serve(async (req: Request) => {
       ? basePortalUrl
       : `${basePortalUrl}/set-password`
 
-    const { data, error: inviteError } =
-      await supabaseAdmin.auth.admin.inviteUserByEmail(email.trim(), {
-        redirectTo: setPasswordUrl,
-      })
+    const { data, error: inviteError } = resend
+      ? await supabaseAdmin.auth.resend({
+          type: 'signup',
+          email: email.trim(),
+          options: { emailRedirectTo: setPasswordUrl },
+        })
+      : await supabaseAdmin.auth.admin.inviteUserByEmail(email.trim(), {
+          redirectTo: setPasswordUrl,
+        })
 
     if (inviteError) {
       return new Response(JSON.stringify({ error: inviteError.message }), {

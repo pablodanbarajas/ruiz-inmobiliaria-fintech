@@ -3,7 +3,7 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { supabase } from '@/lib/supabaseClient'
 import { getCached, setCached, invalidateCache } from '@/lib/queryCache'
 import { Button } from '@/components/ui/Button'
-import { Mail, CheckCircle, Clock, XCircle, RefreshCw, Users, Send, AlertTriangle, Link } from 'lucide-react'
+import { Mail, CheckCircle, Clock, XCircle, RefreshCw, Users, Send, AlertTriangle, Link, RotateCw } from 'lucide-react'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 type InviteCandidate = {
@@ -83,7 +83,7 @@ export const InvitarClientes = () => {
     fetchCandidates()
   }, [fetchCandidates])
 
-  const sendInvite = async (cliente: InviteCandidate) => {
+  const sendInvite = async (cliente: InviteCandidate, resend = false) => {
     const { data: sessionData } = await supabase.auth.getSession()
     const token = sessionData.session?.access_token
     if (!token) throw new Error('Sesión no encontrada')
@@ -97,7 +97,7 @@ export const InvitarClientes = () => {
           Authorization: `Bearer ${token}`,
           apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ email: cliente.email }),
+        body: JSON.stringify({ email: cliente.email, resend }),
       }
     )
     const result = await response.json()
@@ -109,6 +109,18 @@ export const InvitarClientes = () => {
     try {
       await sendInvite(cliente)
       setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'success', message: 'Invitación enviada' } }))
+      if (selectedDesarrollo) setCached(`invitar:${selectedDesarrollo}`, null as any)
+      setTimeout(fetchCandidates, 2000)
+    } catch (err: any) {
+      setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'error', message: err.message ?? 'Error desconocido' } }))
+    }
+  }
+
+  const handleResendInvite = async (cliente: InviteCandidate) => {
+    setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'loading' } }))
+    try {
+      await sendInvite(cliente, true)
+      setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'success', message: 'Invitación reenviada' } }))
       if (selectedDesarrollo) setCached(`invitar:${selectedDesarrollo}`, null as any)
       setTimeout(fetchCandidates, 2000)
     } catch (err: any) {
@@ -314,13 +326,13 @@ export const InvitarClientes = () => {
                           >
                             {isBusy ? 'Reparando...' : <><Link className="w-3 h-3" /> Reparar vínculo</>}
                           </Button>
-                        ) : c.portal_status === 'sin_cuenta' && c.can_invite ? (
+                        ) : (c.portal_status === 'sin_cuenta' && c.can_invite) || c.portal_status === 'invitacion_pendiente' ? (
                           <div className="flex flex-col items-end gap-1">
                             <Button
                               size="sm"
                               variant="outline"
                               disabled={isBusy || isDone}
-                              onClick={() => handleInvite(c)}
+                              onClick={() => c.portal_status === 'invitacion_pendiente' ? handleResendInvite(c) : handleInvite(c)}
                               className="gap-1.5"
                             >
                               {isBusy ? (
@@ -332,8 +344,17 @@ export const InvitarClientes = () => {
                                 </>
                               ) : (
                                 <>
-                                  <Mail className="w-3 h-3" />
-                                  Invitar
+                                  {c.portal_status === 'invitacion_pendiente' ? (
+                                    <>
+                                      <RotateCw className="w-3 h-3" />
+                                      Reenviar
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Mail className="w-3 h-3" />
+                                      Invitar
+                                    </>
+                                  )}
                                 </>
                               )}
                             </Button>
