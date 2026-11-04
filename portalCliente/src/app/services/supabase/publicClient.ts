@@ -21,5 +21,12 @@ if (!env.isSupabaseConfigured()) {
 
 export const publicSupabase = createClient(
   env.SUPABASE_URL,
-  env.SUPABASE_ANON_KEY
+  env.SUPABASE_ANON_KEY,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  }
 );
