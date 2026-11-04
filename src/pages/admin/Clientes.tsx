@@ -56,7 +56,7 @@ export const Clientes = () => {
   // Fetch all clientes once on mount
   useEffect(() => {
     const fetchAllClientes = async () => {
-      const CACHE_KEY = 'clientes:all:v2'
+      const CACHE_KEY = 'clientes:all:v3'
       const cached = getCached<{ all: Cliente[]; visible: Cliente[] }>(CACHE_KEY)
       if (cached) {
         setAllClientsSearchCache(cached.all)
@@ -67,6 +67,17 @@ export const Clientes = () => {
       try {
         setLoading(true)
         
+        const { data: adminEmailRows, error: adminEmailsError } = await supabase.rpc('get_admin_user_emails')
+        if (adminEmailsError) {
+          console.error('Error obteniendo usuarios administrativos:', adminEmailsError)
+          throw adminEmailsError
+        }
+        const adminEmails = new Set(
+          (adminEmailRows ?? [])
+            .map((row: { email: string | null }) => row.email?.toLowerCase().trim())
+            .filter(Boolean)
+        )
+
         // Fetch all clientes in chunks (Supabase default limit is 1000)
         let allData: Cliente[] = []
         let page = 0
@@ -96,10 +107,13 @@ export const Clientes = () => {
           }
         }
 
-        let finalCache = allData
+        const clientData = allData.filter(
+          (cliente) => !adminEmails.has(cliente.email?.toLowerCase().trim() ?? '')
+        )
+        let finalCache = clientData
 
         // In demo mode, restrict to clients that have ventas in the demo desarrollo
-        if (DEMO_DESARROLLOIDS.length > 0 && allData.length > 0) {
+        if (DEMO_DESARROLLOIDS.length > 0 && clientData.length > 0) {
           // Clientes con al menos una venta (en cualquier desarrollo)
           const { data: ventasAll } = await supabase
             .from('venta')
@@ -124,18 +138,18 @@ export const Clientes = () => {
             // Mostrar:
             // 1) clientes con ventas en desarrollos demo
             // 2) clientes sin ninguna venta (recién creados, por ejemplo)
-            finalCache = allData.filter(
+            finalCache = clientData.filter(
               (c) => demoClienteIds.has(c.clienteid) || !clientesConAlgunaVenta.has(c.clienteid)
             )
           } else {
             // Si no hay lotes demo configurados, mostrar solo clientes sin ventas
-            finalCache = allData.filter((c) => !clientesConAlgunaVenta.has(c.clienteid))
+            finalCache = clientData.filter((c) => !clientesConAlgunaVenta.has(c.clienteid))
           }
         }
 
         setAllClientsCache(finalCache)
-        setAllClientsSearchCache(allData)
-        setCached(CACHE_KEY, { all: allData, visible: finalCache })
+        setAllClientsSearchCache(finalCache)
+        setCached(CACHE_KEY, { all: finalCache, visible: finalCache })
       } catch (error) {
         console.error('Error fetching clientes:', error)
         setAllClientsCache([])
@@ -197,7 +211,7 @@ export const Clientes = () => {
       if (data && data.length > 0) {
         setAllClientsCache([...allClientsCache, data[0]])
         setAllClientsSearchCache([...allClientsSearchCache, data[0]])
-        setCached('clientes:all:v2', {
+        setCached('clientes:all:v3', {
           all: [...allClientsSearchCache, data[0]],
           visible: [...allClientsCache, data[0]],
         })
@@ -230,7 +244,7 @@ export const Clientes = () => {
       const updatedCliente = { ...clienteToEdit, ...formData }
       setAllClientsCache(allClientsCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c))
       setAllClientsSearchCache(allClientsSearchCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c))
-      setCached('clientes:all:v2', {
+      setCached('clientes:all:v3', {
         all: allClientsSearchCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c),
         visible: allClientsCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c),
       })
@@ -276,7 +290,7 @@ export const Clientes = () => {
       // Remove from cache
       setAllClientsCache(allClientsCache.filter(c => c.clienteid !== clienteToDelete?.clienteid))
       setAllClientsSearchCache(allClientsSearchCache.filter(c => c.clienteid !== clienteToDelete?.clienteid))
-      setCached('clientes:all:v2', {
+      setCached('clientes:all:v3', {
         all: allClientsSearchCache.filter(c => c.clienteid !== clienteToDelete?.clienteid),
         visible: allClientsCache.filter(c => c.clienteid !== clienteToDelete?.clienteid),
       })
