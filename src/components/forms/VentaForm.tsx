@@ -263,7 +263,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
     }
     if (!formData.vendedor?.trim()) errs.vendedor = 'El nombre del vendedor es requerido'
     setErrors(errs)
-    return Object.keys(errs).length === 0
+    return errs
   }
 
   const validateStep = (step: number) => {
@@ -298,16 +298,35 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
       stepErrors.vendedor = 'El nombre del vendedor es requerido'
     }
     setErrors((current) => ({ ...current, ...stepErrors }))
-    return Object.keys(stepErrors).length === 0
+    return stepErrors
   }
 
   const goToNextStep = () => {
-    if (validateStep(currentStep)) setCurrentStep((step) => Math.min(step + 1, 2))
+    if (Object.keys(validateStep(currentStep)).length === 0) {
+      setCurrentStep((step) => Math.min(step + 1, 2))
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validate()) return
+    const validationErrors = validate()
+    if (Object.keys(validationErrors).length > 0) {
+      const firstInvalidField = Object.keys(validationErrors)[0]
+      const stepByField: Record<string, number> = {
+        loteid: 0,
+        clienteid: 0,
+        fecha: 0,
+        fechacontrato: 0,
+        fechaenganche: 0,
+        fechaprimeramensualidad: 0,
+        preciolote: 1,
+        enganche: 1,
+        plazo: 1,
+        vendedor: 2,
+      }
+      setCurrentStep(stepByField[firstInvalidField] ?? 0)
+      return
+    }
 
     const data: VentaFormData = {
       loteid: parseInt(formData.loteid),

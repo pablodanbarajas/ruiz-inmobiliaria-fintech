@@ -156,7 +156,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
     }
 
     setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    return newErrors
   }
 
   const handleChange = (field: string, value: string) => {
@@ -167,7 +167,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
 
   }
 
-  const validateStep = (step: number) => {
+  const validateStep = async (step: number) => {
     const stepErrors: Record<string, string> = {}
     if (step === 0) {
       if (!formData.nombre.trim()) stepErrors.nombre = 'Nombre requerido'
@@ -179,6 +179,26 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       if (formData.curp && !/^[A-Z]{4}\d{6}[HM][A-Z]{5}[0-9A-Z]{2}$/.test(formData.curp.toUpperCase().trim())) {
         stepErrors.curp = 'CURP inválido (18 caracteres)'
       }
+
+      if (!stepErrors.rfc && formData.rfc.trim()) {
+        const { data: existingRfc } = await supabase
+          .from('cliente')
+          .select('clienteid')
+          .eq('rfc', formData.rfc.toUpperCase().trim())
+          .neq('clienteid', cliente?.clienteid ?? '')
+          .maybeSingle()
+        if (existingRfc) stepErrors.rfc = 'RFC ya existe en la base de datos'
+      }
+
+      if (!stepErrors.curp && formData.curp.trim()) {
+        const { data: existingCurp } = await supabase
+          .from('cliente')
+          .select('clienteid')
+          .eq('curp', formData.curp.toUpperCase().trim())
+          .neq('clienteid', cliente?.clienteid ?? '')
+          .maybeSingle()
+        if (existingCurp) stepErrors.curp = 'CURP ya existe en la base de datos'
+      }
     }
     if (step === 1) {
       if (!formData.email.trim()) stepErrors.email = 'Email requerido'
@@ -186,19 +206,40 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
         stepErrors.email = 'Email inválido'
       }
+
+      if (!stepErrors.email && formData.email.trim()) {
+        const { data: existingEmail } = await supabase
+          .from('cliente')
+          .select('clienteid')
+          .eq('email', formData.email.toLowerCase().trim())
+          .neq('clienteid', cliente?.clienteid ?? '')
+          .maybeSingle()
+        if (existingEmail) stepErrors.email = 'Email ya existe en la base de datos'
+      }
     }
     setErrors((current) => ({ ...current, ...stepErrors }))
     return Object.keys(stepErrors).length === 0
   }
 
-  const goToNextStep = () => {
-    if (validateStep(currentStep)) setCurrentStep((step) => Math.min(step + 1, 2))
+  const goToNextStep = async () => {
+    if (await validateStep(currentStep)) setCurrentStep((step) => Math.min(step + 1, 2))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const isValid = await validateForm()
-    if (!isValid) return
+    const validationErrors = await validateForm()
+    if (Object.keys(validationErrors).length > 0) {
+      const firstInvalidField = ['nombre', 'rfc', 'curp', 'email', 'telefonocelular']
+        .find((field) => validationErrors[field])
+      const invalidStep = firstInvalidField === 'email' || firstInvalidField === 'telefonocelular' ? 1 : 0
+      setCurrentStep(invalidStep)
+      window.setTimeout(() => {
+        if (firstInvalidField) {
+          document.querySelector<HTMLElement>(`[name="${firstInvalidField}"]`)?.focus()
+        }
+      }, 0)
+      return
+    }
 
     try {
       const submitData = {
@@ -253,6 +294,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
             <Input
+              name="nombre"
               type="text"
               placeholder="Nombre completo"
               value={formData.nombre}
@@ -308,6 +350,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">RFC *</label>
             <Input
+              name="rfc"
               type="text"
               placeholder="RFC"
               value={formData.rfc}
@@ -319,6 +362,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">CURP *</label>
             <Input
+              name="curp"
               type="text"
               placeholder="CURP"
               value={formData.curp}
@@ -346,6 +390,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
             <Input
+              name="email"
               type="email"
               placeholder="email@ejemplo.com"
               value={formData.email}
@@ -357,6 +402,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono Celular *</label>
             <Input
+              name="telefonocelular"
               type="tel"
               placeholder="Teléfono"
               value={formData.telefonocelular}
