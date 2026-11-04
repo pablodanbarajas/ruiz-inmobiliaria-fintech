@@ -171,12 +171,12 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
     const stepErrors: Record<string, string> = {}
     if (step === 0) {
       if (!formData.nombre.trim()) stepErrors.nombre = 'Nombre requerido'
-      if (!formData.email.trim()) stepErrors.email = 'Email requerido'
       if (!formData.rfc.trim()) stepErrors.rfc = 'RFC requerido'
       if (!formData.curp.trim()) stepErrors.curp = 'CURP requerido'
     }
-    if (step === 1 && !formData.telefonocelular.trim()) {
-      stepErrors.telefonocelular = 'Teléfono celular requerido'
+    if (step === 1) {
+      if (!formData.email.trim()) stepErrors.email = 'Email requerido'
+      if (!formData.telefonocelular.trim()) stepErrors.telefonocelular = 'Teléfono celular requerido'
     }
     setErrors((current) => ({ ...current, ...stepErrors }))
     return Object.keys(stepErrors).length === 0
