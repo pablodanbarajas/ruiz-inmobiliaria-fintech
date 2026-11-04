@@ -18,6 +18,12 @@ export const Login = () => {
 
   // Only handles the case where user is already authenticated when visiting /login (e.g. page refresh)
   useEffect(() => {
+    const isRecoveryLink = new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery'
+    if (isRecoveryLink) {
+      navigate(`/reset-password${window.location.hash}`, { replace: true })
+      return
+    }
+
     if (!authLoading && isAuthenticated && role && ADMIN_PANEL_ROLES.includes(role as AdminPanelRole)) {
       navigate('/admin/dashboard', { replace: true })
     }
