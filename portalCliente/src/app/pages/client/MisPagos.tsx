@@ -494,10 +494,20 @@ export function MisPagos() {
   const navigate = useNavigate();
   const refreshTimeouts = useRef<number[]>([]);
 
-  const schedulePaymentRefresh = () => {
+  const schedulePaymentRefresh = (corridaId: string, sessionId: string) => {
     refreshTimeouts.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
     refreshTimeouts.current = [1000, 3000, 7000, 15000].map((delay) =>
-      window.setTimeout(() => refreshPayments(), delay)
+      window.setTimeout(async () => {
+        try {
+          const result = await verifyPayment(corridaId, sessionId);
+          if (result.ok) {
+            refreshPayments();
+            refreshTimeouts.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+          }
+        } catch {
+          refreshPayments();
+        }
+      }, delay)
     );
   };
 
@@ -556,7 +566,7 @@ export function MisPagos() {
         sessionStorage.setItem(`quentli_session_${pago.id}`, sessionId);
       }
       paymentWindow.location.href = url;
-      schedulePaymentRefresh();
+      schedulePaymentRefresh(pago.id, sessionId);
     } catch (err: any) {
       paymentWindow.close();
       alert(`Error al generar link de pago: ${err.message}`);
@@ -753,4 +763,3 @@ export function MisPagos() {
     </div>
   );
 }
-
