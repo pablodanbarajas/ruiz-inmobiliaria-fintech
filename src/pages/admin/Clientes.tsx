@@ -67,16 +67,23 @@ export const Clientes = () => {
       try {
         setLoading(true)
         
-        const { data: adminEmailRows, error: adminEmailsError } = await supabase.rpc('get_admin_user_emails')
-        if (adminEmailsError) {
-          console.error('Error obteniendo usuarios administrativos:', adminEmailsError)
-          throw adminEmailsError
+        const { data: adminRoleRows, error: adminRolesError } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .in('role', [
+            'admin',
+            'finanzas',
+            'vendedor',
+            'vendedor_externo',
+            'contratos',
+            'cobranza_caja',
+            'desarrollo_ri',
+          ])
+        if (adminRolesError) {
+          console.error('Error obteniendo usuarios administrativos:', adminRolesError)
+          throw adminRolesError
         }
-        const adminEmails = new Set(
-          (adminEmailRows ?? [])
-            .map((row: { email: string | null }) => row.email?.toLowerCase().trim())
-            .filter(Boolean)
-        )
+        const adminUserIds = new Set((adminRoleRows ?? []).map((row) => row.user_id))
 
         // Fetch all clientes in chunks (Supabase default limit is 1000)
         let allData: Cliente[] = []
@@ -107,9 +114,7 @@ export const Clientes = () => {
           }
         }
 
-        const clientData = allData.filter(
-          (cliente) => !adminEmails.has(cliente.email?.toLowerCase().trim() ?? '')
-        )
+        const clientData = allData.filter((cliente) => !cliente.user_id || !adminUserIds.has(cliente.user_id))
         let finalCache = clientData
 
         // In demo mode, restrict to clients that have ventas in the demo desarrollo
