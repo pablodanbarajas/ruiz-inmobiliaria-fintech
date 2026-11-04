@@ -4,6 +4,8 @@ import { ToastProvider } from '@/context/ToastContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { ScrollRestorer } from '@/components/ScrollRestorer'
 import { Login } from '@/pages/auth/Login'
+import { ForgotPassword } from '@/pages/auth/ForgotPassword'
+import { ResetPassword } from '@/pages/auth/ResetPassword'
 import { Dashboard } from '@/pages/admin/Dashboard'
 import { Desarrollos } from '@/pages/admin/Desarrollos'
 import { DesarrolloDetail } from '@/pages/admin/DesarrolloDetail'
@@ -43,6 +45,8 @@ function App() {
           <Routes>
         {/* Auth Routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Admin Routes */}
         <Route

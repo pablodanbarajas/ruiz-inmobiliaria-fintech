@@ -131,6 +131,7 @@ export const Login = () => {
                     className="w-full pl-10 pr-4 py-3.5 text-base border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#eaae4c] focus:border-transparent bg-gray-50"
                   />
                 </div>
+
               </div>
 
               <div>
