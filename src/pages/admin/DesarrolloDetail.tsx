@@ -163,7 +163,7 @@ export const DesarrolloDetail = () => {
             <div className="flex gap-2">
               <Button
                 onClick={() => setIsEditModalOpen(true)}
-                className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold inline-flex items-center gap-2"
+                className="inline-flex items-center gap-2"
               >
                 <Edit2 size={18} />
                 Editar

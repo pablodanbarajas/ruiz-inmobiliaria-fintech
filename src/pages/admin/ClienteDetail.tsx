@@ -204,7 +204,7 @@ export const ClienteDetail = () => {
           <div className="flex gap-2">
             <Button
               onClick={() => setIsEditModalOpen(true)}
-              className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold inline-flex items-center gap-2"
+              className="bg-[#142127] hover:bg-[#343c40] text-white font-semibold inline-flex items-center gap-2 rounded-full"
             >
               <Edit2 size={18} />
               Editar
@@ -222,13 +222,14 @@ export const ClienteDetail = () => {
         </div>
 
         {/* Cliente Details */}
-        <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mb-8 border-t-4 border-[#504840]">
-          <h1 className="text-3xl font-bold text-black mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-4 md:p-6 mb-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Ficha de cliente</p>
+          <h1 className="text-3xl font-bold text-[#142127] mb-6" style={{ fontFamily: 'var(--font-display)' }}>
             {cliente.nombre}
           </h1>
 
           {/* Section 1: General Info */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-4">
+          <div className="bg-[#f7f8f8] rounded-[14px] p-4 mb-4">
             <h2 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Información General</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-white rounded p-2">
@@ -393,7 +394,7 @@ export const ClienteDetail = () => {
         <ClienteDocumentos clienteid={cliente.clienteid} />
 
         {/* Ventas section */}
-        <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden mb-8">
           <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">Ventas Asociadas ({ventas.length})</h2>
           </div>
@@ -405,7 +406,7 @@ export const ClienteDetail = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-[#142127] border-b border-[#142127]">
                   <tr>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Venta ID</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Desarrollo</th>
@@ -451,7 +452,7 @@ export const ClienteDetail = () => {
         </div>
 
         {/* Pagos section */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden">
           <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">Pagos Realizados ({pagos.length})</h2>
           </div>
@@ -463,7 +464,7 @@ export const ClienteDetail = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-[#142127] border-b border-[#142127]">
                   <tr>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Pago ID</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Venta</th>

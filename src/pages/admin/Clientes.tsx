@@ -297,7 +297,8 @@ export const Clientes = () => {
       <div className="w-full">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Clientes</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Gestión comercial</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-[#142127]" style={{ fontFamily: 'var(--font-display)' }}>Clientes</h1>
             <p className="text-[#9e9f92] mt-2">Listado de compradores</p>
           </div>
           <Button
@@ -305,14 +306,14 @@ export const Clientes = () => {
               setClienteToEdit(null)
               setShowModal(true)
             }}
-            className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-2 px-6"
+            className="bg-[#142127] hover:bg-[#343c40] text-white font-semibold py-2 px-6 rounded-full"
           >
             + Nuevo Cliente
           </Button>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-md border-t-4 border-[#504840] p-6 mb-6">
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-black mb-1">

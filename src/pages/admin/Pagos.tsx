@@ -5,11 +5,12 @@ import { getCached, setCached, invalidateCache, onFocusRefetch } from '@/lib/que
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
 import { Input } from '@/components/ui/Input'
+import { DateRangeFilter } from '@/components/ui/DateRangeFilter'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { PagoForm } from '@/components/forms/PagoForm'
 import type { PagoFormData } from '@/components/forms/PagoForm'
-import { Eye, ChevronLeft, ChevronRight, Plus, Download, Filter, ChevronDown, Receipt, Clock, BarChart3, Users, Calendar, Building2, Printer } from 'lucide-react'
+import { Eye, ChevronLeft, ChevronRight, Plus, Download, RefreshCw, ChevronDown, Receipt, Clock, BarChart3, Users, Calendar, Building2, Printer } from 'lucide-react'
 import { ReciboPago } from '@/components/ReciboPago'
 import type { ReciboPagoData } from '@/components/ReciboPago'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
@@ -29,6 +30,7 @@ import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { syncExpiredConvenios } from '@/services/convenios'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
+import { PaymentReportCharts } from '@/components/charts/PaymentReportCharts'
 
 interface PagoWithDetails extends Pago {
   corridafinanciera?: CorridaFinanciera & {
@@ -158,6 +160,7 @@ export const Pagos = () => {
     searchParams.get('tab') === 'pendientes' ? 'pendientes' : 'pagos'
   )
   const [showExportMenu, setShowExportMenu] = useState(false)
+  const [showReportDetails, setShowReportDetails] = useState(false)
   const [reciboData, setReciboData] = useState<ReciboPagoData | null>(null)
   const [expandedClients, setExpandedClients] = useState<Set<number>>(new Set())
   const [showDifModal, setShowDifModal] = useState(false)
@@ -658,14 +661,15 @@ export const Pagos = () => {
         <div className="w-full">
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Control financiero</p>
+              <h1 className="text-3xl md:text-4xl font-bold text-[#142127]" style={{ fontFamily: 'var(--font-display)' }}>
                 Tesoreria
               </h1>
               <p className="text-[#9e9f92] mt-2">Registro de pagos, análisis y reportes</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" onClick={() => { invalidateCache('pagos:'); fetchPagosAndPendientes(true) }} className="inline-flex items-center gap-2">
-                <Filter size={16} /> Recargar
+                <RefreshCw size={16} /> Recargar
               </Button>
               
               {/* Export Dropdown */}
@@ -704,7 +708,6 @@ export const Pagos = () => {
                 <Button
                   onClick={() => setShowCreateModal(true)}
                   className="inline-flex items-center gap-2"
-                  style={{ backgroundColor: '#eaae4c', color: '#000' }}
                 >
                   <Plus size={18} />
                   Nuevo Pago
@@ -715,28 +718,28 @@ export const Pagos = () => {
 
           {/* KPIs Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-            <div className="bg-white rounded-lg shadow p-4 border-l-4 border-[#eaae4c]">
+            <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4">
               <p className="text-sm text-gray-500">Total cobrado</p>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalCobrado)}</p>
               <p className="text-xs text-gray-400 mt-1">Suma de montopagado</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4 border-l-4 border-[#504840]">
+            <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4">
               <p className="text-sm text-gray-500">Total aplicado</p>
               <p className="text-2xl font-bold text-blue-700">{formatCurrency(totalAplicado)}</p>
               <p className="text-xs text-gray-400 mt-1">Cobrado ± servicios/ajustes</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4 border-l-4 border-orange-500">
+            <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4">
               <p className="text-sm text-gray-500">Recargos cobrados</p>
               <p className="text-2xl font-bold text-orange-700">{formatCurrency(totalRecargos)}</p>
               <p className="text-xs text-gray-400 mt-1">Según pagos registrados</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-600">
+            <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4">
               <p className="text-sm text-gray-500">Servicios cobrados</p>
               <p className="text-2xl font-bold text-green-700">{formatCurrency(totalServicios)}</p>
               <p className="text-xs text-gray-400 mt-1">Servicios y cargos extra</p>
             </div>
             <button
-              className="bg-white rounded-lg shadow p-4 border-l-4 border-[#9e9f92] text-left hover:bg-gray-50 transition-colors"
+              className="bg-white rounded-[16px] border border-[#e0e5e7] p-4 text-left hover:bg-[#fffde1] transition-colors"
               onClick={() => setShowDifModal(true)}
             >
               <p className="text-sm text-gray-500">Diferencia <span className="text-xs text-blue-500 ml-1">← ver detalle</span></p>
@@ -754,7 +757,7 @@ export const Pagos = () => {
                 onClick={() => setActiveTab('pagos')}
                 className={`pb-3 px-2 font-medium transition-colors flex items-center gap-2 ${
                   activeTab === 'pagos'
-                    ? 'text-[#eaae4c] border-b-2 border-[#eaae4c]'
+                    ? 'text-[#142127] border-b-2 border-[#142127]'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -764,7 +767,7 @@ export const Pagos = () => {
                 onClick={() => setActiveTab('pendientes')}
                 className={`pb-3 px-2 font-medium transition-colors flex items-center gap-2 ${
                   activeTab === 'pendientes'
-                    ? 'text-[#eaae4c] border-b-2 border-[#eaae4c]'
+                    ? 'text-[#142127] border-b-2 border-[#142127]'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -774,7 +777,7 @@ export const Pagos = () => {
                 onClick={() => setActiveTab('reportes')}
                 className={`pb-3 px-2 font-medium transition-colors flex items-center gap-2 ${
                   activeTab === 'reportes'
-                    ? 'text-[#eaae4c] border-b-2 border-[#eaae4c]'
+                    ? 'text-[#142127] border-b-2 border-[#142127]'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -785,7 +788,7 @@ export const Pagos = () => {
 
           {/* FILTERS - Show only in Pagos tab */}
           {activeTab === 'pagos' && (
-            <div className="bg-white rounded-lg shadow-md border-t-4 border-[#504840] p-6 mb-6">
+            <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-6 mb-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-black mb-1">Cliente</label>
@@ -817,23 +820,11 @@ export const Pagos = () => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-black mb-1">Fecha Desde</label>
-                  <Input
-                    type="date"
-                    value={filters.fechaDesde}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFilters({ ...filters, fechaDesde: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-black mb-1">Fecha Hasta</label>
-                  <Input
-                    type="date"
-                    value={filters.fechaHasta}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFilters({ ...filters, fechaHasta: e.target.value })}
-                  />
-                </div>
+                <DateRangeFilter
+                  from={filters.fechaDesde}
+                  to={filters.fechaHasta}
+                  onApply={({ from, to }) => setFilters({ ...filters, fechaDesde: from, fechaHasta: to })}
+                />
 
                 <div>
                   <label className="block text-sm font-medium text-black mb-1">Metodo de cobranza</label>
@@ -1013,7 +1004,7 @@ export const Pagos = () => {
 
           {/* TAB 2: PENDIENTES */}
           {activeTab === 'pendientes' && (
-            <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-6">
+            <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden mb-6">
               <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div>
                   <h2 className="font-semibold text-gray-800">Clientes con cartera pendiente</h2>
@@ -1032,7 +1023,7 @@ export const Pagos = () => {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm min-w-[720px]">
-                    <thead className="bg-gray-50 border-b border-gray-200">
+                    <thead className="bg-[#142127] border-b border-[#142127]">
                       <tr>
                         <th className="text-left px-4 py-3 font-semibold text-gray-600 w-8" />
                         <th className="text-left px-4 py-3 font-semibold text-gray-600">Cliente</th>
@@ -1135,7 +1126,29 @@ export const Pagos = () => {
           {/* TAB 3: REPORTES */}
           {activeTab === 'reportes' && (
             <>
-              <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-6">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#787574]">Analytics de tesorería</p>
+                  <h2 className="text-xl font-semibold tracking-[-0.03em] text-[#142127]">Resumen visual</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReportDetails((visible) => !visible)}
+                  className="rounded-full border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#142127] shadow-[var(--shadow-soft)] transition-colors hover:bg-[#f2f4f5]"
+                >
+                  {showReportDetails ? 'Ver gráficos' : 'Ver detalle tabular'}
+                </button>
+              </div>
+              {!showReportDetails && (
+                <PaymentReportCharts
+                  accounts={corteCtaBancaria}
+                  collectors={cortePorCobrador}
+                  daily={conciliacionDiaria}
+                />
+              )}
+              {showReportDetails && (
+              <>
+              <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden mb-6">
                 <div className="px-6 py-4 border-b border-gray-100">
                   <h2 className="font-semibold text-gray-800">Corte por cuenta bancaria</h2>
                 </div>
@@ -1146,7 +1159,7 @@ export const Pagos = () => {
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm min-w-[620px]">
-                      <thead className="bg-gray-50 border-b border-gray-200">
+                      <thead className="bg-[#142127] border-b border-[#142127]">
                         <tr>
                           <th className="text-left px-4 py-3 font-semibold text-gray-600">Cuenta / Banco</th>
                           <th className="text-right px-4 py-3 font-semibold text-gray-600">Pagos</th>
@@ -1173,7 +1186,7 @@ export const Pagos = () => {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden">
                   <div className="px-6 py-4 border-b border-gray-100">
                     <h2 className="font-semibold text-gray-800">Corte por cobrador</h2>
                   </div>
@@ -1184,7 +1197,7 @@ export const Pagos = () => {
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm min-w-[560px]">
-                        <thead className="bg-gray-50 border-b border-gray-200">
+                        <thead className="bg-[#142127] border-b border-[#142127]">
                           <tr>
                             <th className="text-left px-4 py-3 font-semibold text-gray-600">Cobrador</th>
                             <th className="text-right px-4 py-3 font-semibold text-gray-600">Pagos</th>
@@ -1207,7 +1220,7 @@ export const Pagos = () => {
                   )}
                 </div>
 
-                <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden">
                   <div className="px-6 py-4 border-b border-gray-100">
                     <h2 className="font-semibold text-gray-800">Conciliacion diaria</h2>
                   </div>
@@ -1218,7 +1231,7 @@ export const Pagos = () => {
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm min-w-[620px]">
-                        <thead className="bg-gray-50 border-b border-gray-200">
+                        <thead className="bg-[#142127] border-b border-[#142127]">
                           <tr>
                             <th className="text-left px-4 py-3 font-semibold text-gray-600">Fecha</th>
                             <th className="text-right px-4 py-3 font-semibold text-gray-600">Pagos</th>
@@ -1245,6 +1258,8 @@ export const Pagos = () => {
                   )}
                 </div>
               </div>
+              </>
+              )}
             </>
           )}
         </div>

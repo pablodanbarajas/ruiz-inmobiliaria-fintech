@@ -17,6 +17,8 @@ import {
   Landmark,
   Handshake,
   UserCheck,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { ROLE_LABELS } from '@/config/roles'
@@ -110,10 +112,12 @@ const MENU_ITEMS = [
 
 interface SidebarProps {
   isOpen: boolean
+  isCollapsed: boolean
   onClose: () => void
+  onToggleCollapse: () => void
 }
 
-export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
+export const Sidebar = ({ isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarProps) => {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, role, logout } = useAuth()
@@ -132,25 +136,56 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 h-screen bg-black text-white w-64 transition-transform duration-300 z-30 flex flex-col',
+          'fixed left-0 top-0 h-screen bg-[#142127] text-white transition-[width,transform] duration-300 z-30 flex flex-col',
+          isCollapsed ? 'lg:w-20' : 'lg:w-64',
+          'w-64',
           'lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex flex-col h-full px-4 pt-3 pb-2 overflow-hidden">
-          <div className="mb-3 mt-1 lg:mt-0 flex justify-center flex-shrink-0">
+        <div className={`flex flex-col h-full pt-3 pb-2 overflow-hidden ${isCollapsed ? 'px-3' : 'px-4'}`}>
+          <div className={`group relative mb-4 mt-1 lg:mt-0 flex items-center flex-shrink-0 ${isCollapsed ? 'justify-center' : 'justify-between gap-3 px-2'}`}>
             <img 
               src="/images/ruiz-inmobiliaria-logo-sin-fondo.png" 
               alt="Ruiz Inmobiliaria" 
-              className="h-16 w-16 object-contain"
+              className={`object-contain transition-opacity duration-150 ${isCollapsed ? 'h-10 w-10 group-hover:opacity-0' : 'h-12 w-12'}`}
             />
+            {isCollapsed && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="absolute inset-0 m-auto hidden h-8 w-8 items-center justify-center rounded-full bg-[#343c40] text-[#e0e5e7] opacity-0 transition-opacity duration-150 group-hover:opacity-100 lg:flex cursor-pointer hover:bg-[#fffa77] hover:text-[#142127]"
+                aria-label="Expandir navegación"
+                title="Expandir navegación"
+              >
+                <ChevronsRight size={16} />
+                <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-lg bg-[#131416] px-3 py-2 text-xs font-medium text-white shadow-lg group-hover:block">
+                  Expandir navegación
+                </span>
+              </button>
+            )}
+            {!isCollapsed && <div>
+              <p className="text-sm font-semibold tracking-tight">Ruiz Inmobiliaria</p>
+              <p className="text-[10px] uppercase tracking-[0.14em] text-[#c7d5d9]">Panel administrativo</p>
+            </div>}
+            {!isCollapsed && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="hidden lg:flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[#c7d5d9] hover:bg-[#343c40] hover:text-white transition-colors cursor-pointer"
+                aria-label="Contraer navegación"
+                title="Contraer navegación"
+              >
+                <ChevronsLeft size={17} />
+              </button>
+            )}
           </div>
 
           {/* User info section */}
-          <div className="w-full border-t border-b border-[#504840] py-2 mb-2 flex-shrink-0">
-            <div className="flex items-center gap-2 text-white">
+          <div className={`w-full border-t border-b border-[#343c40] py-3 mb-3 flex-shrink-0 ${isCollapsed ? 'flex justify-center' : ''}`}>
+            <div className={`flex items-center text-white ${isCollapsed ? 'justify-center' : 'gap-2'}`}>
               <User size={18} />
-              <div className="flex-1 min-w-0">
+              {!isCollapsed && <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm text-white truncate">
                   {user?.nombre} {user?.apellido}
                 </p>
@@ -158,13 +193,13 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                 {role && (
                   <span className={`inline-block mt-0.5 text-xs font-semibold px-2 py-0.5 rounded-full ${
                     role === 'admin'
-                      ? 'bg-[#eaae4c] text-black'
-                      : 'bg-[#504840] text-white'
+                    ? 'bg-[#fffa77] text-[#142127]'
+                    : 'bg-[#343c40] text-white'
                   }`}>
                     {ROLE_LABELS[role] ?? role}
                   </span>
                 )}
-              </div>
+              </div>}
             </div>
           </div>
 
@@ -179,30 +214,42 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                   to={item.path}
                   onClick={onClose}
                   className={cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
+                    'group relative flex items-center rounded-xl transition-colors',
+                    isCollapsed ? 'justify-center px-3 py-2.5' : 'gap-3 px-3 py-2.5',
                     isActive
-                      ? 'bg-[#eaae4c] text-black font-semibold'
-                      : 'text-[#f8f8f8] hover:bg-[#504840]'
+                      ? 'bg-[#fffa77] text-[#142127] font-semibold'
+                      : 'text-[#e0e5e7] hover:bg-[#343c40]'
                   )}
                 >
                   <Icon size={20} className="flex-shrink-0" />
-                  <span className="font-medium text-sm">{item.label}</span>
+                  {!isCollapsed && <span className="font-medium text-sm">{item.label}</span>}
+                  {isCollapsed && (
+                    <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-lg bg-[#131416] px-3 py-2 text-xs font-medium text-white shadow-lg group-hover:block group-focus-visible:block">
+                      {item.label}
+                    </span>
+                  )}
                 </Link>
               )
             })}
           </nav>
 
           {/* Logout button at the bottom */}
-          <div className="w-full border-t border-[#504840] pt-2 mt-1 flex-shrink-0">
+          <div className="w-full border-t border-[#343c40] pt-2 mt-1 flex-shrink-0">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-[#f8f8f8] hover:bg-[#504840] rounded-lg transition-colors font-medium cursor-pointer text-sm"
+              className="group relative w-full flex items-center justify-center gap-2 px-3 py-2 text-[#e0e5e7] hover:bg-[#343c40] rounded-xl transition-colors font-medium cursor-pointer text-sm"
               title="Cerrar sesión"
             >
               <LogOut size={17} />
-              <span>Cerrar Sesión</span>
+              {!isCollapsed && <span>Cerrar Sesión</span>}
+              {isCollapsed && (
+                <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-lg bg-[#131416] px-3 py-2 text-xs font-medium text-white shadow-lg group-hover:block">
+                  Cerrar sesión
+                </span>
+              )}
             </button>
           </div>
+
         </div>
       </aside>
 

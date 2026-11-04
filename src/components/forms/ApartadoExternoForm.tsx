@@ -178,7 +178,7 @@ export const ApartadoExternoForm = ({
   // ── Render ────────────────────────────────────────────────
   if (step === 'cliente') {
     return (
-      <div className="space-y-5">
+      <div className="admin-form space-y-5">
         {/* Step indicator */}
         <div className="flex items-center gap-3 mb-2">
           <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[#eaae4c] text-black font-bold text-sm">1</span>
@@ -320,7 +320,7 @@ export const ApartadoExternoForm = ({
 
   // Step 2: Apartado
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="admin-form space-y-5">
       {/* Step indicator */}
       <div className="flex items-center gap-3 mb-2">
         <span className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-500 font-bold text-sm">1</span>
@@ -378,7 +378,7 @@ export const ApartadoExternoForm = ({
       <div className="flex justify-between">
         <Button
           type="button"
-          variant="secondary"
+          variant="outline"
           onClick={() => { setStep('cliente'); setErrors({}) }}
           disabled={isLoading}
         >

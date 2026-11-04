@@ -100,8 +100,8 @@ export const SearchCombobox = ({
             setOpen(true)
             if (!e.target.value) onChange('')
           }}
-          className={`w-full px-3 py-2 pr-16 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] disabled:bg-gray-100 disabled:cursor-not-allowed ${
-            error ? 'border-red-400' : 'border-gray-300'
+          className={`w-full rounded-full px-4 py-2 pr-16 border bg-white tracking-[-0.014em] focus:outline-none focus:ring-2 focus:ring-[#fffa56] disabled:bg-gray-100 disabled:cursor-not-allowed ${
+            error ? 'border-red-400' : 'border-[#ebebeb]'
           }`}
         />
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -119,7 +119,7 @@ export const SearchCombobox = ({
       </div>
 
       {open && !disabled && (
-        <ul className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+        <ul className="absolute z-50 mt-1 w-full bg-white border border-[#ebebeb] rounded-[14px] shadow-[var(--shadow-elevated)] max-h-60 overflow-y-auto">
           {filtered.length === 0 ? (
             <li className="px-4 py-3 text-sm text-gray-500">Sin resultados</li>
           ) : (
@@ -128,14 +128,14 @@ export const SearchCombobox = ({
                 key={opt.value}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleSelect(opt)}
-                className={`flex items-start gap-2 px-4 py-2.5 cursor-pointer hover:bg-[#fdf6e3] transition-colors ${
-                  opt.value === value ? 'bg-[#fdf6e3]' : ''
+                className={`flex items-start gap-2 px-4 py-2.5 cursor-pointer hover:bg-[#f2f4f5] transition-colors ${
+                  opt.value === value ? 'bg-[#f2f4f5]' : ''
                 }`}
               >
                 <Check
                   size={14}
                   className={`mt-0.5 flex-shrink-0 ${
-                    opt.value === value ? 'text-[#eaae4c]' : 'text-transparent'
+                    opt.value === value ? 'text-[#142127]' : 'text-transparent'
                   }`}
                 />
                 <div className="min-w-0">

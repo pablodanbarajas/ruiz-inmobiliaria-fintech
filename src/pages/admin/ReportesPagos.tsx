@@ -6,7 +6,7 @@ import { DataTable } from '@/components/DataTable'
 import { supabase } from '@/lib/supabaseClient'
 import { formatCurrency, formatDate, getPagoFormaLabel, FORMAS_PAGO } from '@/utils/helpers'
 import type { Cliente, Desarrollo, Lote, Pago, Venta } from '@/types/database'
-import { Download, Filter, FileText } from 'lucide-react'
+import { Download, RefreshCw, FileText } from 'lucide-react'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 type PagoRow = Pago & {
@@ -229,14 +229,15 @@ export const ReportesPagos = () => {
       <div className="w-full">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Control financiero</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-[#142127]" style={{ fontFamily: 'var(--font-display)' }}>
               Reportes de Pagos
             </h1>
             <p className="text-[#9e9f92] mt-2">Consulta de tesoreria con filtros operativos y exportacion CSV</p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={fetchReportData} className="inline-flex items-center gap-2">
-              <Filter size={16} /> Recargar
+              <RefreshCw size={16} /> Recargar
             </Button>
             <Button onClick={exportPagosCsv} className="inline-flex items-center gap-2">
               <Download size={16} /> Exportar Pagos CSV
@@ -247,7 +248,7 @@ export const ReportesPagos = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md border-t-4 border-[#504840] p-6 mb-6">
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-medium text-black mb-1">Desarrollo</label>
@@ -291,15 +292,15 @@ export const ReportesPagos = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-[#eaae4c]">
+          <div className="bg-white rounded-[16px] border border-[#e0e5e7] border-l-4 border-l-[#fffa56] p-4">
             <p className="text-sm text-gray-500">Total cobrado</p>
             <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalCobrado)}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-[#504840]">
+          <div className="bg-white rounded-[16px] border border-[#e0e5e7] border-l-4 border-l-[#142127] p-4">
             <p className="text-sm text-gray-500">Total pendiente</p>
             <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalPendiente)}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-[#9e9f92]">
+          <div className="bg-white rounded-[16px] border border-[#e0e5e7] border-l-4 border-l-[#63696c] p-4">
             <p className="text-sm text-gray-500">Clientes con adeudo</p>
             <p className="text-2xl font-bold text-gray-900">{clientesPendientes}</p>
           </div>

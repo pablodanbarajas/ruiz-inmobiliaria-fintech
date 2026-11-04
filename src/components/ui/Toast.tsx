@@ -20,18 +20,18 @@ export const ToastItem = ({ toast, onDismiss }: ToastProps) => {
   }, [toast.duration, toast.id, onDismiss])
 
   const baseClasses =
-    'flex items-start gap-3 p-4 rounded-lg shadow-lg border backdrop-blur-sm animate-in slide-in-from-top-2 duration-300'
+    'flex items-start gap-3 p-4 rounded-[14px] shadow-lg border backdrop-blur-sm animate-in slide-in-from-top-2 duration-300'
 
   const getStyleClasses = () => {
     switch (toast.type) {
       case 'success':
-        return `${baseClasses} bg-green-50 border-green-200 text-green-900`
+        return `${baseClasses} bg-[#f0fdf4] border-[#bbf7d0] text-green-900`
       case 'error':
-        return `${baseClasses} bg-red-50 border-red-200 text-red-900`
+        return `${baseClasses} bg-[#fef2f2] border-[#fecaca] text-red-900`
       case 'warning':
-        return `${baseClasses} bg-amber-50 border-amber-200 text-amber-900`
+        return `${baseClasses} bg-[#fffde1] border-[#fffa56] text-[#343c40]`
       case 'info':
-        return `${baseClasses} bg-blue-50 border-blue-200 text-blue-900`
+        return `${baseClasses} bg-[#eff6ff] border-[#bfdbfe] text-blue-900`
       default:
         return baseClasses
     }

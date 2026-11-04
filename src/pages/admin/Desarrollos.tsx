@@ -175,7 +175,7 @@ export const Desarrollos = () => {
           {canEditDesarrollos && (
             <Button
               onClick={() => handleOpenModal()}
-              className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold inline-flex items-center gap-2"
+              className="inline-flex items-center gap-2"
             >
               <Plus size={20} />
               Nuevo Desarrollo

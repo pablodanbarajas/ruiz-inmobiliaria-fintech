@@ -19,18 +19,19 @@ export const Modal = ({ isOpen, title, onClose, children, size = 'md' }: ModalPr
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className={`bg-white rounded-lg shadow-lg ${sizeClass[size]} w-full max-h-[90vh] overflow-y-auto`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#142127]/55 p-4 backdrop-blur-sm">
+      <div className={`bg-white rounded-[20px] border border-[#ebebeb] shadow-[var(--shadow-elevated)] ${sizeClass[size]} w-full max-h-[90vh] overflow-y-auto`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
-          <h2 className="text-2xl font-bold text-gray-900" style={{ fontFamily: 'Playfair Display, serif' }}>
+        <div className="flex items-center justify-between p-6 border-b border-[#e0e5e7] sticky top-0 bg-white">
+          <h2 className="text-2xl font-bold text-[#142127]" style={{ fontFamily: 'var(--font-display)' }}>
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+            className="p-2 text-[#63696c] hover:bg-[#fffde1] hover:text-[#142127] rounded-full transition-colors cursor-pointer"
+            aria-label="Cerrar"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
 

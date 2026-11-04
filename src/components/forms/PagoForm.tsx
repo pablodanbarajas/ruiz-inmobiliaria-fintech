@@ -521,7 +521,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="admin-form space-y-6">
       {/* ── Section 1: Select Venta + Corrida (only when needed) ── */}
       {needsVentaPicker && (
         <div>
@@ -932,7 +932,6 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
           type="submit"
           disabled={isLoading}
           className="px-6"
-          style={{ backgroundColor: '#eaae4c', color: '#000' }}
         >
           {isLoading
             ? 'Guardando...'

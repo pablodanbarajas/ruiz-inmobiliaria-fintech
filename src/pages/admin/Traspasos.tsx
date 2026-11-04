@@ -270,8 +270,7 @@ export const Traspasos = () => {
           <button
             type="button"
             onClick={openNuevoTraspaso}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors"
-            style={{ backgroundColor: '#eaae4c' }}
+            className="inline-flex items-center gap-2 rounded-full bg-[#142127] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#343c40]"
           >
             <Plus size={16} />
             Nuevo Traspaso
@@ -372,8 +371,7 @@ export const Traspasos = () => {
                   type="button"
                   onClick={handleSubmitTraspaso}
                   disabled={isSubmitting || !selectedVentaId || !nuevoClienteId}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  style={{ backgroundColor: '#eaae4c' }}
+                  className="inline-flex items-center gap-2 rounded-full bg-[#142127] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#343c40] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSubmitting ? 'Registrando…' : 'Confirmar Traspaso'}
                 </button>

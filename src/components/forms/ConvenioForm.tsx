@@ -242,7 +242,7 @@ export const ConvenioForm = ({
   const atLimitCreate = !isEditMode && conveniosEsteAnio >= LIMITE_ANUAL
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="admin-form space-y-6">
 
       {/* Limit warning */}
       {atLimitCreate && (
@@ -494,7 +494,6 @@ export const ConvenioForm = ({
           type="submit"
           disabled={isLoading || atLimitCreate}
           className="px-6"
-          style={{ backgroundColor: '#eaae4c', color: '#000' }}
         >
           {isLoading ? 'Guardando...' : isEditMode ? 'Guardar Cambios' : 'Registrar Convenio'}
         </Button>

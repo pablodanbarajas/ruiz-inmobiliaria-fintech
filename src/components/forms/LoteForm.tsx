@@ -188,7 +188,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="admin-form space-y-6">
       {/* Row 1: Desarrollo, Dueño, Tipo Lote */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
@@ -535,7 +535,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
         <Button
           type="submit"
           disabled={isLoading}
-          className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-2 px-6"
+          className="px-6"
         >
           {isLoading ? 'Guardando...' : lote ? 'Actualizar' : 'Crear'}
         </Button>

@@ -673,7 +673,7 @@ export const Dashboard = () => {
   }) => (
     <div
       onClick={onClick}
-      className={`flex items-center gap-3 p-3 rounded-lg border border-gray-100 transition-colors ${onClick ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+      className={`flex items-center gap-3 p-3 rounded-[14px] border border-[#e0e5e7] transition-colors ${onClick ? 'cursor-pointer hover:bg-[#fffde1]' : ''}`}
     >
       <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color }}>
         {Icon}
@@ -690,8 +690,9 @@ export const Dashboard = () => {
       <div className="w-full">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Dashboard</h1>
-            <p className="text-[#9e9f92] mt-1 capitalize">{monthName}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Resumen operativo</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-[#142127]" style={{ fontFamily: 'var(--font-display)' }}>Dashboard</h1>
+            <p className="text-[#63696c] mt-1 capitalize">{monthName}</p>
             {currentRole && (
               <p className="text-xs text-gray-500 mt-1">Vista de rol: {ROLE_LABELS[currentRole]}</p>
             )}
@@ -710,7 +711,7 @@ export const Dashboard = () => {
                   key={(item as { path: string }).path}
                   type="button"
                   onClick={() => navigate((item as { path: string }).path)}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:border-[#eaae4c] hover:text-[#504840] hover:shadow-sm transition-all"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#c7d5d9] bg-white text-xs font-medium text-[#142127] hover:border-[#142127] hover:bg-[#fffde1] transition-all"
                 >
                   {(item as { icon: React.ReactNode }).icon}
                   {(item as { label: string }).label}
@@ -734,8 +735,8 @@ export const Dashboard = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* ── KPIs generales (totales acumulados, no ligados al mes) ── */}
-            <div className="bg-white rounded-lg shadow-md p-5">
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Totales generales</h2>
+            <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-5">
+              <h2 className="text-xs font-semibold text-[#63696c] uppercase tracking-[0.12em] mb-3">Totales generales</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {canViewClientes && (
                   <MiniStat
@@ -796,8 +797,8 @@ export const Dashboard = () => {
 
             {/* ── KPIs del mes en curso ── */}
             {(canViewPagos || canViewVentas) && (
-              <div className="bg-white rounded-lg shadow-md p-5">
-                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 capitalize">
+              <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-5">
+                <h2 className="text-xs font-semibold text-[#63696c] uppercase tracking-[0.12em] mb-3 capitalize">
                   Este mes · {monthName}
                 </h2>
                 <div className="grid grid-cols-2 gap-2">
@@ -829,7 +830,7 @@ export const Dashboard = () => {
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Últimos pagos */}
           {canViewPagos && (
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CreditCard size={18} className="text-[#eaae4c]" />
@@ -873,7 +874,7 @@ export const Dashboard = () => {
 
           {/* Últimas ventas */}
           {canViewVentas && (
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShoppingCart size={18} className="text-[#eaae4c]" />

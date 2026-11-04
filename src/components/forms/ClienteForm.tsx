@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import type { Cliente } from '@/types/database'
+import { FormProgress } from '@/components/ui/FormProgress'
 
 interface ClienteFormProps {
   cliente?: Cliente | null
@@ -40,6 +41,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
     pais_nacimiento: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [currentStep, setCurrentStep] = useState(0)
 
   useEffect(() => {
     if (cliente) {
@@ -162,6 +164,26 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
     if (errors[field]) {
       setErrors({ ...errors, [field]: '' })
     }
+
+  }
+
+  const validateStep = (step: number) => {
+    const stepErrors: Record<string, string> = {}
+    if (step === 0) {
+      if (!formData.nombre.trim()) stepErrors.nombre = 'Nombre requerido'
+      if (!formData.email.trim()) stepErrors.email = 'Email requerido'
+      if (!formData.rfc.trim()) stepErrors.rfc = 'RFC requerido'
+      if (!formData.curp.trim()) stepErrors.curp = 'CURP requerido'
+    }
+    if (step === 1 && !formData.telefonocelular.trim()) {
+      stepErrors.telefonocelular = 'Teléfono celular requerido'
+    }
+    setErrors((current) => ({ ...current, ...stepErrors }))
+    return Object.keys(stepErrors).length === 0
+  }
+
+  const goToNextStep = () => {
+    if (validateStep(currentStep)) setCurrentStep((step) => Math.min(step + 1, 2))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -205,9 +227,18 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="admin-form space-y-6">
+      <FormProgress
+        steps={[
+          { label: 'Identidad', description: 'Datos generales y fiscales' },
+          { label: 'Contacto', description: 'Teléfonos y domicilio' },
+          { label: 'Perfil', description: 'Información adicional' },
+        ]}
+        currentStep={currentStep}
+        onStepChange={setCurrentStep}
+      />
       {/* Información General */}
-      <div>
+      <div className={currentStep === 0 ? '' : 'hidden'}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Información General</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -262,7 +293,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       </div>
 
       {/* Datos Fiscales */}
-      <div>
+      <div className={currentStep === 0 ? '' : 'hidden'}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Datos Fiscales</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -300,7 +331,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       </div>
 
       {/* Contacto */}
-      <div>
+      <div className={currentStep === 1 ? '' : 'hidden'}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Contacto</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -338,7 +369,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       </div>
 
       {/* Domicilio */}
-      <div>
+      <div className={currentStep === 1 ? '' : 'hidden'}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Domicilio</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
@@ -426,7 +457,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       </div>
 
       {/* Información Matrimonial */}
-      <div>
+      <div className={currentStep === 2 ? '' : 'hidden'}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Información Matrimonial</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -454,7 +485,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       </div>
 
       {/* Lugar de Nacimiento */}
-      <div>
+      <div className={currentStep === 2 ? '' : 'hidden'}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Lugar de Nacimiento</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -488,7 +519,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       </div>
 
       {/* Información Adicional */}
-      <div>
+      <div className={currentStep === 2 ? '' : 'hidden'}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Información Adicional</h3>
         <div className="space-y-4">
           <div>
@@ -513,10 +544,15 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
         </div>
       </div>
 
-      <div className="flex gap-4 justify-end pt-6 border-t">
-        <Button type="submit" disabled={isLoading} className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-2 px-6">
-          {isLoading ? 'Guardando...' : cliente ? 'Actualizar' : 'Crear'}
+      <div className="flex items-center justify-between gap-4 border-t border-[#e0e5e7] pt-5">
+        <Button type="button" variant="outline" onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))} disabled={currentStep === 0 || isLoading}>
+          Atrás
         </Button>
+        {currentStep < 2 ? (
+          <Button type="button" onClick={goToNextStep}>Continuar</Button>
+        ) : (
+          <Button type="submit" disabled={isLoading}>{isLoading ? 'Guardando...' : cliente ? 'Actualizar' : 'Crear'}</Button>
+        )}
       </div>
     </form>
   )
