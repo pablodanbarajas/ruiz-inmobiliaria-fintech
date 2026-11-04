@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { Calendar, DollarSign, FileText, Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, Home } from 'lucide-react';
 
@@ -492,6 +492,28 @@ export function MisPagos() {
   const [verifyState, setVerifyState] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const refreshTimeouts = useRef<number[]>([]);
+
+  const schedulePaymentRefresh = () => {
+    refreshTimeouts.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    refreshTimeouts.current = [1000, 3000, 7000, 15000].map((delay) =>
+      window.setTimeout(() => refreshPayments(), delay)
+    );
+  };
+
+  useEffect(() => {
+    const refreshWhenReturning = () => {
+      if (document.visibilityState === 'visible') refreshPayments();
+    };
+
+    window.addEventListener('focus', refreshWhenReturning);
+    document.addEventListener('visibilitychange', refreshWhenReturning);
+    return () => {
+      window.removeEventListener('focus', refreshWhenReturning);
+      document.removeEventListener('visibilitychange', refreshWhenReturning);
+      refreshTimeouts.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    };
+  }, [refreshPayments]);
 
   // Al regresar de Quentli, verificar y registrar el pago automáticamente
   useEffect(() => {
@@ -520,6 +542,12 @@ export function MisPagos() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePagar = async (pago: Payment) => {
+    const paymentWindow = window.open('about:blank', '_blank');
+    if (!paymentWindow) {
+      alert('No se pudo abrir la ventana de pago. Permite las ventanas emergentes para continuar.');
+      return;
+    }
+
     try {
       setPayingId(pago.id);
       const { url, sessionId } = await createPaymentLink(pago.id);
@@ -527,8 +555,10 @@ export function MisPagos() {
       if (sessionId) {
         sessionStorage.setItem(`quentli_session_${pago.id}`, sessionId);
       }
-      window.location.href = url;
+      paymentWindow.location.href = url;
+      schedulePaymentRefresh();
     } catch (err: any) {
+      paymentWindow.close();
       alert(`Error al generar link de pago: ${err.message}`);
     } finally {
       setPayingId(null);
@@ -536,6 +566,12 @@ export function MisPagos() {
   };
 
   const handlePagarInicial = async (lote: ClientLot) => {
+    const paymentWindow = window.open('about:blank', '_blank');
+    if (!paymentWindow) {
+      alert('No se pudo abrir la ventana de pago. Permite las ventanas emergentes para continuar.');
+      return;
+    }
+
     try {
       setPayingInitialVentaId(lote.ventaid);
       const isEnganche = lote.status === 'apartado_confirmado';
@@ -550,8 +586,10 @@ export function MisPagos() {
           sessionStorage.setItem(`apartado_session_${lote.ventaid}`, sessionId);
         }
       }
-      window.location.href = url;
+      paymentWindow.location.href = url;
+      schedulePaymentRefresh();
     } catch (err: any) {
+      paymentWindow.close();
       alert(`Error al generar link de pago: ${err.message}`);
     } finally {
       setPayingInitialVentaId(null);
@@ -715,5 +753,4 @@ export function MisPagos() {
     </div>
   );
 }
-
 
