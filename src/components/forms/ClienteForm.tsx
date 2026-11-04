@@ -173,10 +173,19 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       if (!formData.nombre.trim()) stepErrors.nombre = 'Nombre requerido'
       if (!formData.rfc.trim()) stepErrors.rfc = 'RFC requerido'
       if (!formData.curp.trim()) stepErrors.curp = 'CURP requerido'
+      if (formData.rfc && !/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{2,3}$/.test(formData.rfc.toUpperCase().trim())) {
+        stepErrors.rfc = 'RFC inválido (ej: XAXX000101000)'
+      }
+      if (formData.curp && !/^[A-Z]{4}\d{6}[HM][A-Z]{5}[0-9A-Z]{2}$/.test(formData.curp.toUpperCase().trim())) {
+        stepErrors.curp = 'CURP inválido (18 caracteres)'
+      }
     }
     if (step === 1) {
       if (!formData.email.trim()) stepErrors.email = 'Email requerido'
       if (!formData.telefonocelular.trim()) stepErrors.telefonocelular = 'Teléfono celular requerido'
+      if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        stepErrors.email = 'Email inválido'
+      }
     }
     setErrors((current) => ({ ...current, ...stepErrors }))
     return Object.keys(stepErrors).length === 0

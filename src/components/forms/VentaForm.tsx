@@ -274,10 +274,24 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
       if (!formData.fecha) stepErrors.fecha = 'Fecha de venta requerida'
       if (!formData.fechacontrato) stepErrors.fechacontrato = 'Fecha de contrato requerida'
       if (!formData.fechaenganche) stepErrors.fechaenganche = 'Fecha de enganche requerida'
+      if (!formData.fechaprimeramensualidad) {
+        stepErrors.fechaprimeramensualidad = 'Fecha de primera mensualidad requerida'
+      } else if (
+        formData.fechacontrato &&
+        formData.fechaprimeramensualidad <= formData.fechacontrato
+      ) {
+        stepErrors.fechaprimeramensualidad =
+          'La fecha de primera mensualidad debe ser posterior al contrato'
+      }
     }
     if (step === 1 && !isEditMode) {
       if (!formData.preciolote || precioNum <= 0) stepErrors.preciolote = 'Precio del lote requerido y debe ser mayor a 0'
       if (!formData.enganche || engancheNum <= 0) stepErrors.enganche = 'Enganche requerido y debe ser mayor a 0'
+      else if (!isAdmin && enganchemin > 0 && engancheNum < enganchemin) {
+        stepErrors.enganche = `El enganche mínimo del desarrollo es ${formatCurrency(enganchemin)}`
+      } else if (engancheNum >= precioNum) {
+        stepErrors.enganche = 'El enganche no puede ser igual o mayor al precio total'
+      }
       if (!formData.plazo || plazoNum <= 0) stepErrors.plazo = 'Plazo requerido y debe ser mayor a 0'
     }
     if (step === 2 && !formData.vendedor?.trim()) {

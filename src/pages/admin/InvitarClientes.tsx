@@ -32,6 +32,13 @@ export const InvitarClientes = () => {
   const [desarrollos, setDesarrollos] = useState<{ desarrolloid: number; nombre: string }[]>([])
   const [selectedDesarrollo, setSelectedDesarrollo] = useState<number | null>(null)
   const [bulkSending, setBulkSending] = useState(false)
+  const [resendCooldowns, setResendCooldowns] = useState<Record<number, number>>({})
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   // Cargar desarrollos disponibles y restaurar selección guardada
   useEffect(() => {
@@ -117,14 +124,29 @@ export const InvitarClientes = () => {
   }
 
   const handleResendInvite = async (cliente: InviteCandidate) => {
+    if ((resendCooldowns[cliente.clienteid] ?? 0) > Date.now()) return
     setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'loading' } }))
     try {
       await sendInvite(cliente, true)
+      setResendCooldowns(prev => ({ ...prev, [cliente.clienteid]: Date.now() + 30_000 }))
       setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'success', message: 'Invitación reenviada' } }))
       if (selectedDesarrollo) setCached(`invitar:${selectedDesarrollo}`, null as any)
       setTimeout(fetchCandidates, 2000)
     } catch (err: any) {
-      setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'error', message: err.message ?? 'Error desconocido' } }))
+      const message = err.message ?? 'Error desconocido'
+      const seconds = Number(message.match(/after (\d+) seconds?/)?.[1] ?? 0)
+      if (seconds > 0) {
+        setResendCooldowns(prev => ({ ...prev, [cliente.clienteid]: Date.now() + seconds * 1000 }))
+      }
+      setStatusMap(prev => ({
+        ...prev,
+        [cliente.clienteid]: {
+          status: 'error',
+          message: seconds > 0
+            ? `Por seguridad, espera ${seconds} segundos antes de reenviar.`
+            : message,
+        },
+      }))
     }
   }
 
@@ -328,15 +350,23 @@ export const InvitarClientes = () => {
                           </Button>
                         ) : (c.portal_status === 'sin_cuenta' && c.can_invite) || c.portal_status === 'invitacion_pendiente' ? (
                           <div className="flex flex-col items-end gap-1">
+                            {(() => {
+                              const cooldown = Math.max(0, Math.ceil(((resendCooldowns[c.clienteid] ?? 0) - now) / 1000))
+                              return (
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={isBusy || isDone}
+                              disabled={isBusy || isDone || cooldown > 0}
                               onClick={() => c.portal_status === 'invitacion_pendiente' ? handleResendInvite(c) : handleInvite(c)}
                               className="gap-1.5"
                             >
                               {isBusy ? (
                                 'Enviando...'
+                              ) : cooldown > 0 ? (
+                                <>
+                                  <Clock className="w-3 h-3" />
+                                  Reenviar en {cooldown}s
+                                </>
                               ) : st?.status === 'error' ? (
                                 <>
                                   <XCircle className="w-3 h-3 text-red-500" />
@@ -358,6 +388,8 @@ export const InvitarClientes = () => {
                                 </>
                               )}
                             </Button>
+                              )
+                            })()}
                             {st?.status === 'error' && (
                               <p className="text-xs text-red-500 max-w-[150px] text-right">
                                 {st.message}
