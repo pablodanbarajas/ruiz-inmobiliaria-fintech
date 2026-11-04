@@ -56,7 +56,7 @@ export const Clientes = () => {
   // Fetch all clientes once on mount
   useEffect(() => {
     const fetchAllClientes = async () => {
-      const CACHE_KEY = 'clientes:all:v3'
+      const CACHE_KEY = 'clientes:all:v4'
       const cached = getCached<{ all: Cliente[]; visible: Cliente[] }>(CACHE_KEY)
       if (cached) {
         setAllClientsSearchCache(cached.all)
@@ -211,7 +211,7 @@ export const Clientes = () => {
       if (data && data.length > 0) {
         setAllClientsCache([...allClientsCache, data[0]])
         setAllClientsSearchCache([...allClientsSearchCache, data[0]])
-        setCached('clientes:all:v3', {
+        setCached('clientes:all:v4', {
           all: [...allClientsSearchCache, data[0]],
           visible: [...allClientsCache, data[0]],
         })
@@ -244,7 +244,7 @@ export const Clientes = () => {
       const updatedCliente = { ...clienteToEdit, ...formData }
       setAllClientsCache(allClientsCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c))
       setAllClientsSearchCache(allClientsSearchCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c))
-      setCached('clientes:all:v3', {
+      setCached('clientes:all:v4', {
         all: allClientsSearchCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c),
         visible: allClientsCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c),
       })
@@ -290,7 +290,7 @@ export const Clientes = () => {
       // Remove from cache
       setAllClientsCache(allClientsCache.filter(c => c.clienteid !== clienteToDelete?.clienteid))
       setAllClientsSearchCache(allClientsSearchCache.filter(c => c.clienteid !== clienteToDelete?.clienteid))
-      setCached('clientes:all:v3', {
+      setCached('clientes:all:v4', {
         all: allClientsSearchCache.filter(c => c.clienteid !== clienteToDelete?.clienteid),
         visible: allClientsCache.filter(c => c.clienteid !== clienteToDelete?.clienteid),
       })
