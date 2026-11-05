@@ -260,7 +260,7 @@ export const Traspasos = () => {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <ArrowLeftRight size={28} className="text-indigo-600" />
-            <h1 className="text-3xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>
+            <h1 className="text-3xl font-bold text-[#142127]">
               Traspasos
             </h1>
             {!loading && (

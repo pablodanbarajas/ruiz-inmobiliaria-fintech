@@ -181,7 +181,7 @@ export const DesarrolloDetail = () => {
 
         {/* Development Details */}
         <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mb-8 border-t-4 border-[#504840]">
-          <h1 className="text-3xl font-bold text-black mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>
+          <h1 className="text-3xl font-bold text-[#142127] mb-6">
             {desarrollo.nombre}
           </h1>
 

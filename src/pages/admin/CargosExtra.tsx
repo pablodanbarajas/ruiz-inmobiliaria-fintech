@@ -349,7 +349,6 @@ export const CargosExtra = () => {
           <div>
             <h1
               className="text-3xl md:text-4xl font-bold text-black"
-              style={{ fontFamily: 'Playfair Display, serif' }}
             >
               Cargos Extra
             </h1>

@@ -736,7 +736,7 @@ export const Dashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* ── KPIs generales (totales acumulados, no ligados al mes) ── */}
             <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-5">
-              <h2 className="text-xs font-semibold text-[#142127] uppercase tracking-[0.12em] mb-3 pb-3 border-b border-[#dbe7eb]">Totales generales</h2>
+              <h2 className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#142127] px-5 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-white">Totales generales</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {canViewClientes && (
                   <MiniStat
@@ -798,7 +798,7 @@ export const Dashboard = () => {
             {/* ── KPIs del mes en curso ── */}
             {(canViewPagos || canViewVentas) && (
               <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-5">
-                <h2 className="text-xs font-semibold text-[#142127] uppercase tracking-[0.12em] mb-3 pb-3 border-b border-[#dbe7eb] capitalize">
+                <h2 className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#142127] px-5 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-white capitalize">
                   Este mes · {monthName}
                 </h2>
                 <div className="grid grid-cols-2 gap-2">
@@ -831,10 +831,10 @@ export const Dashboard = () => {
           {/* Últimos pagos */}
           {canViewPagos && (
           <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#dbe7eb] bg-[#f3f8fa] flex items-center justify-between">
+            <div className="px-5 py-4 border-b border-[#253940] bg-[#142127] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CreditCard size={18} className="text-[#142127]" />
-                <h3 className="font-semibold text-[#142127]">Últimos pagos registrados</h3>
+                <CreditCard size={18} className="text-white" />
+                <h3 className="text-sm font-semibold text-white">Últimos pagos registrados</h3>
               </div>
               <button
                 type="button"
@@ -875,10 +875,10 @@ export const Dashboard = () => {
           {/* Últimas ventas */}
           {canViewVentas && (
           <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#dbe7eb] bg-[#f3f8fa] flex items-center justify-between">
+            <div className="px-5 py-4 border-b border-[#253940] bg-[#142127] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ShoppingCart size={18} className="text-[#142127]" />
-                <h3 className="font-semibold text-gray-800">Últimas ventas registradas</h3>
+                <ShoppingCart size={18} className="text-white" />
+                <h3 className="text-sm font-semibold text-white">Últimas ventas registradas</h3>
               </div>
               <button
                 type="button"
