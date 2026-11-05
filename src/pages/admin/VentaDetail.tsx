@@ -13,7 +13,7 @@ import { ConvenioForm } from '@/components/forms/ConvenioForm'
 import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
 import { AlertaCancelacion } from '@/components/AlertaCancelacion'
 import { ContratoFirmado } from '@/components/ContratoFirmado'
-import { ChevronLeft, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, ArrowLeftRight } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, ArrowLeftRight } from 'lucide-react'
 import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Convenio, Devolucion, DevolucionParcialidad, CargoExtra, Traspaso } from '@/types/database'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
@@ -57,6 +57,7 @@ export const VentaDetail = () => {
   const [corridas, setCorridas] = useState<CorridaWithPagos[]>([])
   const [corridaPage, setCorridaPage] = useState(0)
   const CORRIDA_PAGE_SIZE = 10
+  const [isFichaExpanded, setIsFichaExpanded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
@@ -823,7 +824,14 @@ export const VentaDetail = () => {
           </Button>
 
           {/* Action buttons (only when active) */}
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
+            {venta.estatus !== 'C' && (
+              <AlertaCancelacion
+                ventaid={venta.ventaid}
+                corridasVencidas={corridasVencidas}
+                compact
+              />
+            )}
             <Button
               variant="outline"
               onClick={() => setShowEditModal(true)}
@@ -932,9 +940,24 @@ export const VentaDetail = () => {
 
         {/* Venta Details */}
         <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-4 md:p-8 mb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Ficha de venta</p>
-          <h1 className="text-3xl md:text-4xl font-bold text-[#142127] mb-6" style={{ fontFamily: 'var(--font-display)' }}>Venta #{venta.ventaid}</h1>
+          <button
+            type="button"
+            onClick={() => setIsFichaExpanded((expanded) => !expanded)}
+            aria-expanded={isFichaExpanded}
+            className="w-full flex items-center justify-between gap-4 text-left"
+          >
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Ficha de venta</p>
+              <h1 className="text-3xl md:text-4xl font-bold text-[#142127]">Venta #{venta.ventaid}</h1>
+            </div>
+            <span className="flex items-center gap-2 rounded-full border border-[#e0e5e7] px-3 py-2 text-sm font-semibold text-[#142127]">
+              {isFichaExpanded ? 'Contraer' : 'Ver información'}
+              {isFichaExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </span>
+          </button>
 
+          {isFichaExpanded && (
+          <div className="mt-6">
           {/* Row 1: Identificación */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div>
@@ -1045,16 +1068,11 @@ export const VentaDetail = () => {
               </div>
             )}
           </div>
+          </div>
+          )}
         </div>
 
         {/* Alerta de cancelación por atraso */}
-        {venta.estatus !== 'C' && (
-          <AlertaCancelacion
-            ventaid={venta.ventaid}
-            corridasVencidas={corridasVencidas}
-          />
-        )}
-
         {/* Panel de devolución (cuando la venta está cancelada) */}
         {venta.estatus === 'C' && devolucion && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg shadow p-6 mb-6">
@@ -1461,49 +1479,61 @@ export const VentaDetail = () => {
 
             {/* Paginación de corrida */}
             {corridas.length > CORRIDA_PAGE_SIZE && (
-              <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-4">
-                <span className="text-sm text-gray-500">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#e0e5e7] bg-[#f7f8f8] px-4 py-4 md:px-6">
+                <span className="text-sm text-[#63696c]">
                   Mostrando pagos {corridaPage * CORRIDA_PAGE_SIZE + 1}–{Math.min((corridaPage + 1) * CORRIDA_PAGE_SIZE, corridas.length)} de {corridas.length}
                 </span>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
+                    type="button"
+                    aria-label="Primera página"
                     onClick={() => setCorridaPage(0)}
                     disabled={corridaPage === 0}
-                    className="px-2 py-1 text-xs rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e5e7] bg-white text-sm text-[#63696c] shadow-sm transition hover:border-[#142127] hover:text-[#142127] disabled:pointer-events-none disabled:opacity-35"
                   >
                     «
                   </button>
                   <button
+                    type="button"
+                    aria-label="Página anterior"
                     onClick={() => setCorridaPage((p) => p - 1)}
                     disabled={corridaPage === 0}
-                    className="px-3 py-1 text-xs rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-8 items-center gap-1 rounded-full border border-[#e0e5e7] bg-white px-3 text-xs font-semibold text-[#63696c] shadow-sm transition hover:border-[#142127] hover:text-[#142127] disabled:pointer-events-none disabled:opacity-35"
                   >
+                    <ChevronLeft size={14} />
                     Anterior
                   </button>
                   {Array.from({ length: Math.ceil(corridas.length / CORRIDA_PAGE_SIZE) }, (_, i) => (
                     <button
+                      type="button"
                       key={i}
                       onClick={() => setCorridaPage(i)}
-                      className={`px-3 py-1 text-xs rounded border ${
+                      aria-label={`Página ${i + 1}`}
+                      className={`inline-flex h-8 min-w-8 items-center justify-center rounded-full border px-2.5 text-xs font-semibold shadow-sm transition ${
                         i === corridaPage
-                          ? 'bg-[#eaae4c] border-[#eaae4c] font-bold'
-                          : 'border-gray-200 hover:bg-gray-50'
+                          ? 'border-[#142127] bg-[#142127] text-white'
+                          : 'border-[#e0e5e7] bg-white text-[#63696c] hover:border-[#142127] hover:text-[#142127]'
                       }`}
                     >
                       {i + 1}
                     </button>
                   ))}
                   <button
+                    type="button"
+                    aria-label="Página siguiente"
                     onClick={() => setCorridaPage((p) => p + 1)}
                     disabled={corridaPage >= Math.ceil(corridas.length / CORRIDA_PAGE_SIZE) - 1}
-                    className="px-3 py-1 text-xs rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-8 items-center gap-1 rounded-full border border-[#e0e5e7] bg-white px-3 text-xs font-semibold text-[#63696c] shadow-sm transition hover:border-[#142127] hover:text-[#142127] disabled:pointer-events-none disabled:opacity-35"
                   >
                     Siguiente
+                    <ChevronRight size={14} />
                   </button>
                   <button
+                    type="button"
+                    aria-label="Última página"
                     onClick={() => setCorridaPage(Math.ceil(corridas.length / CORRIDA_PAGE_SIZE) - 1)}
                     disabled={corridaPage >= Math.ceil(corridas.length / CORRIDA_PAGE_SIZE) - 1}
-                    className="px-2 py-1 text-xs rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e5e7] bg-white text-sm text-[#63696c] shadow-sm transition hover:border-[#142127] hover:text-[#142127] disabled:pointer-events-none disabled:opacity-35"
                   >
                     »
                   </button>

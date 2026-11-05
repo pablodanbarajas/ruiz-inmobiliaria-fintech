@@ -19,6 +19,7 @@ const DIAS_ENTRE_AVISOS = 5
 interface AlertaCancelacionProps {
   ventaid: number
   corridasVencidas: number
+  compact?: boolean
   /** Llamado después de registrar un aviso (para refetch en el padre si se desea) */
   onAvisoRegistrado?: () => void
 }
@@ -34,6 +35,7 @@ const diffDays = (from: string): number => {
 export const AlertaCancelacion = ({
   ventaid,
   corridasVencidas,
+  compact = false,
   onAvisoRegistrado,
 }: AlertaCancelacionProps) => {
   const [avisos, setAvisos] = useState<AvisoCancelacion[]>([])
@@ -157,22 +159,27 @@ export const AlertaCancelacion = ({
   const isDocumentoCancelacion = stage === 4
 
   return (
-    <div className={`border-2 rounded-xl p-5 mb-6 ${current.bg}`}>
+    <div className={compact
+      ? `flex min-w-0 flex-1 items-center gap-2 rounded-full border px-3 py-2 ${current.bg}`
+      : `border-2 rounded-xl p-5 mb-6 ${current.bg}`
+    }>
       {/* Header */}
-      <div className="flex items-start gap-3 mb-3">
-        {current.icon}
-        <div className="flex-1">
+      <div className={compact ? 'flex min-w-0 items-center gap-2' : 'flex items-start gap-3 mb-3'}>
+        {compact
+          ? <span className="[&>svg]:h-4 [&>svg]:w-4">{current.icon}</span>
+          : current.icon}
+        <div className="min-w-0 flex-1">
           <p className={`font-bold text-base ${isDocumentoCancelacion ? 'text-white' : 'text-gray-900'}`}>
             {current.title}
           </p>
-          <p className={`text-sm mt-1 ${isDocumentoCancelacion ? 'text-gray-300' : 'text-gray-700'}`}>
+          <p className={`text-sm mt-1 ${compact ? 'hidden' : ''} ${isDocumentoCancelacion ? 'text-gray-300' : 'text-gray-700'}`}>
             {current.body}
           </p>
         </div>
       </div>
 
       {/* Timeline de avisos enviados */}
-      {avisos.length > 0 && (
+      {!compact && avisos.length > 0 && (
         <div className={`mt-3 pt-3 border-t ${isDocumentoCancelacion ? 'border-gray-700' : 'border-gray-200'}`}>
           <p className={`text-xs font-semibold mb-2 ${isDocumentoCancelacion ? 'text-gray-400' : 'text-gray-500'}`}>
             Historial de avisos registrados:
@@ -200,9 +207,9 @@ export const AlertaCancelacion = ({
 
       {/* Action button */}
       {current.actionLabel && current.actionTipo && (
-        <div className="mt-4">
+        <div className={compact ? 'ml-auto flex-shrink-0' : 'mt-4'}>
           {showNotasInput === current.actionTipo ? (
-            <div className="space-y-2">
+            <div className={compact ? 'absolute right-4 top-14 z-10 w-80 rounded-xl border border-[#e0e5e7] bg-white p-3 shadow-lg space-y-2' : 'space-y-2'}>
               <textarea
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none"
                 rows={2}
@@ -232,17 +239,17 @@ export const AlertaCancelacion = ({
           ) : (
             <button
               type="button"
-              className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${current.actionColor}`}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${current.actionColor}`}
               onClick={() => setShowNotasInput(current.actionTipo!)}
             >
-              {current.actionLabel}
+              {compact ? 'Atender' : current.actionLabel}
             </button>
           )}
         </div>
       )}
 
       {/* Stage 4 + documento ya registrado */}
-      {stage === 4 && documento && (
+      {!compact && stage === 4 && documento && (
         <div className="mt-3 flex items-center gap-2 text-sm text-red-400 font-semibold">
           <XCircle size={16} />
           Pendiente de cancelación formal en el sistema
