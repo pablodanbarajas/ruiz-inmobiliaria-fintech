@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { ClienteForm } from '@/components/forms/ClienteForm'
 import { ClienteDocumentos } from '@/components/ClienteDocumentos'
-import { ChevronDown, ChevronLeft, Edit2, Trash2, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Edit2, Trash2, ChevronUp } from 'lucide-react'
 import type { Cliente, Venta, Lote, Pago, CorridaFinanciera, Desarrollo } from '@/types/database'
 import { useAuth } from '@/context/AuthContext'
 import { formatDate, formatCurrency, getStatusLabel, getPagoStatusLabel, getPagoStatusColor } from '@/utils/helpers'
@@ -37,12 +37,18 @@ export const ClienteDetail = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [isFichaExpanded, setIsFichaExpanded] = useState(false)
+  const [ventasPage, setVentasPage] = useState(1)
+  const [pagosPage, setPagosPage] = useState(1)
+  const ventasPerPage = 3
+  const pagosPerPage = 5
 
   useEffect(() => {
     const fetchClienteDetail = async () => {
       if (!id) return
       try {
         setLoading(true)
+        setVentasPage(1)
+        setPagosPage(1)
 
         // Fetch cliente
         const { data: clienteData, error: clienteError } = await supabase
@@ -105,6 +111,11 @@ export const ClienteDetail = () => {
 
     fetchClienteDetail()
   }, [id])
+
+  const ventasPageCount = Math.ceil(ventas.length / ventasPerPage)
+  const pagosPageCount = Math.ceil(pagos.length / pagosPerPage)
+  const visibleVentas = ventas.slice((ventasPage - 1) * ventasPerPage, ventasPage * ventasPerPage)
+  const visiblePagos = pagos.slice((pagosPage - 1) * pagosPerPage, pagosPage * pagosPerPage)
 
   const handleUpdateCliente = async (formData: any) => {
     try {
@@ -437,7 +448,7 @@ export const ClienteDetail = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {ventas.map((venta) => (
+                  {visibleVentas.map((venta) => (
                     <tr key={venta.ventaid} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-semibold text-gray-900">{venta.ventaid}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">
@@ -465,6 +476,35 @@ export const ClienteDetail = () => {
                   ))}
                 </tbody>
               </table>
+              {ventasPageCount > 1 && (
+                <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 md:px-6">
+                  <span className="text-sm text-gray-500">
+                    Página {ventasPage} de {ventasPageCount}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={ventasPage === 1}
+                      onClick={() => setVentasPage((page) => page - 1)}
+                      className="inline-flex items-center gap-1"
+                    >
+                      <ChevronLeft size={16} />
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={ventasPage === ventasPageCount}
+                      onClick={() => setVentasPage((page) => page + 1)}
+                      className="inline-flex items-center gap-1"
+                    >
+                      Siguiente
+                      <ChevronRight size={16} />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -496,7 +536,7 @@ export const ClienteDetail = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {pagos.map((pago) => (
+                  {visiblePagos.map((pago) => (
                     <tr key={pago.pagoid} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-semibold text-gray-900">{pago.pagoid}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">
@@ -531,6 +571,35 @@ export const ClienteDetail = () => {
                   ))}
                 </tbody>
               </table>
+              {pagosPageCount > 1 && (
+                <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 md:px-6">
+                  <span className="text-sm text-gray-500">
+                    Página {pagosPage} de {pagosPageCount}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={pagosPage === 1}
+                      onClick={() => setPagosPage((page) => page - 1)}
+                      className="inline-flex items-center gap-1"
+                    >
+                      <ChevronLeft size={16} />
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={pagosPage === pagosPageCount}
+                      onClick={() => setPagosPage((page) => page + 1)}
+                      className="inline-flex items-center gap-1"
+                    >
+                      Siguiente
+                      <ChevronRight size={16} />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
