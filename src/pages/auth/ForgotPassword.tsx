@@ -49,7 +49,7 @@ export const ForgotPassword = () => {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="correo@ejemplo.com"
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
               />
             </div>
           </div>

@@ -369,7 +369,7 @@ export const ConvenioForm = ({
               Motivo <span className="text-red-500">*</span>
             </label>
             <select
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] ${errors.motivo ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a] ${errors.motivo ? 'border-red-500' : 'border-gray-300'}`}
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
             >
@@ -446,7 +446,7 @@ export const ConvenioForm = ({
               Descripción / Términos acordados <span className="text-red-500">*</span>
             </label>
             <textarea
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none ${errors.descripcion ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a] resize-none ${errors.descripcion ? 'border-red-500' : 'border-gray-300'}`}
               rows={3}
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
@@ -465,7 +465,7 @@ export const ConvenioForm = ({
             <div>
               <label className="block text-sm font-medium text-black mb-1">Estado</label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
                 value={estatus}
                 onChange={(e) => setEstatus(e.target.value)}
               >
@@ -478,7 +478,7 @@ export const ConvenioForm = ({
           <div>
             <label className="block text-sm font-medium text-black mb-1">Comentarios adicionales</label>
             <textarea
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a] resize-none"
               rows={2}
               value={comentarios}
               onChange={(e) => setComentarios(e.target.value)}

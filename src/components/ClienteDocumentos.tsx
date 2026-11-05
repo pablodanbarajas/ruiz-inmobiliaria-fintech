@@ -200,7 +200,7 @@ export const ClienteDocumentos = ({ clienteid }: ClienteDocumentosProps) => {
                   cy="18"
                   r="15.5"
                   fill="none"
-                  stroke={pct === 100 ? '#22c55e' : '#eaae4c'}
+                  stroke={pct === 100 ? '#22c55e' : '#16a34a'}
                   strokeWidth="3"
                   strokeLinecap="round"
                   strokeDasharray={`${pct} 100`}

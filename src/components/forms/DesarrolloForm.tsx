@@ -130,7 +130,7 @@ export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: Desa
             value={formData.tipodesarrolloid}
             onChange={(e) => setFormData({ ...formData, tipodesarrolloid: e.target.value })}
             disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
           >
             <option value="">Selecciona un tipo</option>
             {tiposDesarrollo.map((tipo) => (
@@ -153,7 +153,7 @@ export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: Desa
             value={formData.estatus}
             onChange={(e) => setFormData({ ...formData, estatus: e.target.value })}
             disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
           >
             <option value="A">Activo</option>
             <option value="I">Inactivo</option>
@@ -209,7 +209,7 @@ export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: Desa
           placeholder="Descripción breve"
           rows={3}
           disabled={isLoading}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
         />
       </div>
 
@@ -224,7 +224,7 @@ export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: Desa
           placeholder="Descripción larga con características"
           rows={4}
           disabled={isLoading}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
         />
       </div>
 

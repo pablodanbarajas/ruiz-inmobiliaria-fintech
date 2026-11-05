@@ -588,7 +588,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
                               c.isPaid
                                 ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
                                 : isSelected
-                                ? 'bg-[#eaae4c]/20 cursor-pointer'
+                                ? 'bg-[#16a34a]/20 cursor-pointer'
                                 : 'hover:bg-gray-50 cursor-pointer'
                             }`}
                           >
@@ -771,7 +771,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
               Forma de Pago <span className="text-red-500">*</span>
             </label>
             <select
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] ${
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a] ${
                 errors.formapago ? 'border-red-500' : 'border-gray-300'
               }`}
               value={formapago}
@@ -843,7 +843,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
                   <select
                     value={cuentaBancariaId}
                     onChange={(e) => setCuentaBancariaId(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] ${
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a] ${
                       errors.cuenta_bancaria_id ? 'border-red-500' : 'border-gray-300'
                     }`}
                   >
@@ -902,7 +902,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
             <div>
               <label className="block text-sm font-medium text-black mb-1">Estado</label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
                 value={estatus}
                 onChange={(e) => setEstatus(e.target.value)}
               >
@@ -916,7 +916,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
           <div>
             <label className="block text-sm font-medium text-black mb-1">Comentario</label>
             <textarea
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a] resize-none"
               rows={3}
               value={comentario}
               onChange={(e) => setComentario(e.target.value)}

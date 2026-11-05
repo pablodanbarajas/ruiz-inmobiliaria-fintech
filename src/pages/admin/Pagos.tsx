@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getCached, setCached, invalidateCache, onFocusRefetch } from '@/lib/queryCache'
@@ -809,7 +809,7 @@ export const Pagos = () => {
                   <select
                     value={filters.desarrolloId}
                     onChange={(e) => setFilters({ ...filters, desarrolloId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
                   >
                     <option value="">Todos</option>
                     {desarrollos.map((d) => (
@@ -831,7 +831,7 @@ export const Pagos = () => {
                   <select
                     value={filters.formaPago}
                     onChange={(e) => setFilters({ ...filters, formaPago: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
                   >
                     <option value="">Todos</option>
                     {FORMAS_PAGO.map((f) => (

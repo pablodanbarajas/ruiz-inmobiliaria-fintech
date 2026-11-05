@@ -308,7 +308,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
             <select
               value={formData.sexo}
               onChange={(e) => handleChange('sexo', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
             >
               <option value="">Seleccionar</option>
               <option value="M">Masculino</option>
@@ -320,7 +320,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
             <select
               value={formData.estadocivil}
               onChange={(e) => handleChange('estadocivil', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
             >
               <option value="">Seleccionar</option>
               <option value="Soltero">Soltero</option>
@@ -334,7 +334,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
             <select
               value={formData.estatus}
               onChange={(e) => handleChange('estatus', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
             >
               <option value="A">Activo</option>
               <option value="I">Inactivo</option>
@@ -520,7 +520,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
             <select
               value={formData.regimenmatrimonial}
               onChange={(e) => handleChange('regimenmatrimonial', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
             >
               <option value="">Seleccionar</option>
               <option value="Separación de bienes">Separación de bienes</option>
@@ -592,7 +592,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
               placeholder="Observaciones adicionales"
               value={formData.comentarios}
               onChange={(e) => handleChange('comentarios', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
               rows={4}
             />
           </div>

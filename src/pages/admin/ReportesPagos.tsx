@@ -255,7 +255,7 @@ export const ReportesPagos = () => {
               <select
                 value={desarrolloId}
                 onChange={(e) => setDesarrolloId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
               >
                 <option value="">Todos</option>
                 {desarrollos.map((d) => (
@@ -276,7 +276,7 @@ export const ReportesPagos = () => {
               <select
                 value={formaPago}
                 onChange={(e) => setFormaPago(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
               >
                 <option value="">Todos</option>
                 {FORMAS_PAGO.map((f) => (

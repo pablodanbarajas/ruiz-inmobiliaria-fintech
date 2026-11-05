@@ -1178,7 +1178,7 @@ export const VentaDetail = () => {
                 step="0.01"
                 value={initialPaymentAmount}
                 onChange={(e) => setInitialPaymentAmount(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
               />
             </div>
             <div>
@@ -1187,7 +1187,7 @@ export const VentaDetail = () => {
                 type="date"
                 value={initialPaymentDate}
                 onChange={(e) => setInitialPaymentDate(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
               />
             </div>
             <div>
@@ -1196,7 +1196,7 @@ export const VentaDetail = () => {
                 type="text"
                 value={initialPaymentReference}
                 onChange={(e) => setInitialPaymentReference(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
               />
             </div>
             <div>
@@ -1205,7 +1205,7 @@ export const VentaDetail = () => {
                 value={initialPaymentComment}
                 onChange={(e) => setInitialPaymentComment(e.target.value)}
                 rows={3}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a] resize-none"
               />
             </div>
             <div className="flex justify-end gap-3 pt-1">
@@ -1826,7 +1826,7 @@ export const VentaDetail = () => {
               type="date"
               value={traspasoFecha}
               onChange={(e) => setTraspasoFecha(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
             />
           </div>
 
@@ -1838,7 +1838,7 @@ export const VentaDetail = () => {
               onChange={(e) => setTraspasoNotas(e.target.value)}
               rows={3}
               placeholder="Motivo del traspaso..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a] resize-none"
             />
           </div>
 

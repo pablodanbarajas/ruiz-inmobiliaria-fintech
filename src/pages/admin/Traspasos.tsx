@@ -284,7 +284,7 @@ export const Traspasos = () => {
               {/* Modal header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <div className="flex items-center gap-2">
-                  <ArrowLeftRight size={20} style={{ color: '#eaae4c' }} />
+                  <ArrowLeftRight size={20} style={{ color: '#16a34a' }} />
                   <h2 className="text-lg font-bold text-gray-900">Nuevo Traspaso</h2>
                 </div>
                 <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">

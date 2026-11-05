@@ -76,7 +76,7 @@ export const Login = () => {
       {/* Hero Section - Left Side */}
       <div className="hidden lg:flex lg:w-1/2 bg-black relative overflow-hidden flex-col justify-center items-center p-8">
         {/* Background gradient elements */}
-        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-[#eaae4c] to-transparent opacity-5 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-[#16a34a] to-transparent opacity-5 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-[#504840] to-transparent opacity-5 rounded-full translate-x-1/2 translate-y-1/2"></div>
 
         {/* Logo */}
@@ -92,14 +92,14 @@ export const Login = () => {
       {/* Login Section - Right Side */}
       <div className="w-full lg:w-1/2 bg-[#fafaf8] flex flex-col items-center justify-center px-12 overflow-hidden relative">
         {/* Subtle top accent */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#504840] via-[#eaae4c] to-[#504840]" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#504840] via-[#16a34a] to-[#504840]" />
 
         <div className="w-full max-w-xl">
           {/* Logo mark visible on desktop */}
           <div className="hidden lg:flex flex-col items-center mb-12">
             <div className="flex items-center gap-3 mb-2">
               <span className="text-5xl font-bold text-black">Ruiz</span>
-              <span className="text-5xl font-bold text-[#eaae4c]">Inmobiliaria</span>
+              <span className="text-5xl font-bold text-[#16a34a]">Inmobiliaria</span>
             </div>
             <p className="text-sm uppercase tracking-[0.3em] text-[#9e9f92] font-medium">Sistema de Administración</p>
           </div>
@@ -107,7 +107,7 @@ export const Login = () => {
           {/* Mobile Logo */}
           <div className="lg:hidden mb-8 text-center">
             <h1 className="text-5xl font-bold text-black mb-1">Ruiz</h1>
-            <h2 className="text-3xl font-bold text-[#eaae4c]">Inmobiliaria</h2>
+            <h2 className="text-3xl font-bold text-[#16a34a]">Inmobiliaria</h2>
           </div>
 
           {/* Card */}
@@ -115,7 +115,7 @@ export const Login = () => {
             <div className="mb-10">
               <h1 className="text-4xl font-bold text-gray-900 mb-1">Bienvenido</h1>
               <div className="flex items-center gap-3 mt-3 mb-3">
-                <div className="h-0.5 w-10 bg-[#eaae4c] rounded-full" />
+                <div className="h-0.5 w-10 bg-[#16a34a] rounded-full" />
                 <p className="text-base text-gray-500">Ingresa tus credenciales para continuar</p>
               </div>
             </div>
@@ -134,7 +134,7 @@ export const Login = () => {
                     placeholder="correo@ejemplo.com"
                     required
                     disabled={loading}
-                    className="w-full pl-10 pr-4 py-3.5 text-base border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#eaae4c] focus:border-transparent bg-gray-50"
+                    className="w-full pl-10 pr-4 py-3.5 text-base border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16a34a] focus:border-transparent bg-gray-50"
                   />
                 </div>
 
@@ -153,7 +153,7 @@ export const Login = () => {
                     placeholder="••••••••"
                     required
                     disabled={loading}
-                    className="w-full pl-10 pr-11 py-3.5 text-base border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#eaae4c] focus:border-transparent bg-gray-50"
+                    className="w-full pl-10 pr-11 py-3.5 text-base border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16a34a] focus:border-transparent bg-gray-50"
                   />
                   <button
                     type="button"
@@ -174,7 +174,7 @@ export const Login = () => {
 
               <Button
                 type="submit"
-                className="w-full bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-4 text-base rounded-lg transition-colors mt-2"
+                className="w-full bg-[#16a34a] hover:bg-[#d99c38] text-black font-semibold py-4 text-base rounded-lg transition-colors mt-2"
                 disabled={loading}
               >
                 {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}

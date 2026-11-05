@@ -157,7 +157,7 @@ export const Convenios = () => {
             <div>
               <label className="block text-sm font-medium text-black mb-1">Estado</label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
                 value={filters.estatus}
                 onChange={(e) => setFilters({ ...filters, estatus: e.target.value })}
               >

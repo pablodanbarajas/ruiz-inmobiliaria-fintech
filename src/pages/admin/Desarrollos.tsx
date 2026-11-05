@@ -304,7 +304,7 @@ export const Desarrollos = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => navigate(`/admin/mapa/${row.desarrolloid}`)}
-                      className="inline-flex items-center gap-1 text-[#eaae4c] hover:text-[#d99c38]"
+                      className="inline-flex items-center gap-1 text-[#16a34a] hover:text-[#d99c38]"
                       title="Ver mapa de lotes"
                     >
                       <Map size={16} />

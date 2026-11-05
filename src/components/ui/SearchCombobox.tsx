@@ -156,7 +156,7 @@ export const SearchCombobox = ({
       )}
 
       {value && selectedLabel && inputText !== selectedLabel && !open && (
-        <p className="text-xs text-[#eaae4c] mt-1 truncate flex items-center gap-1">
+        <p className="text-xs text-[#16a34a] mt-1 truncate flex items-center gap-1">
           <Check size={11} />
           {selectedLabel}
         </p>

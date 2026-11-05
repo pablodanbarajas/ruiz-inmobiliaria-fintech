@@ -118,14 +118,14 @@ main thead[class~="bg-[#142127]"] th {
   border-color: var(--color-faint-border);
 }
 
-.admin-form .bg-\[\#eaae4c\],
+.admin-form .bg-\[\#16a34a\],
 .admin-form .hover\:bg-\[\#d99c38\]:hover,
-.admin-form .bg-\[\#eaae4c\]\/20 {
+.admin-form .bg-\[\#16a34a\]\/20 {
   background-color: var(--color-inkwell) !important;
   color: var(--color-paper-white) !important;
 }
 
-.admin-form .text-\[\#eaae4c\] {
+.admin-form .text-\[\#16a34a\] {
   color: var(--color-inkwell) !important;
 }
 

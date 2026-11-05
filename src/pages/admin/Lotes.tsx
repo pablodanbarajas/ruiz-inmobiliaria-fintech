@@ -271,7 +271,7 @@ export const Lotes = () => {
                 Desarrollo
               </label>
               <select
-                className="w-full px-3 py-2 border border-[#504840] rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full px-3 py-2 border border-[#504840] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
                 value={filters.desarrolloId}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilters({ ...filters, desarrolloId: e.target.value })}
               >
@@ -288,7 +288,7 @@ export const Lotes = () => {
                 Estado
               </label>
               <select
-                className="w-full px-3 py-2 border border-[#504840] rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full px-3 py-2 border border-[#504840] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
                 value={filters.status}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilters({ ...filters, status: e.target.value })}
               >

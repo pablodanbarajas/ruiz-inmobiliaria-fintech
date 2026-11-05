@@ -538,7 +538,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
 
         {/* Real-time financial summary (create mode) */}
         {!isEditMode && precioNum > 0 && (
-          <div className="grid grid-cols-3 gap-4 bg-white border border-[#eaae4c] rounded-lg p-4 mt-2">
+          <div className="grid grid-cols-3 gap-4 bg-white border border-[#16a34a] rounded-lg p-4 mt-2">
             <div className="text-center">
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">% Enganche</p>
               <p className="text-lg font-bold text-[#504840]">{porcEnganche.toFixed(1)}%</p>
@@ -553,7 +553,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
                 Mensualidad
               </p>
-              <p className="text-lg font-bold text-[#eaae4c]">
+              <p className="text-lg font-bold text-[#16a34a]">
                 {mensualidadCalc > 0 ? formatCurrency(mensualidadCalc) : '—'}
               </p>
             </div>
@@ -596,7 +596,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
             }
           }}
           disabled={isLoading}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] disabled:bg-gray-100 ${errors.vendedor ? 'border-red-500' : 'border-gray-300'}`}
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a] disabled:bg-gray-100 ${errors.vendedor ? 'border-red-500' : 'border-gray-300'}`}
         >
           <option value="">Selecciona un vendedor</option>
           {VENDEDOR_OPTIONS.map((nombre) => (
@@ -626,7 +626,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
               value={formData.estatus}
               onChange={(e) => setFormData({ ...formData, estatus: e.target.value })}
               disabled={isLoading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] disabled:bg-gray-100"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a] disabled:bg-gray-100"
             >
               <option value="A">Activa</option>
               <option value="C">Cancelada</option>
@@ -641,7 +641,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
             disabled={isLoading}
             rows={3}
             placeholder="Observaciones adicionales…"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none disabled:bg-gray-100"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a] resize-none disabled:bg-gray-100"
           />
         </div>
       </div>

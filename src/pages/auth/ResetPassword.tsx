@@ -92,14 +92,14 @@ export const ResetPassword = () => {
         <p className="mt-2 text-center text-sm text-gray-500">Crea una contraseña segura para tu cuenta administrativa.</p>
         {saved ? <p className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">Contraseña actualizada. Redirigiendo al inicio de sesión...</p> : (
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <input type="password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Nueva contraseña" autoComplete="new-password" className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c]" />
+            <input type="password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Nueva contraseña" autoComplete="new-password" className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]" />
             <ul className="grid gap-1 text-xs sm:grid-cols-2">
               {passwordRules.map((rule) => {
                 const valid = rule.test(password)
                 return <li key={rule.label} className={valid ? 'text-emerald-600' : 'text-gray-500'}>{valid ? '✓' : '○'} {rule.label}</li>
               })}
             </ul>
-            <input type="password" required value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder="Confirmar contraseña" autoComplete="new-password" className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c]" />
+            <input type="password" required value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder="Confirmar contraseña" autoComplete="new-password" className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]" />
             {error && <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
             <button type="submit" disabled={saving || !strong || password !== confirmation} className="w-full rounded-lg bg-[#142127] py-3 font-semibold text-white hover:bg-[#24343b] disabled:opacity-50">{saving ? 'Guardando...' : 'Guardar contraseña'}</button>
           </form>

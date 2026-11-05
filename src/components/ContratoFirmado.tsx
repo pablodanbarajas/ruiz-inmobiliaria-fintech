@@ -187,7 +187,7 @@ export const ContratoFirmado = ({ ventaid, compact = false }: ContratoFirmadoPro
           </div>
         ) : archivos.length === 0 ? (
           <div
-            className={`border border-dashed border-gray-200 rounded-lg ${compact ? 'px-3 py-2' : 'py-12 flex flex-col items-center gap-3'} flex items-center justify-center gap-3 cursor-pointer hover:border-[#eaae4c] hover:bg-[#fdfaf3] transition-colors`}
+            className={`border border-dashed border-gray-200 rounded-lg ${compact ? 'px-3 py-2' : 'py-12 flex flex-col items-center gap-3'} flex items-center justify-center gap-3 cursor-pointer hover:border-[#16a34a] hover:bg-[#fdfaf3] transition-colors`}
             onClick={() => fileInputRef.current?.click()}
           >
             <Upload size={compact ? 16 : 32} className="text-gray-300" />

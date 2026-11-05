@@ -514,7 +514,7 @@ export const VentasExternas = () => {
                 value={filterVendedor}
                 onChange={(e) => setFilterVendedor(e.target.value)}
                 list="vendedor-options"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
               />
               <datalist id="vendedor-options">
                 {vendedorOptions.map((v) => (
@@ -525,7 +525,7 @@ export const VentasExternas = () => {
             <select
               value={filterEstatus}
               onChange={(e) => setFilterEstatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] bg-white"
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a] bg-white"
             >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -539,7 +539,7 @@ export const VentasExternas = () => {
         {/* Table */}
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#eaae4c]" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#16a34a]" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-gray-500">
@@ -826,7 +826,7 @@ export const VentasExternas = () => {
               value={editClienteForm.comentarios ?? ''}
               onChange={(e) => setEditClienteForm({ ...editClienteForm, comentarios: e.target.value })}
               rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a] resize-none"
             />
           </div>
 

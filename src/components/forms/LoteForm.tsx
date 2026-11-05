@@ -211,7 +211,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
               setFormData(prev => ({ ...prev, desarrolloid: id, ...(autoClaveKey ? { clavelote: clave } : {}) }))
             }}
             disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
           >
             <option value="">Selecciona un desarrollo</option>
             {desarrollos.map((d) => (
@@ -231,7 +231,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             value={formData.duenioid}
             onChange={(e) => setFormData({ ...formData, duenioid: e.target.value })}
             disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
           >
             <option value="">Sin dueño</option>
             {duenios.map((d) => (
@@ -250,7 +250,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             value={formData.tipolote}
             onChange={(e) => setFormData({ ...formData, tipolote: e.target.value })}
             disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
           >
             <option value="Habitacional">Habitacional</option>
             <option value="Comercial">Comercial</option>
@@ -325,7 +325,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             value={formData.estatus}
             onChange={(e) => setFormData({ ...formData, estatus: e.target.value })}
             disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
           >
             <option value="D">Disponible</option>
             <option value="A">Apartado</option>
@@ -543,7 +543,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
           placeholder="Notas adicionales"
           rows={3}
           disabled={isLoading}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
         />
       </div>
 

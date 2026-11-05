@@ -701,7 +701,7 @@ export const Dashboard = () => {
 
         {loading ? (
           <div className="flex items-center justify-center h-48">
-            <div className="inline-block h-8 w-8 border-4 border-[#eaae4c] border-t-transparent rounded-full animate-spin" />
+            <div className="inline-block h-8 w-8 border-4 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -723,7 +723,7 @@ export const Dashboard = () => {
                     title="Ventas activas"
                     value={stats.ventasActivas}
                     icon={<ShoppingCart className="w-5 h-5 text-black" />}
-                    color="#eaae4c"
+                    color="#16a34a"
                     onClick={() => navigate('/admin/ventas')}
                   />
                 )}
@@ -817,7 +817,7 @@ export const Dashboard = () => {
             </div>
             {loadingRecent ? (
               <div className="flex justify-center py-8">
-                <div className="h-5 w-5 border-4 border-[#eaae4c] border-t-transparent rounded-full animate-spin" />
+                <div className="h-5 w-5 border-4 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : pagosRecientes.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-8">Sin pagos recientes</p>
@@ -861,7 +861,7 @@ export const Dashboard = () => {
             </div>
             {loadingRecent ? (
               <div className="flex justify-center py-8">
-                <div className="h-5 w-5 border-4 border-[#eaae4c] border-t-transparent rounded-full animate-spin" />
+                <div className="h-5 w-5 border-4 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : ventasRecientes.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-8">Sin ventas recientes</p>

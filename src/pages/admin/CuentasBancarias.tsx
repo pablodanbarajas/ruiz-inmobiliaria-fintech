@@ -261,7 +261,7 @@ export const CuentasBancarias = () => {
                 <select
                   value={form.desarrolloid}
                   onChange={(e) => setForm({ ...form, desarrolloid: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
                 >
                   <option value="">General</option>
                   {desarrollos.map((d) => (
