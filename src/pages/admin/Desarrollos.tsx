@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { DesarrolloForm } from '@/components/forms/DesarrolloForm'
-import { Eye, Plus, Edit2, Trash2, Map } from 'lucide-react'
+import { Eye, Plus, Edit2, Trash2, Map, Search } from 'lucide-react'
 import type { Desarrollo, TipoDesarrollo } from '@/types/database'
 import { getStatusLabel } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
@@ -184,24 +184,34 @@ export const Desarrollos = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-md border-t-4 border-[#504840] p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-5 md:p-6 mb-6">
+          <div className="flex items-center gap-2 mb-5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#e8f1f4] text-[#142127]">
+              <Search size={18} />
+            </div>
             <div>
-              <label className="block text-sm font-medium text-black mb-1">
+              <h2 className="text-base font-semibold text-[#142127]">Filtros de búsqueda</h2>
+              <p className="text-sm text-[#9e9f92]">Encuentra un desarrollo por nombre, clave o estado.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-[#142127] mb-2">
                 Buscar por nombre o clave
               </label>
               <Input
                 placeholder="Ej: Mirador, MI4..."
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                className="w-full rounded-lg border border-[#dbe2e5] bg-[#fafcfc] px-4 py-3 focus:border-[#142127] focus:ring-2 focus:ring-[#dbe7eb]"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-black mb-1">
+              <label className="block text-sm font-semibold text-[#142127] mb-2">
                 Estado
               </label>
               <select
-                className="w-full px-3 py-2 border border-[#504840] rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full rounded-lg border border-[#dbe2e5] bg-[#fafcfc] px-4 py-3 text-sm text-[#142127] focus:border-[#142127] focus:outline-none focus:ring-2 focus:ring-[#dbe7eb]"
                 value={statusFilter}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setStatusFilter(e.target.value)}
               >
