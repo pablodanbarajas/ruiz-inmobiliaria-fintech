@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { ClienteForm } from '@/components/forms/ClienteForm'
 import { Eye, Trash2, ChevronLeft, ChevronRight, Edit2 } from 'lucide-react'
-import type { Cliente } from '@/types/database'
+import type { Cliente, Desarrollo } from '@/types/database'
 import { getStatusLabel } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { useAuth } from '@/context/AuthContext'
@@ -22,6 +22,8 @@ export const Clientes = () => {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [allClientsCache, setAllClientsCache] = useState<Cliente[]>([])
   const [allClientsSearchCache, setAllClientsSearchCache] = useState<Cliente[]>([])
+  const [desarrollos, setDesarrollos] = useState<Desarrollo[]>([])
+  const [clientDevelopmentIds, setClientDevelopmentIds] = useState<Record<number, number[]>>({})
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
@@ -30,6 +32,7 @@ export const Clientes = () => {
     nombre: '',
     email: '',
     rfc: '',
+    desarrolloId: '',
   })
   const [prevFilters, setPrevFilters] = useState(filters)
   const [showModal, setShowModal] = useState(() => searchParams.get('new') === 'true')
@@ -56,11 +59,18 @@ export const Clientes = () => {
   // Fetch all clientes once on mount
   useEffect(() => {
     const fetchAllClientes = async () => {
-      const CACHE_KEY = 'clientes:all:v4'
-      const cached = getCached<{ all: Cliente[]; visible: Cliente[] }>(CACHE_KEY)
+      const CACHE_KEY = 'clientes:all:v6'
+      const cached = getCached<{
+        all: Cliente[]
+        visible: Cliente[]
+        desarrollos: Desarrollo[]
+        clientDevelopmentIds: Record<number, number[]>
+      }>(CACHE_KEY)
       if (cached) {
         setAllClientsSearchCache(cached.all)
         setAllClientsCache(cached.visible)
+        setDesarrollos(cached.desarrollos)
+        setClientDevelopmentIds(cached.clientDevelopmentIds)
         setLoading(false)
         return
       }
@@ -114,6 +124,28 @@ export const Clientes = () => {
           }
         }
 
+        const [{ data: developmentRows, error: developmentsError }, { data: salesRows, error: salesError }] =
+          await Promise.all([
+            supabase.from('desarrollo').select('*').order('nombre', { ascending: true }),
+            supabase.from('venta').select('clienteid, lote:lote(desarrolloid)'),
+          ])
+        if (developmentsError) throw developmentsError
+        if (salesError) throw salesError
+
+        const developmentData = (developmentRows || [])
+          .filter((development) =>
+            DEMO_DESARROLLOIDS.length === 0 ||
+            DEMO_DESARROLLOIDS.includes(development.desarrolloid)
+          ) as Desarrollo[]
+        const developmentIdsByClient: Record<number, number[]> = {}
+        ;(salesRows || []).forEach((sale: any) => {
+          const desarrolloId = sale.lote?.desarrolloid
+          if (!sale.clienteid || !desarrolloId) return
+          const current = developmentIdsByClient[sale.clienteid] || []
+          if (!current.includes(desarrolloId)) current.push(desarrolloId)
+          developmentIdsByClient[sale.clienteid] = current
+        })
+
         const clientData = allData.filter((cliente) => !cliente.user_id || !adminUserIds.has(cliente.user_id))
         let finalCache = clientData
 
@@ -154,7 +186,14 @@ export const Clientes = () => {
 
         setAllClientsCache(finalCache)
         setAllClientsSearchCache(finalCache)
-        setCached(CACHE_KEY, { all: finalCache, visible: finalCache })
+        setDesarrollos(developmentData)
+        setClientDevelopmentIds(developmentIdsByClient)
+        setCached(CACHE_KEY, {
+          all: finalCache,
+          visible: finalCache,
+          desarrollos: developmentData,
+          clientDevelopmentIds: developmentIdsByClient,
+        })
       } catch (error) {
         console.error('Error fetching clientes:', error)
         setAllClientsCache([])
@@ -172,6 +211,13 @@ export const Clientes = () => {
       filters.nombre.trim() || filters.email.trim() || filters.rfc.trim()
     )
     let filteredData = [...(hasSearchFilter ? allClientsSearchCache : allClientsCache)]
+
+    if (filters.desarrolloId) {
+      const desarrolloId = Number(filters.desarrolloId)
+      filteredData = filteredData.filter((cliente) =>
+        clientDevelopmentIds[cliente.clienteid]?.includes(desarrolloId)
+      )
+    }
 
     if (filters.nombre) {
       const searchNombre = filters.nombre.toLowerCase().trim()
@@ -200,7 +246,7 @@ export const Clientes = () => {
     const paginatedData = filteredData.slice(startIndex, endIndex)
 
     setClientes(paginatedData)
-  }, [filters, currentPage, allClientsCache, allClientsSearchCache])
+  }, [filters, currentPage, allClientsCache, allClientsSearchCache, clientDevelopmentIds])
 
   const handleCreateCliente = async (formData: any) => {
     try {
@@ -333,7 +379,7 @@ export const Clientes = () => {
 
         {/* Filters */}
         <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-black mb-1">
                 Nombre
@@ -363,6 +409,23 @@ export const Clientes = () => {
                 value={filters.rfc}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilters({ ...filters, rfc: e.target.value })}
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-black mb-1">
+                Desarrollo
+              </label>
+              <select
+                value={filters.desarrolloId}
+                onChange={(e) => setFilters({ ...filters, desarrolloId: e.target.value })}
+                className="w-full h-10 rounded-lg border border-[#d9e0e2] bg-white px-3 text-sm text-[#142127] focus:outline-none focus:ring-2 focus:ring-[#9e9f92]"
+              >
+                <option value="">Todos los desarrollos</option>
+                {desarrollos.map((desarrollo) => (
+                  <option key={desarrollo.desarrolloid} value={desarrollo.desarrolloid}>
+                    {desarrollo.nombre}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
