@@ -94,9 +94,9 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
               Ver lotes disponibles
             </Link>
             {development.hasInteractiveMap && (
-              <span className="flex items-center justify-center gap-1 px-3 py-2 bg-teal-50 text-teal-700 border border-teal-200 rounded-lg text-sm font-semibold">
-                <Star className="w-3.5 h-3.5" />
-                Mapa interactivo
+              <span className="flex items-center justify-center gap-1.5 px-1 py-2 text-xs text-gray-500">
+                <Star className="w-3.5 h-3.5 text-teal-600" aria-hidden="true" />
+                <span>Mapa interactivo disponible</span>
               </span>
             )}
           </div>
