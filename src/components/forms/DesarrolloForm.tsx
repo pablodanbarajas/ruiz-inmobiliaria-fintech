@@ -87,7 +87,7 @@ export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: Desa
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="admin-form space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Clave de Desarrollo */}
         <div>
@@ -130,7 +130,7 @@ export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: Desa
             value={formData.tipodesarrolloid}
             onChange={(e) => setFormData({ ...formData, tipodesarrolloid: e.target.value })}
             disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
           >
             <option value="">Selecciona un tipo</option>
             {tiposDesarrollo.map((tipo) => (
@@ -153,7 +153,7 @@ export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: Desa
             value={formData.estatus}
             onChange={(e) => setFormData({ ...formData, estatus: e.target.value })}
             disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
           >
             <option value="A">Activo</option>
             <option value="I">Inactivo</option>
@@ -209,7 +209,7 @@ export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: Desa
           placeholder="Descripción breve"
           rows={3}
           disabled={isLoading}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
         />
       </div>
 
@@ -224,7 +224,7 @@ export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: Desa
           placeholder="Descripción larga con características"
           rows={4}
           disabled={isLoading}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
         />
       </div>
 
@@ -233,7 +233,7 @@ export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: Desa
         <Button
           type="submit"
           disabled={isLoading}
-          className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-2 px-6"
+          className="px-6"
         >
           {isLoading ? 'Guardando...' : desarrollo ? 'Actualizar' : 'Crear'}
         </Button>

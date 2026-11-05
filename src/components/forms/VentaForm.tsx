@@ -8,6 +8,7 @@ import type { ComboOption } from '@/components/ui/SearchCombobox'
 import type { Lote, Cliente, Venta, Desarrollo } from '@/types/database'
 import { formatCurrency } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { FormProgress } from '@/components/ui/FormProgress'
 
 // ── VentaForm ────────────────────────────────────────────────────────────────
 export interface VentaFormData {
@@ -83,6 +84,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
   const [lotes, setLotes] = useState<LoteWithDesarrollo[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [currentStep, setCurrentStep] = useState(0)
   const [enganchemin, setEnganchemin] = useState<number>(0)
   const [vendedorSeleccionado, setVendedorSeleccionado] = useState<string>(() => {
     const actual = (venta?.vendedor ?? '').trim()
@@ -261,12 +263,70 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
     }
     if (!formData.vendedor?.trim()) errs.vendedor = 'El nombre del vendedor es requerido'
     setErrors(errs)
-    return Object.keys(errs).length === 0
+    return errs
+  }
+
+  const validateStep = (step: number) => {
+    const stepErrors: Record<string, string> = {}
+    if (step === 0) {
+      if (!formData.loteid) stepErrors.loteid = 'Lote requerido'
+      if (!formData.clienteid) stepErrors.clienteid = 'Cliente requerido'
+      if (!formData.fecha) stepErrors.fecha = 'Fecha de venta requerida'
+      if (!formData.fechacontrato) stepErrors.fechacontrato = 'Fecha de contrato requerida'
+      if (!formData.fechaenganche) stepErrors.fechaenganche = 'Fecha de enganche requerida'
+      if (!formData.fechaprimeramensualidad) {
+        stepErrors.fechaprimeramensualidad = 'Fecha de primera mensualidad requerida'
+      } else if (
+        formData.fechacontrato &&
+        formData.fechaprimeramensualidad <= formData.fechacontrato
+      ) {
+        stepErrors.fechaprimeramensualidad =
+          'La fecha de primera mensualidad debe ser posterior al contrato'
+      }
+    }
+    if (step === 1 && !isEditMode) {
+      if (!formData.preciolote || precioNum <= 0) stepErrors.preciolote = 'Precio del lote requerido y debe ser mayor a 0'
+      if (!formData.enganche || engancheNum <= 0) stepErrors.enganche = 'Enganche requerido y debe ser mayor a 0'
+      else if (!isAdmin && enganchemin > 0 && engancheNum < enganchemin) {
+        stepErrors.enganche = `El enganche mínimo del desarrollo es ${formatCurrency(enganchemin)}`
+      } else if (engancheNum >= precioNum) {
+        stepErrors.enganche = 'El enganche no puede ser igual o mayor al precio total'
+      }
+      if (!formData.plazo || plazoNum <= 0) stepErrors.plazo = 'Plazo requerido y debe ser mayor a 0'
+    }
+    if (step === 2 && !formData.vendedor?.trim()) {
+      stepErrors.vendedor = 'El nombre del vendedor es requerido'
+    }
+    setErrors((current) => ({ ...current, ...stepErrors }))
+    return stepErrors
+  }
+
+  const goToNextStep = () => {
+    if (Object.keys(validateStep(currentStep)).length === 0) {
+      setCurrentStep((step) => Math.min(step + 1, 2))
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validate()) return
+    const validationErrors = validate()
+    if (Object.keys(validationErrors).length > 0) {
+      const firstInvalidField = Object.keys(validationErrors)[0]
+      const stepByField: Record<string, number> = {
+        loteid: 0,
+        clienteid: 0,
+        fecha: 0,
+        fechacontrato: 0,
+        fechaenganche: 0,
+        fechaprimeramensualidad: 0,
+        preciolote: 1,
+        enganche: 1,
+        plazo: 1,
+        vendedor: 2,
+      }
+      setCurrentStep(stepByField[firstInvalidField] ?? 0)
+      return
+    }
 
     const data: VentaFormData = {
       loteid: parseInt(formData.loteid),
@@ -293,9 +353,18 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
     'text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3'
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="admin-form space-y-6">
+      <FormProgress
+        steps={[
+          { label: 'Venta', description: 'Cliente y lote' },
+          { label: 'Finanzas', description: 'Enganche y mensualidad' },
+          { label: 'Condiciones', description: 'Vendedor y tolerancia' },
+        ]}
+        currentStep={currentStep}
+        onStepChange={setCurrentStep}
+      />
       {/* ── Lote y Cliente ─────────────────────────────────── */}
-      <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+      <div className={`bg-gray-50 rounded-lg p-4 space-y-4 ${currentStep === 0 ? '' : 'hidden'}`}>
         <p className={sectionHeading}>Lote y Cliente</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Lote */}
@@ -332,7 +401,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
       </div>
 
       {/* ── Fechas ─────────────────────────────────────────── */}
-      <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+      <div className={`bg-gray-50 rounded-lg p-4 space-y-4 ${currentStep === 0 ? '' : 'hidden'}`}>
         <p className={sectionHeading}>Fechas</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -395,7 +464,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
       </div>
 
       {/* ── Datos Financieros ──────────────────────────────── */}
-      <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+      <div className={`bg-gray-50 rounded-lg p-4 space-y-4 ${currentStep === 1 ? '' : 'hidden'}`}>
         <p className={sectionHeading}>
           Datos Financieros
           {isEditMode && !allowFinancialEdit && (
@@ -469,7 +538,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
 
         {/* Real-time financial summary (create mode) */}
         {!isEditMode && precioNum > 0 && (
-          <div className="grid grid-cols-3 gap-4 bg-white border border-[#eaae4c] rounded-lg p-4 mt-2">
+          <div className="grid grid-cols-3 gap-4 bg-white border border-[#16a34a] rounded-lg p-4 mt-2">
             <div className="text-center">
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">% Enganche</p>
               <p className="text-lg font-bold text-[#504840]">{porcEnganche.toFixed(1)}%</p>
@@ -484,7 +553,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
                 Mensualidad
               </p>
-              <p className="text-lg font-bold text-[#eaae4c]">
+              <p className="text-lg font-bold text-[#16a34a]">
                 {mensualidadCalc > 0 ? formatCurrency(mensualidadCalc) : '—'}
               </p>
             </div>
@@ -527,7 +596,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
             }
           }}
           disabled={isLoading}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] disabled:bg-gray-100 ${errors.vendedor ? 'border-red-500' : 'border-gray-300'}`}
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a] disabled:bg-gray-100 ${errors.vendedor ? 'border-red-500' : 'border-gray-300'}`}
         >
           <option value="">Selecciona un vendedor</option>
           {VENDEDOR_OPTIONS.map((nombre) => (
@@ -549,7 +618,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
       </div>
 
       {/* ── Estatus y Comentarios ──────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${currentStep === 2 ? '' : 'hidden'}`}>
         {isEditMode && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Estatus</label>
@@ -557,7 +626,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
               value={formData.estatus}
               onChange={(e) => setFormData({ ...formData, estatus: e.target.value })}
               disabled={isLoading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] disabled:bg-gray-100"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a] disabled:bg-gray-100"
             >
               <option value="A">Activa</option>
               <option value="C">Cancelada</option>
@@ -572,13 +641,13 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
             disabled={isLoading}
             rows={3}
             placeholder="Observaciones adicionales…"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none disabled:bg-gray-100"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a] resize-none disabled:bg-gray-100"
           />
         </div>
       </div>
 
       {/* ── Tolerancia de pago ─────────────────────────────── */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+      <div className={`bg-amber-50 border border-amber-200 rounded-lg p-4 ${currentStep === 2 ? '' : 'hidden'}`}>
         <p className={sectionHeading}>Tolerancia de pago</p>
         <div className="flex items-start gap-4">
           <div className="w-40">
@@ -614,14 +683,25 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
       </div>
 
       {/* ── Acciones ───────────────────────────────────────── */}
-      <div className="flex justify-end">
-        <Button type="submit" disabled={isLoading}>
-          {isLoading
-            ? 'Guardando…'
-            : isEditMode
-            ? 'Guardar Cambios'
-            : 'Registrar Venta'}
+      <div className="flex items-center justify-between border-t border-[#e0e5e7] pt-5">
+        <Button type="button" variant="outline" onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))} disabled={currentStep === 0 || isLoading}>
+          Atrás
         </Button>
+        {currentStep < 2 ? (
+          <Button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault()
+              goToNextStep()
+            }}
+          >
+            Continuar
+          </Button>
+        ) : (
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Guardando…' : isEditMode ? 'Guardar Cambios' : 'Registrar Venta'}
+          </Button>
+        )}
       </div>
     </form>
   )

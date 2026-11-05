@@ -104,6 +104,8 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
 
     if (!formData.desarrolloid) newErrors.desarrolloid = 'Desarrollo requerido'
     if (!formData.manzana.trim()) newErrors.manzana = 'Manzana requerida'
+    if (formData.manzana.length > 2) newErrors.manzana = 'La manzana debe tener máximo 2 caracteres'
+    if (formData.coto.length > 2) newErrors.coto = 'El coto debe tener máximo 2 caracteres'
     if (!formData.nolote.trim()) newErrors.nolote = 'No. Lote requerido'
     if (!formData.superficie) newErrors.superficie = 'Superficie requerida'
     if (formData.superficie && isNaN(parseFloat(formData.superficie))) {
@@ -183,12 +185,18 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     try {
       await onSubmit(submitData)
     } catch (err) {
-      console.error('Error submitting form:', err)
+      const message = err instanceof Error ? err.message : 'No se pudo guardar el lote.'
+      setErrors((current) => ({
+        ...current,
+        _form: message.includes('character varying(2)')
+          ? 'Uno de los campos permite máximo 2 caracteres. Revisa la manzana o el coto.'
+          : message,
+      }))
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="admin-form space-y-6">
       {/* Row 1: Desarrollo, Dueño, Tipo Lote */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
@@ -203,7 +211,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
               setFormData(prev => ({ ...prev, desarrolloid: id, ...(autoClaveKey ? { clavelote: clave } : {}) }))
             }}
             disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
           >
             <option value="">Selecciona un desarrollo</option>
             {desarrollos.map((d) => (
@@ -223,7 +231,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             value={formData.duenioid}
             onChange={(e) => setFormData({ ...formData, duenioid: e.target.value })}
             disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
           >
             <option value="">Sin dueño</option>
             {duenios.map((d) => (
@@ -242,7 +250,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             value={formData.tipolote}
             onChange={(e) => setFormData({ ...formData, tipolote: e.target.value })}
             disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
           >
             <option value="Habitacional">Habitacional</option>
             <option value="Comercial">Comercial</option>
@@ -266,8 +274,10 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
               setFormData(prev => ({ ...prev, coto: val, ...(autoClaveKey ? { clavelote: clave } : {}) }))
             }}
             placeholder="Ej: 01, 00"
+            maxLength={2}
             disabled={isLoading}
           />
+          {errors.coto && <p className="text-red-500 text-sm mt-1">{errors.coto}</p>}
         </div>
 
         <div>
@@ -283,6 +293,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
               setFormData(prev => ({ ...prev, manzana: val, ...(autoClaveKey ? { clavelote: clave } : {}) }))
             }}
             placeholder="Ej: 02, 03"
+            maxLength={2}
             disabled={isLoading}
           />
           {errors.manzana && <p className="text-red-500 text-sm mt-1">{errors.manzana}</p>}
@@ -314,7 +325,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             value={formData.estatus}
             onChange={(e) => setFormData({ ...formData, estatus: e.target.value })}
             disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
           >
             <option value="D">Disponible</option>
             <option value="A">Apartado</option>
@@ -468,6 +479,12 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
       </div>
 
       {/* Row 4: Precios y Superficie */}
+      {errors._form && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errors._form}
+        </p>
+      )}
+
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Valores del Lote</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -526,7 +543,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
           placeholder="Notas adicionales"
           rows={3}
           disabled={isLoading}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
         />
       </div>
 
@@ -535,7 +552,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
         <Button
           type="submit"
           disabled={isLoading}
-          className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-2 px-6"
+          className="px-6"
         >
           {isLoading ? 'Guardando...' : lote ? 'Actualizar' : 'Crear'}
         </Button>

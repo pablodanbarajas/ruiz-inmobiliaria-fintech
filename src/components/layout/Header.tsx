@@ -35,11 +35,11 @@ export const Header = ({ onMenuToggle }: HeaderProps) => {
   const isDetail = segments.length > 3
 
   return (
-    <header className="lg:hidden fixed top-0 right-0 left-0 h-14 bg-black border-b border-[#504840] px-3 flex items-center justify-between z-20 gap-2">
+    <header className="lg:hidden fixed top-0 right-0 left-0 h-14 bg-[#142127] border-b border-[#343c40] px-3 flex items-center justify-between z-20 gap-2">
       <div className="flex items-center gap-2 min-w-0">
         <button
           onClick={onMenuToggle}
-          className="p-2 bg-[#eaae4c] text-black rounded-lg cursor-pointer flex-shrink-0 active:opacity-80"
+          className="p-2 bg-[#fffa77] text-[#142127] rounded-xl cursor-pointer flex-shrink-0 active:opacity-80"
           aria-label="Abrir menú"
         >
           <Menu size={20} />
@@ -56,14 +56,14 @@ export const Header = ({ onMenuToggle }: HeaderProps) => {
 
       {user && (
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <div className="w-7 h-7 rounded-full bg-[#eaae4c] flex items-center justify-center">
-            <User size={14} className="text-black" />
+          <div className="w-7 h-7 rounded-full bg-[#fffa77] flex items-center justify-center">
+            <User size={14} className="text-[#142127]" />
           </div>
           <div className="text-right hidden xs:block">
             <p className="text-white text-[11px] font-medium leading-tight truncate max-w-24">
               {user.nombre}
             </p>
-            <p className="text-[#eaae4c] text-[10px] leading-tight capitalize">{role}</p>
+            <p className="text-[#fffa77] text-[10px] leading-tight capitalize">{role}</p>
           </div>
         </div>
       )}

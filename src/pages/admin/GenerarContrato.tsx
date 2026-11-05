@@ -5,6 +5,7 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { ChevronLeft, Printer } from 'lucide-react'
 import { numeroALetras } from '@/utils/helpers'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 // ── Meses en español ──────────────────────────────────────────────────────
 const MESES_ES = [
@@ -13,7 +14,8 @@ const MESES_ES = [
 ]
 
 // ── Plantilla HTML del contrato ───────────────────────────────────────────
-// El contenido proviene de Contrato_Promesa_Compraventa_Pueblos_Barranca.html
+// Plantilla base del contrato. Los datos de la venta, lote y desarrollo se
+// reemplazan en tiempo de ejecución.
 // Las variables {{...}} son reemplazadas en tiempo de ejecución.
 const TEMPLATE_HTML = `<p align="center" style="margin-right: 0in; margin-bottom: 0in; line-height: 100%">
 <font face="Courier, sans-serif"><font size="4" style="font-size: 16pt"><b>CONTRATO
@@ -21,7 +23,7 @@ DE PROMESA DE COMPRAVENTA</b></font></font></p>
 <p align="justify" style="line-height: 100%; margin-bottom: 0in"><br/>
 </p>
 <p align="justify" style="margin-right: 0in; margin-bottom: 0in"><font face="Courier, sans-serif"><font size="3" style="font-size: 12pt">En
-la ciudad de Tonalá, Jalisco siendo el día </font></font><font color="#001d35"><font face="Courier, sans-serif"><font size="3" style="font-size: 12pt"><b>{{fecha_firma}}</b></font></font></font><font face="Courier, sans-serif"><font size="3" style="font-size: 12pt">,
+la ciudad y estado correspondientes al desarrollo siendo el día </font></font><font color="#001d35"><font face="Courier, sans-serif"><font size="3" style="font-size: 12pt"><b>{{fecha_firma}}</b></font></font></font><font face="Courier, sans-serif"><font size="3" style="font-size: 12pt">,
 ante la presencia de los testigos instrumentales que al final
 suscriben este documento, comparecen por un lado los </font></font><font face="Courier, sans-serif"><font size="3" style="font-size: 12pt"><b>C.
 GILBERTO ACOSTA MORAN, </b></font></font><font face="Courier, sans-serif"><font size="3" style="font-size: 12pt"><b>GELUS
@@ -189,10 +191,9 @@ GAITAN.</font></font></p>
 <p align="justify" style="margin-right: 0in; margin-bottom: 0in"><font face="Courier, sans-serif"><font size="3" style="font-size: 12pt"><b>---
 PRIMERA.-</b></font></font><font face="Courier, sans-serif"><font size="3" style="font-size: 12pt">
 "EL PROMITENTE VENDEDOR", promete vender a título oneroso un lote rústico propiedad privada de la
-escritura Pública Número 5,673 cinco mil seiscientos setenta y
-tres, citada en párrafos anteriores, ubicado en Puente Grande
-municipio de Zapotlanejo Jalisco, con superficie de <b>6-95-66
-seis hectáreas, noventa y cinco áreas, sesenta y seis centiáreas</b>,
+escritura pública citada en los antecedentes, ubicado en el desarrollo
+<b>{{desarrollo_nombre}}</b>, con la superficie correspondiente al lote descrito
+en este contrato,
 libre de todo gravamen y al corriente en el pago y contribuciones,
 comprometiéndose expresamente al saneamiento para el caso de
 evicción del bien inmueble que es materia del presente contrato que
@@ -205,7 +206,7 @@ uso y a su entera satisfacción, el siguiente bien inmueble:</font></font></p>
 <tr style="background:#f2f2f2;"><td colspan="8" style="border:1px solid #000; padding:4px;">&nbsp;</td></tr>
 <tr>
   <td style="border:1px solid #000; padding:4px;">Desarrollo</td>
-  <td colspan="2" style="border:1px solid #000; padding:4px;">Pueblos de la Barranca</td>
+  <td colspan="2" style="border:1px solid #000; padding:4px;">{{desarrollo_nombre}}</td>
   <td colspan="2" style="border:1px solid #000; padding:4px;">Manzana</td>
   <td style="border:1px solid #000; padding:4px;"><b>{{lote_manzana}}</b></td>
   <td style="border:1px solid #000; padding:4px;">Lote</td>
@@ -224,7 +225,7 @@ uso y a su entera satisfacción, el siguiente bien inmueble:</font></font></p>
 </p>
 <p align="justify" style="margin-right: 0in; margin-bottom: 0in"><font face="Courier, sans-serif"><font size="3" style="font-size: 12pt"><b>LOTE
 {{lote_numero}} M{{lote_manzana}}
-PROPIEDAD PRIVADA, TERRENO UBICADO MUNICIPIO DE ZAPOTLANEJO, JALISCO,
+PROPIEDAD PRIVADA, TERRENO UBICADO EN EL DESARROLLO {{desarrollo_nombre}},
 CON UNA SUPERFICIE APROXIMADA DE {{lote_superficie}} m2
 METROS CUADRADOS, QUE MIDE Y LINDA:</b></font></font></p>
 <p align="justify" style="margin-bottom: 0in; margin-right: 0in"><br/>
@@ -498,6 +499,7 @@ export const GenerarContrato = () => {
           cliente_curp: clienteData.curp || '',
           cliente_rfc: clienteData.rfc || '',
           cliente_beneficiario: (clienteData.beneficiarios || '').toUpperCase(),
+          desarrollo_nombre: loteData.desarrollo?.nombre || '',
           lote_manzana: loteData.manzana || '',
           lote_numero: loteData.nolote || '',
           lote_superficie: loteData.superficie != null ? String(loteData.superficie) : '',
@@ -608,11 +610,9 @@ export const GenerarContrato = () => {
 
         {loading && (
           <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="inline-block animate-spin">
-                <div className="h-8 w-8 border-4 border-[#eaae4c] border-t-transparent rounded-full"></div>
-              </div>
-              <p className="mt-4 text-gray-500">Cargando contrato...</p>
+            <div className="w-48 space-y-3">
+              <Skeleton className="mx-auto h-8 w-8 rounded-full" />
+              <Skeleton className="h-3 w-full" />
             </div>
           </div>
         )}

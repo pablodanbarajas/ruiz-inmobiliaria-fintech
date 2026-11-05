@@ -13,6 +13,7 @@ export const supabase = createClient(
   {
     auth: {
       // Evitar rehydrate automático que causa race conditions
+      storageKey: 'ruiz-portal-auth',
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true

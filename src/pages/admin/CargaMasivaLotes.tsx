@@ -309,7 +309,7 @@ export const CargaMasivaLotes = () => {
                   { col: 'comentarios',     req: false, desc: 'Notas (opcional)' },
                 ].map((c) => (
                   <div key={c.col} className="bg-white rounded border border-gray-200 p-2">
-                    <span className={`text-xs font-bold ${c.req ? 'text-[#eaae4c]' : 'text-gray-500'}`}>
+                    <span className={`text-xs font-bold ${c.req ? 'text-[#16a34a]' : 'text-gray-500'}`}>
                       {c.col}{c.req ? ' *' : ''}
                     </span>
                     <p className="text-xs text-gray-400 mt-0.5 leading-tight">{c.desc}</p>
@@ -339,12 +339,12 @@ export const CargaMasivaLotes = () => {
                 onDrop={handleDrop}
                 onClick={() => inputRef.current?.click()}
                 className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${
-                  dragOver ? 'border-[#eaae4c] bg-yellow-50' : 'border-gray-300 hover:border-[#eaae4c] hover:bg-gray-50'
+                  dragOver ? 'border-[#16a34a] bg-yellow-50' : 'border-gray-300 hover:border-[#16a34a] hover:bg-gray-50'
                 }`}
               >
                 <UploadCloud size={36} className="mx-auto mb-3 text-gray-400" />
                 <p className="font-medium text-gray-700">
-                  Arrastra tu archivo aquí o <span className="text-[#eaae4c]">haz clic para seleccionar</span>
+                  Arrastra tu archivo aquí o <span className="text-[#16a34a]">haz clic para seleccionar</span>
                 </p>
                 <p className="text-xs text-gray-400 mt-1">Solo archivos .xlsx</p>
                 <input ref={inputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileChange} />
@@ -455,7 +455,7 @@ export const CargaMasivaLotes = () => {
 
         {status === 'uploading' && (
           <div className="flex flex-col items-center py-20 gap-4">
-            <div className="h-10 w-10 border-4 border-[#eaae4c] border-t-transparent rounded-full animate-spin" />
+            <div className="h-10 w-10 border-4 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
             <p className="text-gray-600 font-medium">Importando lotes…</p>
           </div>
         )}

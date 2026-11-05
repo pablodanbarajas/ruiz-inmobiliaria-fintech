@@ -5,11 +5,12 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { DesarrolloForm } from '@/components/forms/DesarrolloForm'
-import { ChevronLeft, Edit2, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Edit2, Trash2, ChevronUp } from 'lucide-react'
 import type { Desarrollo, Lote, TipoDesarrollo } from '@/types/database'
 import { getStatusLabel, getLoteStatusLabel, getLoteStatusColor, formatCurrency } from '@/utils/helpers'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
+import { DetailSkeleton } from '@/components/ui/Skeleton'
 
 interface DesarrolloWithTipo extends Desarrollo {
   tipodesarrollo?: TipoDesarrollo
@@ -26,6 +27,9 @@ export const DesarrolloDetail = () => {
   const [formLoading, setFormLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isInfoExpanded, setIsInfoExpanded] = useState(false)
+  const [lotesPage, setLotesPage] = useState(1)
+  const lotesPerPage = 10
 
   const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
   const canEditDesarrollos = !!currentRole && ROLE_CAPABILITIES[currentRole].editar_desarrollos
@@ -44,6 +48,7 @@ export const DesarrolloDetail = () => {
 
       if (desarrolloError) throw desarrolloError
       setDesarrollo(desarrolloData)
+      setLotesPage(1)
 
       // Fetch associated lotes
       const { data: lotesData, error: lotesError } = await supabase
@@ -65,6 +70,9 @@ export const DesarrolloDetail = () => {
   useEffect(() => {
     fetchDesarrolloDetail()
   }, [id])
+
+  const lotesPageCount = Math.ceil(lotes.length / lotesPerPage)
+  const visibleLotes = lotes.slice((lotesPage - 1) * lotesPerPage, lotesPage * lotesPerPage)
 
   const handleFormSubmit = async (formData: any) => {
     if (!canEditDesarrollos) {
@@ -125,14 +133,7 @@ export const DesarrolloDetail = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="inline-block animate-spin">
-              <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-            </div>
-            <p className="mt-4 text-[#9e9f92]">Cargando detalles...</p>
-          </div>
-        </div>
+        <DetailSkeleton />
       </AdminLayout>
     )
   }
@@ -163,7 +164,7 @@ export const DesarrolloDetail = () => {
             <div className="flex gap-2">
               <Button
                 onClick={() => setIsEditModalOpen(true)}
-                className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold inline-flex items-center gap-2"
+                className="inline-flex items-center gap-2"
               >
                 <Edit2 size={18} />
                 Editar
@@ -180,11 +181,25 @@ export const DesarrolloDetail = () => {
         </div>
 
         {/* Development Details */}
-        <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mb-8 border-t-4 border-[#504840]">
-          <h1 className="text-3xl font-bold text-black mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>
-            {desarrollo.nombre}
-          </h1>
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-4 md:p-6 mb-8">
+          <button
+            type="button"
+            onClick={() => setIsInfoExpanded((expanded) => !expanded)}
+            aria-expanded={isInfoExpanded}
+            className="w-full flex items-center justify-between gap-4 text-left"
+          >
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Ficha de desarrollo</p>
+              <h1 className="text-3xl font-bold text-[#142127]">{desarrollo.nombre}</h1>
+            </div>
+            <span className="flex items-center gap-2 rounded-full border border-[#e0e5e7] px-3 py-2 text-sm font-semibold text-[#142127]">
+              {isInfoExpanded ? 'Contraer' : 'Ver información'}
+              {isInfoExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </span>
+          </button>
 
+          {isInfoExpanded && (
+            <div className="mt-6">
           {/* Section 1: General Info */}
           <div className="bg-gray-50 rounded-lg p-4 mb-4">
             <h2 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Información General</h2>
@@ -249,12 +264,14 @@ export const DesarrolloDetail = () => {
               </div>
             </div>
           </div>
+            </div>
+          )}
         </div>
 
         {/* Lotes associated */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Lotes Asociados</h2>
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden">
+          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-[#e0e5e7]">
+            <h2 className="text-xl md:text-2xl font-bold text-[#142127]">Lotes Asociados ({lotes.length})</h2>
           </div>
 
           {lotes.length === 0 ? (
@@ -264,7 +281,7 @@ export const DesarrolloDetail = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-[#504840] border-b border-[#504840]">
+                <thead className="bg-[#142127] border-b border-[#142127]">
                   <tr>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-white">Manzana</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-white">Lote</th>
@@ -274,7 +291,7 @@ export const DesarrolloDetail = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {lotes.map((lote) => (
+                  {visibleLotes.map((lote) => (
                     <tr key={lote.loteid} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm text-gray-700">{lote.manzana}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{lote.nolote}</td>
@@ -297,6 +314,33 @@ export const DesarrolloDetail = () => {
                   ))}
                 </tbody>
               </table>
+              {lotesPageCount > 1 && (
+                <div className="flex items-center justify-between border-t border-[#e0e5e7] px-4 py-3 md:px-6">
+                  <span className="text-sm text-[#63696c]">Página {lotesPage} de {lotesPageCount}</span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={lotesPage === 1}
+                      onClick={() => setLotesPage((page) => page - 1)}
+                      className="inline-flex items-center gap-1"
+                    >
+                      <ChevronLeft size={16} />
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={lotesPage === lotesPageCount}
+                      onClick={() => setLotesPage((page) => page + 1)}
+                      className="inline-flex items-center gap-1"
+                    >
+                      Siguiente
+                      <ChevronRight size={16} />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

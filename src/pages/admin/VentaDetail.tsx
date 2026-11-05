@@ -11,14 +11,14 @@ import { PagoForm } from '@/components/forms/PagoForm'
 import type { PagoFormData } from '@/components/forms/PagoForm'
 import { ConvenioForm } from '@/components/forms/ConvenioForm'
 import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
-import { AlertaCancelacion } from '@/components/AlertaCancelacion'
 import { ContratoFirmado } from '@/components/ContratoFirmado'
-import { ChevronLeft, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, ArrowLeftRight } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, ArrowLeftRight } from 'lucide-react'
 import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Convenio, Devolucion, DevolucionParcialidad, CargoExtra, Traspaso } from '@/types/database'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import { useAuth } from '@/context/AuthContext'
 import { syncExpiredConvenios } from '@/services/convenios'
+import { DetailSkeleton } from '@/components/ui/Skeleton'
 import {
   formatDate,
   formatDateTime,
@@ -57,6 +57,7 @@ export const VentaDetail = () => {
   const [corridas, setCorridas] = useState<CorridaWithPagos[]>([])
   const [corridaPage, setCorridaPage] = useState(0)
   const CORRIDA_PAGE_SIZE = 10
+  const [isFichaExpanded, setIsFichaExpanded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
@@ -68,6 +69,7 @@ export const VentaDetail = () => {
   const [isSubmittingPago, setIsSubmittingPago] = useState(false)
   const [convenios, setConvenios] = useState<Convenio[]>([])
   const [conveniosEsteAnio, setConveniosEsteAnio] = useState(0)
+  const [isConveniosExpanded, setIsConveniosExpanded] = useState(false)
   const [showConvenioModal, setShowConvenioModal] = useState(false)
   const [isSubmittingConvenio, setIsSubmittingConvenio] = useState(false)
   const [numParcialidades, setNumParcialidades] = useState(3)
@@ -741,14 +743,7 @@ export const VentaDetail = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="inline-block animate-spin">
-              <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-            </div>
-            <p className="mt-4 text-[#9e9f92]">Cargando detalles...</p>
-          </div>
-        </div>
+        <DetailSkeleton />
       </AdminLayout>
     )
   }
@@ -799,13 +794,6 @@ export const VentaDetail = () => {
   const montoDevolucion = precioVenta * 0.20
   const isExternalVenta = Boolean(venta.vendedor_user_id || venta.vendedor)
 
-  // Corridas vencidas sin pago activo (para alerta de cancelación)
-  const corridasVencidas = corridas.filter((c) => {
-    if (!c.fecha || c.fecha >= today || c.nopago === 0) return false
-    const totalCorrida = c.pagos?.filter((p) => p.estatus !== 'C').reduce((s, p) => s + getPagoAplicado(p), 0) ?? 0
-    return totalCorrida < (c.mensualidad || 0)
-  }).length
-
   return (
     <AdminLayout>
       <div className="w-full">
@@ -823,7 +811,7 @@ export const VentaDetail = () => {
           </Button>
 
           {/* Action buttons (only when active) */}
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
             <Button
               variant="outline"
               onClick={() => setShowEditModal(true)}
@@ -931,9 +919,25 @@ export const VentaDetail = () => {
         )}
 
         {/* Venta Details */}
-        <div className="bg-white rounded-lg shadow-md p-4 md:p-8 mb-8 border-t-4 border-[#504840]">
-          <h1 className="text-3xl md:text-4xl font-bold text-black mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>Venta #{venta.ventaid}</h1>
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-4 md:p-8 mb-8">
+          <button
+            type="button"
+            onClick={() => setIsFichaExpanded((expanded) => !expanded)}
+            aria-expanded={isFichaExpanded}
+            className="w-full flex items-center justify-between gap-4 text-left"
+          >
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Ficha de venta</p>
+              <h1 className="text-3xl md:text-4xl font-bold text-[#142127]">Venta #{venta.ventaid}</h1>
+            </div>
+            <span className="flex items-center gap-2 rounded-full border border-[#e0e5e7] px-3 py-2 text-sm font-semibold text-[#142127]">
+              {isFichaExpanded ? 'Contraer' : 'Ver información'}
+              {isFichaExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </span>
+          </button>
 
+          {isFichaExpanded && (
+          <div className="mt-6">
           {/* Row 1: Identificación */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div>
@@ -1044,16 +1048,11 @@ export const VentaDetail = () => {
               </div>
             )}
           </div>
+          </div>
+          )}
         </div>
 
         {/* Alerta de cancelación por atraso */}
-        {venta.estatus !== 'C' && (
-          <AlertaCancelacion
-            ventaid={venta.ventaid}
-            corridasVencidas={corridasVencidas}
-          />
-        )}
-
         {/* Panel de devolución (cuando la venta está cancelada) */}
         {venta.estatus === 'C' && devolucion && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg shadow p-6 mb-6">
@@ -1116,38 +1115,38 @@ export const VentaDetail = () => {
 
         {/* Sin devolución en venta cancelada */}
         {venta.estatus === 'C' && !devolucion && (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 text-sm text-gray-600">
+          <div className="bg-[#f7f8f8] border border-[#e0e5e7] rounded-[14px] p-4 mb-6 text-sm text-gray-600">
             Esta venta fue cancelada sin devolución (el cliente había pagado menos del 20% del precio total).
           </div>
         )}
 
         {/* Resumen financiero */}
         <div className="grid grid-cols-6 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow p-4 md:p-6">
+          <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Precio Total</p>
             <p className="text-xl md:text-2xl font-bold text-blue-600">{formatCurrency(precioVenta)}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-4 md:p-6">
+          <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Total Pagado</p>
             <p className="text-xl md:text-2xl font-bold text-green-600">{formatCurrency(totalPagado)}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-4 md:p-6">
+          <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Deuda del Lote</p>
             <p className="text-xl md:text-2xl font-bold text-orange-600">{formatCurrency(saldoPendiente)}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-4 md:p-6">
+          <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Cargos Extra</p>
             <p className={`text-xl md:text-2xl font-bold ${totalCargosExtras > 0 ? 'text-purple-600' : 'text-gray-400'}`}>
               {formatCurrency(totalCargosExtras)}
             </p>
           </div>
-          <div className="bg-white rounded-lg shadow p-4 md:p-6">
+          <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Recargos</p>
             <p className={`text-xl md:text-2xl font-bold ${totalRecargos > 0 ? 'text-orange-500' : 'text-gray-400'}`}>
               {formatCurrency(totalRecargos)}
             </p>
           </div>
-          <div className="bg-white rounded-lg shadow p-4 md:p-6">
+          <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Total Adeudado</p>
             <p className="text-xl md:text-2xl font-bold text-red-600">{formatCurrency(totalAPagar)}</p>
           </div>
@@ -1173,7 +1172,7 @@ export const VentaDetail = () => {
                 step="0.01"
                 value={initialPaymentAmount}
                 onChange={(e) => setInitialPaymentAmount(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
               />
             </div>
             <div>
@@ -1182,7 +1181,7 @@ export const VentaDetail = () => {
                 type="date"
                 value={initialPaymentDate}
                 onChange={(e) => setInitialPaymentDate(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
               />
             </div>
             <div>
@@ -1191,7 +1190,7 @@ export const VentaDetail = () => {
                 type="text"
                 value={initialPaymentReference}
                 onChange={(e) => setInitialPaymentReference(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
               />
             </div>
             <div>
@@ -1200,7 +1199,7 @@ export const VentaDetail = () => {
                 value={initialPaymentComment}
                 onChange={(e) => setInitialPaymentComment(e.target.value)}
                 rows={3}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a] resize-none"
               />
             </div>
             <div className="flex justify-end gap-3 pt-1">
@@ -1214,16 +1213,17 @@ export const VentaDetail = () => {
           </div>
         </Modal>
 
-        {/* Contrato Firmado */}
-        <ContratoFirmado ventaid={venta.ventaid} />
+        <div className="grid grid-cols-1 gap-4 mb-8 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.6fr)]">
+          {/* Contrato Firmado */}
+          <ContratoFirmado ventaid={venta.ventaid} compact />
 
-        {/* Convenios */}
-        <div className="bg-white rounded-lg shadow overflow-hidden mt-8 mb-8">
-          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4">
+          {/* Convenios */}
+          <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden">
+          <div className="px-4 md:px-6 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold text-gray-900">Convenios</h2>
+              <h2 className="text-base md:text-lg font-bold text-gray-900">Convenios</h2>
               <span
-                className={`px-2 py-0.5 text-sm font-semibold rounded-full ${
+                className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
                   conveniosEsteAnio >= 3
                     ? 'bg-red-100 text-red-700'
                     : conveniosEsteAnio === 2
@@ -1234,23 +1234,47 @@ export const VentaDetail = () => {
                 {conveniosEsteAnio}/3 este año
               </span>
             </div>
-            {venta.estatus !== 'C' && canManageConvenios && (
-              <Button
-                onClick={() => setShowConvenioModal(true)}
-                className="inline-flex items-center gap-2"
-              >
-                <Plus size={16} />
-                Nuevo Convenio
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {venta.estatus !== 'C' && canManageConvenios && (
+                <Button size="sm" onClick={() => setShowConvenioModal(true)} className="inline-flex items-center gap-2">
+                  <Plus size={14} />
+                  Nuevo convenio
+                </Button>
+              )}
+              {convenios.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsConveniosExpanded((expanded) => !expanded)}
+                  className="inline-flex items-center gap-1"
+                >
+                  {isConveniosExpanded ? 'Ocultar' : 'Ver historial'}
+                  {isConveniosExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </Button>
+              )}
+            </div>
           </div>
 
-          {convenios.length === 0 ? (
-            <div className="px-8 py-12 text-center text-gray-500">No hay convenios registrados</div>
-          ) : (
+          {!isConveniosExpanded && (
+            <div className="px-4 md:px-6 py-3">
+              {convenios.length === 0 ? (
+                <p className="text-sm text-gray-500">No hay convenios registrados.</p>
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-600">
+                  <span><strong className="text-gray-900">{convenios.length}</strong> convenio{convenios.length !== 1 ? 's' : ''} registrado{convenios.length !== 1 ? 's' : ''}</span>
+                  <span>Último: <strong className="text-gray-900">{formatDate(convenios[0].fecha)}</strong></span>
+                  <span className="text-gray-500">{getConvenioStatusLabel(convenios[0].estatus)}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {isConveniosExpanded && convenios.length === 0 ? (
+            <div className="px-6 py-6 text-center text-sm text-gray-500">No hay convenios registrados</div>
+          ) : isConveniosExpanded ? (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-[#142127] border-b border-[#142127]">
                   <tr>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Fecha</th>
@@ -1267,48 +1291,23 @@ export const VentaDetail = () => {
                     <tr key={conv.convenioid} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-semibold text-gray-900">#{conv.convenioid}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{formatDate(conv.fecha)}</td>
-                      <td className="px-6 py-4 text-sm font-semibold">
-                        {(conv.meses_atraso ?? 0) > 0 ? (
-                          <span className="text-orange-600">{conv.meses_atraso}</span>
-                        ) : (
-                          <span className="text-gray-500">0</span>
-                        )}
-                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold">{(conv.meses_atraso ?? 0) > 0 ? <span className="text-orange-600">{conv.meses_atraso}</span> : <span className="text-gray-500">0</span>}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{conv.meses_convenio ?? '—'}</td>
-                      <td className="px-6 py-4 text-sm font-semibold text-green-700">
-                        {conv.pago_total_mensual_objetivo != null ? formatCurrency(conv.pago_total_mensual_objetivo) : '—'}
-                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-green-700">{conv.pago_total_mensual_objetivo != null ? formatCurrency(conv.pago_total_mensual_objetivo) : '—'}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{conv.motivo ?? '—'}</td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                            getConvenioStatusColor(conv.estatus)
-                          }`}
-                        >
-                          {getConvenioStatusLabel(conv.estatus)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/admin/convenios/${conv.convenioid}`)}
-                          className="inline-flex items-center gap-1"
-                        >
-                          <Eye size={14} />
-                          Ver
-                        </Button>
-                      </td>
+                      <td className="px-6 py-4"><span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${getConvenioStatusColor(conv.estatus)}`}>{getConvenioStatusLabel(conv.estatus)}</span></td>
+                      <td className="px-6 py-4"><Button variant="ghost" size="sm" onClick={() => navigate(`/admin/convenios/${conv.convenioid}`)} className="inline-flex items-center gap-1"><Eye size={14} />Ver</Button></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
+          ) : null}
+          </div>
         </div>
 
         {/* Corrida Financiera */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden">
           <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">Corrida Financiera</h2>
           </div>
@@ -1321,7 +1320,7 @@ export const VentaDetail = () => {
             <>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-[#142127] border-b border-[#142127]">
                   <tr>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">No. Pago</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Fecha Esperada</th>
@@ -1460,49 +1459,61 @@ export const VentaDetail = () => {
 
             {/* Paginación de corrida */}
             {corridas.length > CORRIDA_PAGE_SIZE && (
-              <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-4">
-                <span className="text-sm text-gray-500">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#e0e5e7] bg-[#f7f8f8] px-4 py-4 md:px-6">
+                <span className="text-sm text-[#63696c]">
                   Mostrando pagos {corridaPage * CORRIDA_PAGE_SIZE + 1}–{Math.min((corridaPage + 1) * CORRIDA_PAGE_SIZE, corridas.length)} de {corridas.length}
                 </span>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
+                    type="button"
+                    aria-label="Primera página"
                     onClick={() => setCorridaPage(0)}
                     disabled={corridaPage === 0}
-                    className="px-2 py-1 text-xs rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e5e7] bg-white text-sm text-[#63696c] shadow-sm transition hover:border-[#142127] hover:text-[#142127] disabled:pointer-events-none disabled:opacity-35"
                   >
                     «
                   </button>
                   <button
+                    type="button"
+                    aria-label="Página anterior"
                     onClick={() => setCorridaPage((p) => p - 1)}
                     disabled={corridaPage === 0}
-                    className="px-3 py-1 text-xs rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-8 items-center gap-1 rounded-full border border-[#e0e5e7] bg-white px-3 text-xs font-semibold text-[#63696c] shadow-sm transition hover:border-[#142127] hover:text-[#142127] disabled:pointer-events-none disabled:opacity-35"
                   >
+                    <ChevronLeft size={14} />
                     Anterior
                   </button>
                   {Array.from({ length: Math.ceil(corridas.length / CORRIDA_PAGE_SIZE) }, (_, i) => (
                     <button
+                      type="button"
                       key={i}
                       onClick={() => setCorridaPage(i)}
-                      className={`px-3 py-1 text-xs rounded border ${
+                      aria-label={`Página ${i + 1}`}
+                      className={`inline-flex h-8 min-w-8 items-center justify-center rounded-full border px-2.5 text-xs font-semibold shadow-sm transition ${
                         i === corridaPage
-                          ? 'bg-[#eaae4c] border-[#eaae4c] font-bold'
-                          : 'border-gray-200 hover:bg-gray-50'
+                          ? 'border-[#142127] bg-[#142127] text-white'
+                          : 'border-[#e0e5e7] bg-white text-[#63696c] hover:border-[#142127] hover:text-[#142127]'
                       }`}
                     >
                       {i + 1}
                     </button>
                   ))}
                   <button
+                    type="button"
+                    aria-label="Página siguiente"
                     onClick={() => setCorridaPage((p) => p + 1)}
                     disabled={corridaPage >= Math.ceil(corridas.length / CORRIDA_PAGE_SIZE) - 1}
-                    className="px-3 py-1 text-xs rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-8 items-center gap-1 rounded-full border border-[#e0e5e7] bg-white px-3 text-xs font-semibold text-[#63696c] shadow-sm transition hover:border-[#142127] hover:text-[#142127] disabled:pointer-events-none disabled:opacity-35"
                   >
                     Siguiente
+                    <ChevronRight size={14} />
                   </button>
                   <button
+                    type="button"
+                    aria-label="Última página"
                     onClick={() => setCorridaPage(Math.ceil(corridas.length / CORRIDA_PAGE_SIZE) - 1)}
                     disabled={corridaPage >= Math.ceil(corridas.length / CORRIDA_PAGE_SIZE) - 1}
-                    className="px-2 py-1 text-xs rounded border border-gray-200 disabled:opacity-30 hover:bg-gray-50 disabled:cursor-not-allowed"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e5e7] bg-white text-sm text-[#63696c] shadow-sm transition hover:border-[#142127] hover:text-[#142127] disabled:pointer-events-none disabled:opacity-35"
                   >
                     »
                   </button>
@@ -1809,7 +1820,7 @@ export const VentaDetail = () => {
               type="date"
               value={traspasoFecha}
               onChange={(e) => setTraspasoFecha(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
             />
           </div>
 
@@ -1821,7 +1832,7 @@ export const VentaDetail = () => {
               onChange={(e) => setTraspasoNotas(e.target.value)}
               rows={3}
               placeholder="Motivo del traspaso..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a] resize-none"
             />
           </div>
 
@@ -1836,7 +1847,6 @@ export const VentaDetail = () => {
             <Button
               onClick={handleTraspaso}
               disabled={isSubmittingTraspaso || !traspasoNuevoClienteId}
-              style={{ backgroundColor: '#eaae4c', color: '#000' }}
             >
               {isSubmittingTraspaso ? 'Registrando…' : 'Confirmar Traspaso'}
             </Button>

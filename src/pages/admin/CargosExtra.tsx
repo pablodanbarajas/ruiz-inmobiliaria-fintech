@@ -17,6 +17,7 @@ import {
 import type { CargoExtra, Desarrollo, Lote } from '@/types/database'
 import { formatDate, formatCurrency } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { TableSkeleton, Skeleton } from '@/components/ui/Skeleton'
 
 interface CargoExtraWithDetails extends CargoExtra {
   lote?: Lote & { desarrollo?: Desarrollo }
@@ -349,7 +350,6 @@ export const CargosExtra = () => {
           <div>
             <h1
               className="text-3xl md:text-4xl font-bold text-black"
-              style={{ fontFamily: 'Playfair Display, serif' }}
             >
               Cargos Extra
             </h1>
@@ -399,7 +399,7 @@ export const CargosExtra = () => {
             <select
               value={filters.estatus}
               onChange={(e) => setFilters({ ...filters, estatus: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
             >
               {ESTATUS_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -413,7 +413,7 @@ export const CargosExtra = () => {
         {/* ── Table ─────────────────────────────────────────── */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {loading ? (
-            <div className="p-12 text-center text-gray-500">Cargando…</div>
+            <TableSkeleton rows={6} columns={6} />
           ) : cargos.length === 0 ? (
             <div className="p-12 text-center text-gray-500">
               No se encontraron cargos extra
@@ -550,7 +550,7 @@ export const CargosExtra = () => {
                   setAplicarForm({ ...aplicarForm, desarrolloid: e.target.value })
                 }
                 disabled={isSubmitting}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] disabled:bg-gray-100"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a] disabled:bg-gray-100"
               >
                 <option value="">— Selecciona un desarrollo —</option>
                 {desarrollos.map((d) => (
@@ -569,7 +569,7 @@ export const CargosExtra = () => {
             {aplicarForm.desarrolloid && (
               <div className="rounded-lg border border-gray-200 bg-white p-3 space-y-3">
                 {loadingPreview ? (
-                  <p className="text-sm text-gray-500">Cargando lotes…</p>
+                  <Skeleton className="h-4 w-32" />
                 ) : lotesPreview.length === 0 ? (
                   <div className="flex items-center gap-2 text-amber-700 text-sm">
                     <AlertTriangle size={15} />
@@ -584,7 +584,7 @@ export const CargosExtra = () => {
                           type="radio"
                           checked={aplicarForm.aplicarATodos}
                           onChange={() => setAplicarForm((f) => ({ ...f, aplicarATodos: true, lotesSeleccionados: lotesPreview.map((l) => l.loteid) }))}
-                          className="accent-[#eaae4c]"
+                          className="accent-[#16a34a]"
                         />
                         <span className="font-medium">Todos los lotes ({lotesPreview.length})</span>
                       </label>
@@ -593,7 +593,7 @@ export const CargosExtra = () => {
                           type="radio"
                           checked={!aplicarForm.aplicarATodos}
                           onChange={() => setAplicarForm((f) => ({ ...f, aplicarATodos: false }))}
-                          className="accent-[#eaae4c]"
+                          className="accent-[#16a34a]"
                         />
                         <span className="font-medium">Seleccionar lotes específicos</span>
                       </label>
@@ -605,7 +605,7 @@ export const CargosExtra = () => {
                         <label className="flex items-center gap-2 text-xs text-gray-500 pb-1 border-b border-gray-100 cursor-pointer">
                           <input
                             type="checkbox"
-                            className="accent-[#eaae4c]"
+                            className="accent-[#16a34a]"
                             checked={aplicarForm.lotesSeleccionados.length === lotesPreview.length}
                             onChange={(e) => setAplicarForm((f) => ({
                               ...f,
@@ -618,7 +618,7 @@ export const CargosExtra = () => {
                           <label key={l.loteid} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 px-1 rounded">
                             <input
                               type="checkbox"
-                              className="accent-[#eaae4c]"
+                              className="accent-[#16a34a]"
                               checked={aplicarForm.lotesSeleccionados.includes(l.loteid)}
                               onChange={(e) => setAplicarForm((f) => ({
                                 ...f,
@@ -722,7 +722,7 @@ export const CargosExtra = () => {
             {(() => {
               const count = aplicarForm.aplicarATodos ? lotesPreview.length : aplicarForm.lotesSeleccionados.length
               return count > 0 && parseFloat(aplicarForm.monto) > 0 ? (
-                <div className="bg-[#eaae4c]/10 border border-[#eaae4c] rounded-lg p-3 flex items-center justify-between text-sm">
+                <div className="bg-[#16a34a]/10 border border-[#16a34a] rounded-lg p-3 flex items-center justify-between text-sm">
                   <span className="text-gray-700">
                     A registrar:{' '}
                     <span className="font-bold text-[#504840]">
@@ -777,7 +777,7 @@ export const CargosExtra = () => {
               value={cancelForm.desarrolloid}
               onChange={(e) => setCancelForm((f) => ({ ...f, desarrolloid: e.target.value, concepto: '', lotesSeleccionados: [], aplicarATodos: true }))}
               disabled={isCancelling}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] disabled:bg-gray-100"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a] disabled:bg-gray-100"
             >
               <option value="">— Selecciona un desarrollo —</option>
               {desarrollos.map((d) => (
@@ -801,7 +801,7 @@ export const CargosExtra = () => {
                   value={cancelForm.concepto}
                   onChange={(e) => setCancelForm((f) => ({ ...f, concepto: e.target.value, lotesSeleccionados: [], aplicarATodos: true }))}
                   disabled={isCancelling}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a] disabled:bg-gray-100"
                 >
                   <option value="">— Selecciona un concepto —</option>
                   {conceptosPendientes.map((c) => (
@@ -816,7 +816,7 @@ export const CargosExtra = () => {
           {cancelForm.concepto && (
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-3">
               {loadingCancelables ? (
-                <p className="text-sm text-gray-500">Cargando lotes…</p>
+                <Skeleton className="h-4 w-32" />
               ) : lotesCancelables.length === 0 ? (
                 <p className="text-sm text-amber-700">No se encontraron cargos pendientes con este concepto.</p>
               ) : (
@@ -827,7 +827,7 @@ export const CargosExtra = () => {
                         type="radio"
                         checked={cancelForm.aplicarATodos}
                         onChange={() => setCancelForm((f) => ({ ...f, aplicarATodos: true, lotesSeleccionados: lotesCancelables.map((r) => r.cargoid) }))}
-                        className="accent-[#eaae4c]"
+                        className="accent-[#16a34a]"
                       />
                       <span className="font-medium">Todos los lotes ({lotesCancelables.length})</span>
                     </label>
@@ -836,7 +836,7 @@ export const CargosExtra = () => {
                         type="radio"
                         checked={!cancelForm.aplicarATodos}
                         onChange={() => setCancelForm((f) => ({ ...f, aplicarATodos: false, lotesSeleccionados: [] }))}
-                        className="accent-[#eaae4c]"
+                        className="accent-[#16a34a]"
                       />
                       <span className="font-medium">Seleccionar lotes específicos</span>
                     </label>
@@ -847,7 +847,7 @@ export const CargosExtra = () => {
                       <label className="flex items-center gap-2 text-xs text-gray-500 pb-1 border-b border-gray-100 cursor-pointer">
                         <input
                           type="checkbox"
-                          className="accent-[#eaae4c]"
+                          className="accent-[#16a34a]"
                           checked={cancelForm.lotesSeleccionados.length === lotesCancelables.length}
                           onChange={(e) => setCancelForm((f) => ({
                             ...f,
@@ -860,7 +860,7 @@ export const CargosExtra = () => {
                         <label key={r.cargoid} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 px-1 rounded">
                           <input
                             type="checkbox"
-                            className="accent-[#eaae4c]"
+                            className="accent-[#16a34a]"
                             checked={cancelForm.lotesSeleccionados.includes(r.cargoid)}
                             onChange={(e) => setCancelForm((f) => ({
                               ...f,

@@ -1,5 +1,6 @@
 import { ChevronUp, ChevronDown } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 interface Column<T> {
   key: keyof T | string
@@ -32,16 +33,7 @@ export const DataTable = <T extends Record<string, any>>({
   onSort,
 }: DataTableProps<T>) => {
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="inline-block animate-spin">
-            <div className="h-8 w-8 border-4 border-[#eaae4c] border-t-transparent rounded-full"></div>
-          </div>
-          <p className="mt-4 text-[#9e9f92]">Cargando datos...</p>
-        </div>
-      </div>
-    )
+    return <TableSkeleton rows={6} columns={Math.max(3, columns.length)} />
   }
 
   if (data.length === 0) {
@@ -68,7 +60,7 @@ export const DataTable = <T extends Record<string, any>>({
             key={idx}
             onClick={() => onRowClick?.(row)}
             className={cn(
-              'bg-white rounded-xl border border-[#e8e4e0] shadow-sm overflow-hidden',
+              'bg-white rounded-[20px] border border-[#e0e5e7] shadow-sm overflow-hidden',
               onRowClick && 'cursor-pointer active:bg-[#f8f8f8]'
             )}
           >
@@ -104,10 +96,10 @@ export const DataTable = <T extends Record<string, any>>({
       </div>
 
       {/* Desktop: standard table */}
-      <div className="hidden md:block overflow-x-auto bg-white rounded-lg shadow-md border border-[#504840]">
+      <div className="hidden md:block overflow-x-auto bg-white rounded-[20px] shadow-[var(--shadow-soft)] border border-[#ebebeb]">
         <table className="w-full">
           <thead className="bg-[#504840] border-b border-[#504840]">
-            <tr>
+            <tr className="bg-[#142127]">
               {columns.map((column) => (
                 <th
                   key={String(column.key)}
@@ -121,7 +113,7 @@ export const DataTable = <T extends Record<string, any>>({
                     {column.sortable && onSort && (
                       <button
                         onClick={() => onSort(String(column.key))}
-                        className="ml-1 text-[#eaae4c] hover:text-white cursor-pointer transition-colors"
+                        className="ml-1 text-[#fffa77] hover:text-white cursor-pointer transition-colors"
                       >
                         {sortBy === String(column.key) ? (
                           sortOrder === 'asc' ? (
@@ -145,14 +137,14 @@ export const DataTable = <T extends Record<string, any>>({
                 key={idx}
                 onClick={() => onRowClick?.(row)}
                 className={cn(
-                  'border-b border-[#f8f8f8]',
-                  onRowClick && 'cursor-pointer hover:bg-[#f8f8f8] transition-colors'
+                  'border-b border-[#e0e5e7]',
+                  onRowClick && 'cursor-pointer hover:bg-[#fffde1] transition-colors'
                 )}
               >
                 {columns.map((column) => (
                   <td
                     key={String(column.key)}
-                    className={cn('px-6 py-4 text-sm text-black', column.width)}
+                    className={cn('px-6 py-4 text-sm text-[#343c40]', column.width)}
                   >
                     {getCellValue(row, column)}
                   </td>

@@ -178,10 +178,10 @@ export const ApartadoExternoForm = ({
   // ── Render ────────────────────────────────────────────────
   if (step === 'cliente') {
     return (
-      <div className="space-y-5">
+      <div className="admin-form space-y-5">
         {/* Step indicator */}
         <div className="flex items-center gap-3 mb-2">
-          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[#eaae4c] text-black font-bold text-sm">1</span>
+          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[#16a34a] text-black font-bold text-sm">1</span>
           <span className="text-sm font-semibold text-gray-700">Datos del Cliente</span>
           <span className="text-gray-300 mx-1">→</span>
           <span className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-400 font-bold text-sm">2</span>
@@ -195,7 +195,7 @@ export const ApartadoExternoForm = ({
             onClick={() => { setUsarClienteExistente(false); setErrors({}) }}
             className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
               !usarClienteExistente
-                ? 'bg-[#eaae4c] border-[#eaae4c] text-black'
+                ? 'bg-[#16a34a] border-[#16a34a] text-black'
                 : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -206,7 +206,7 @@ export const ApartadoExternoForm = ({
             onClick={() => { setUsarClienteExistente(true); setErrors({}) }}
             className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
               usarClienteExistente
-                ? 'bg-[#eaae4c] border-[#eaae4c] text-black'
+                ? 'bg-[#16a34a] border-[#16a34a] text-black'
                 : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -320,13 +320,13 @@ export const ApartadoExternoForm = ({
 
   // Step 2: Apartado
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="admin-form space-y-5">
       {/* Step indicator */}
       <div className="flex items-center gap-3 mb-2">
         <span className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-500 font-bold text-sm">1</span>
         <span className="text-sm text-gray-400">Datos del Cliente</span>
         <span className="text-gray-300 mx-1">→</span>
-        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[#eaae4c] text-black font-bold text-sm">2</span>
+        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[#16a34a] text-black font-bold text-sm">2</span>
         <span className="text-sm font-semibold text-gray-700">Apartado</span>
       </div>
 
@@ -369,7 +369,7 @@ export const ApartadoExternoForm = ({
               onChange={(e) => setComentarios(e.target.value)}
               placeholder="Notas u observaciones del apartado (opcional)"
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a] resize-none"
             />
           </div>
         </div>
@@ -378,7 +378,7 @@ export const ApartadoExternoForm = ({
       <div className="flex justify-between">
         <Button
           type="button"
-          variant="secondary"
+          variant="outline"
           onClick={() => { setStep('cliente'); setErrors({}) }}
           disabled={isLoading}
         >

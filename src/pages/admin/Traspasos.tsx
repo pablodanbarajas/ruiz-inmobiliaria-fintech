@@ -11,6 +11,7 @@ import { formatDate, formatDateTime } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { SearchCombobox, type ComboOption } from '@/components/ui/SearchCombobox'
 import { TraspasoDocumentos } from '@/components/TraspasoDocumentos'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 interface TraspasoWithDetails extends Traspaso {
   cliente_anterior?: { nombre: string | null }
@@ -260,7 +261,7 @@ export const Traspasos = () => {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <ArrowLeftRight size={28} className="text-indigo-600" />
-            <h1 className="text-3xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>
+            <h1 className="text-3xl font-bold text-[#142127]">
               Traspasos
             </h1>
             {!loading && (
@@ -270,8 +271,7 @@ export const Traspasos = () => {
           <button
             type="button"
             onClick={openNuevoTraspaso}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors"
-            style={{ backgroundColor: '#eaae4c' }}
+            className="inline-flex items-center gap-2 rounded-full bg-[#142127] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#343c40]"
           >
             <Plus size={16} />
             Nuevo Traspaso
@@ -285,7 +285,7 @@ export const Traspasos = () => {
               {/* Modal header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <div className="flex items-center gap-2">
-                  <ArrowLeftRight size={20} style={{ color: '#eaae4c' }} />
+                  <ArrowLeftRight size={20} style={{ color: '#16a34a' }} />
                   <h2 className="text-lg font-bold text-gray-900">Nuevo Traspaso</h2>
                 </div>
                 <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
@@ -372,8 +372,7 @@ export const Traspasos = () => {
                   type="button"
                   onClick={handleSubmitTraspaso}
                   disabled={isSubmitting || !selectedVentaId || !nuevoClienteId}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  style={{ backgroundColor: '#eaae4c' }}
+                  className="inline-flex items-center gap-2 rounded-full bg-[#142127] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#343c40] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSubmitting ? 'Registrando…' : 'Confirmar Traspaso'}
                 </button>
@@ -416,7 +415,7 @@ export const Traspasos = () => {
         {/* Table */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
           {loading ? (
-            <div className="flex items-center justify-center py-20 text-gray-500">Cargando…</div>
+            <TableSkeleton rows={6} columns={5} />
           ) : traspasos.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-2">
               <ArrowLeftRight size={40} className="text-gray-300" />

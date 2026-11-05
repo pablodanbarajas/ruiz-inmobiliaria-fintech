@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { ClienteForm } from '@/components/forms/ClienteForm'
 import { ClienteDocumentos } from '@/components/ClienteDocumentos'
-import { ChevronLeft, Edit2, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Edit2, Trash2, ChevronUp } from 'lucide-react'
 import type { Cliente, Venta, Lote, Pago, CorridaFinanciera, Desarrollo } from '@/types/database'
 import { useAuth } from '@/context/AuthContext'
 import { formatDate, formatCurrency, getStatusLabel, getPagoStatusLabel, getPagoStatusColor } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { DetailSkeleton } from '@/components/ui/Skeleton'
 
 interface VentaWithDetails extends Venta {
   lote?: Lote & { desarrollo?: Desarrollo }
@@ -36,12 +37,19 @@ export const ClienteDetail = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [isFichaExpanded, setIsFichaExpanded] = useState(false)
+  const [ventasPage, setVentasPage] = useState(1)
+  const [pagosPage, setPagosPage] = useState(1)
+  const ventasPerPage = 3
+  const pagosPerPage = 5
 
   useEffect(() => {
     const fetchClienteDetail = async () => {
       if (!id) return
       try {
         setLoading(true)
+        setVentasPage(1)
+        setPagosPage(1)
 
         // Fetch cliente
         const { data: clienteData, error: clienteError } = await supabase
@@ -105,6 +113,11 @@ export const ClienteDetail = () => {
     fetchClienteDetail()
   }, [id])
 
+  const ventasPageCount = Math.ceil(ventas.length / ventasPerPage)
+  const pagosPageCount = Math.ceil(pagos.length / pagosPerPage)
+  const visibleVentas = ventas.slice((ventasPage - 1) * ventasPerPage, ventasPage * ventasPerPage)
+  const visiblePagos = pagos.slice((pagosPage - 1) * pagosPerPage, pagosPage * pagosPerPage)
+
   const handleUpdateCliente = async (formData: any) => {
     try {
       setIsSubmitting(true)
@@ -167,14 +180,7 @@ export const ClienteDetail = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="inline-block animate-spin">
-              <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-            </div>
-            <p className="mt-4 text-[#9e9f92]">Cargando detalles...</p>
-          </div>
-        </div>
+        <DetailSkeleton />
       </AdminLayout>
     )
   }
@@ -204,7 +210,7 @@ export const ClienteDetail = () => {
           <div className="flex gap-2">
             <Button
               onClick={() => setIsEditModalOpen(true)}
-              className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold inline-flex items-center gap-2"
+              className="bg-[#142127] hover:bg-[#343c40] text-white font-semibold inline-flex items-center gap-2 rounded-full"
             >
               <Edit2 size={18} />
               Editar
@@ -222,13 +228,29 @@ export const ClienteDetail = () => {
         </div>
 
         {/* Cliente Details */}
-        <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mb-8 border-t-4 border-[#504840]">
-          <h1 className="text-3xl font-bold text-black mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>
-            {cliente.nombre}
-          </h1>
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-4 md:p-6 mb-8">
+          <button
+            type="button"
+            onClick={() => setIsFichaExpanded((expanded) => !expanded)}
+            aria-expanded={isFichaExpanded}
+            className="w-full flex items-center justify-between gap-4 text-left"
+          >
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Ficha de cliente</p>
+              <h1 className="text-3xl font-bold text-[#142127]" style={{ fontFamily: 'var(--font-display)' }}>
+                {cliente.nombre}
+              </h1>
+            </div>
+            <span className="flex items-center gap-2 rounded-full border border-[#e0e5e7] px-3 py-2 text-sm font-semibold text-[#142127]">
+              {isFichaExpanded ? 'Contraer' : 'Ver información'}
+              {isFichaExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </span>
+          </button>
 
+          {isFichaExpanded && (
+            <div className="mt-6">
           {/* Section 1: General Info */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-4">
+          <div className="bg-[#f7f8f8] rounded-[14px] p-4 mb-4">
             <h2 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Información General</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-white rounded p-2">
@@ -386,14 +408,16 @@ export const ClienteDetail = () => {
               <p className="text-xs text-gray-600">Comentarios</p>
               <p className="text-sm text-gray-900">{cliente.comentarios || '-'}</p>
             </div>
-          </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Expediente Documental */}
         <ClienteDocumentos clienteid={cliente.clienteid} />
 
         {/* Ventas section */}
-        <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden mb-8">
           <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">Ventas Asociadas ({ventas.length})</h2>
           </div>
@@ -405,7 +429,7 @@ export const ClienteDetail = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-[#142127] border-b border-[#142127]">
                   <tr>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Venta ID</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Desarrollo</th>
@@ -418,7 +442,7 @@ export const ClienteDetail = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {ventas.map((venta) => (
+                  {visibleVentas.map((venta) => (
                     <tr key={venta.ventaid} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-semibold text-gray-900">{venta.ventaid}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">
@@ -446,12 +470,41 @@ export const ClienteDetail = () => {
                   ))}
                 </tbody>
               </table>
+              {ventasPageCount > 1 && (
+                <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 md:px-6">
+                  <span className="text-sm text-gray-500">
+                    Página {ventasPage} de {ventasPageCount}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={ventasPage === 1}
+                      onClick={() => setVentasPage((page) => page - 1)}
+                      className="inline-flex items-center gap-1"
+                    >
+                      <ChevronLeft size={16} />
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={ventasPage === ventasPageCount}
+                      onClick={() => setVentasPage((page) => page + 1)}
+                      className="inline-flex items-center gap-1"
+                    >
+                      Siguiente
+                      <ChevronRight size={16} />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Pagos section */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden">
           <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">Pagos Realizados ({pagos.length})</h2>
           </div>
@@ -463,7 +516,7 @@ export const ClienteDetail = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-[#142127] border-b border-[#142127]">
                   <tr>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Pago ID</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Venta</th>
@@ -477,7 +530,7 @@ export const ClienteDetail = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {pagos.map((pago) => (
+                  {visiblePagos.map((pago) => (
                     <tr key={pago.pagoid} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-semibold text-gray-900">{pago.pagoid}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">
@@ -512,6 +565,35 @@ export const ClienteDetail = () => {
                   ))}
                 </tbody>
               </table>
+              {pagosPageCount > 1 && (
+                <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 md:px-6">
+                  <span className="text-sm text-gray-500">
+                    Página {pagosPage} de {pagosPageCount}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={pagosPage === 1}
+                      onClick={() => setPagosPage((page) => page - 1)}
+                      className="inline-flex items-center gap-1"
+                    >
+                      <ChevronLeft size={16} />
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={pagosPage === pagosPageCount}
+                      onClick={() => setPagosPage((page) => page + 1)}
+                      className="inline-flex items-center gap-1"
+                    >
+                      Siguiente
+                      <ChevronRight size={16} />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

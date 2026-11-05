@@ -80,7 +80,7 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 3px solid #eaae4c;
+            border-bottom: 3px solid #16a34a;
             padding-bottom: 16px;
             margin-bottom: 16px;
           }
@@ -162,7 +162,7 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
           }
           .total-box {
             background: #f9f5ee;
-            border: 2px solid #eaae4c;
+            border: 2px solid #16a34a;
             border-radius: 6px;
             padding: 12px 16px;
             display: flex;
@@ -235,7 +235,7 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
           }
           .badge-pagado {
             display: inline-block;
-            background: #eaae4c;
+            background: #16a34a;
             color: #1a1a1a;
             font-weight: bold;
             font-size: 11px;
@@ -278,7 +278,7 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        borderBottom: '3px solid #eaae4c',
+        borderBottom: '3px solid #16a34a',
         paddingBottom: 16,
         marginBottom: 16,
       }}>
@@ -307,7 +307,7 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
           <div style={{ marginTop: 4 }}>
             <span style={{
               display: 'inline-block',
-              background: '#eaae4c',
+              background: '#16a34a',
               color: '#1a1a1a',
               fontWeight: 'bold',
               fontSize: 11,

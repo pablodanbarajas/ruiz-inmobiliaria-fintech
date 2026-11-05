@@ -3,8 +3,9 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { supabase } from '@/lib/supabaseClient'
 import { getCached, setCached, invalidateCache } from '@/lib/queryCache'
 import { Button } from '@/components/ui/Button'
-import { Mail, CheckCircle, Clock, XCircle, RefreshCw, Users, Send, AlertTriangle, Link } from 'lucide-react'
+import { Mail, CheckCircle, Clock, XCircle, RefreshCw, Users, Send, AlertTriangle, Link, RotateCw } from 'lucide-react'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 type InviteCandidate = {
   clienteid: number
@@ -32,6 +33,13 @@ export const InvitarClientes = () => {
   const [desarrollos, setDesarrollos] = useState<{ desarrolloid: number; nombre: string }[]>([])
   const [selectedDesarrollo, setSelectedDesarrollo] = useState<number | null>(null)
   const [bulkSending, setBulkSending] = useState(false)
+  const [resendCooldowns, setResendCooldowns] = useState<Record<number, number>>({})
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   // Cargar desarrollos disponibles y restaurar selección guardada
   useEffect(() => {
@@ -83,7 +91,7 @@ export const InvitarClientes = () => {
     fetchCandidates()
   }, [fetchCandidates])
 
-  const sendInvite = async (cliente: InviteCandidate) => {
+  const sendInvite = async (cliente: InviteCandidate, resend = false) => {
     const { data: sessionData } = await supabase.auth.getSession()
     const token = sessionData.session?.access_token
     if (!token) throw new Error('Sesión no encontrada')
@@ -97,7 +105,7 @@ export const InvitarClientes = () => {
           Authorization: `Bearer ${token}`,
           apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ email: cliente.email }),
+        body: JSON.stringify({ email: cliente.email, resend }),
       }
     )
     const result = await response.json()
@@ -113,6 +121,33 @@ export const InvitarClientes = () => {
       setTimeout(fetchCandidates, 2000)
     } catch (err: any) {
       setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'error', message: err.message ?? 'Error desconocido' } }))
+    }
+  }
+
+  const handleResendInvite = async (cliente: InviteCandidate) => {
+    if ((resendCooldowns[cliente.clienteid] ?? 0) > Date.now()) return
+    setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'loading' } }))
+    try {
+      await sendInvite(cliente, true)
+      setResendCooldowns(prev => ({ ...prev, [cliente.clienteid]: Date.now() + 30_000 }))
+      setStatusMap(prev => ({ ...prev, [cliente.clienteid]: { status: 'success', message: 'Invitación reenviada' } }))
+      if (selectedDesarrollo) setCached(`invitar:${selectedDesarrollo}`, null as any)
+      setTimeout(fetchCandidates, 2000)
+    } catch (err: any) {
+      const message = err.message ?? 'Error desconocido'
+      const seconds = Number(message.match(/after (\d+) seconds?/)?.[1] ?? 0)
+      if (seconds > 0) {
+        setResendCooldowns(prev => ({ ...prev, [cliente.clienteid]: Date.now() + seconds * 1000 }))
+      }
+      setStatusMap(prev => ({
+        ...prev,
+        [cliente.clienteid]: {
+          status: 'error',
+          message: seconds > 0
+            ? `Por seguridad, espera ${seconds} segundos antes de reenviar.`
+            : message,
+        },
+      }))
     }
   }
 
@@ -237,7 +272,7 @@ export const InvitarClientes = () => {
 
         {/* Tabla */}
         {loading ? (
-          <div className="text-center py-16 text-gray-500">Cargando clientes...</div>
+          <TableSkeleton rows={6} columns={5} />
         ) : candidates.length === 0 ? (
           <div className="text-center py-16 text-gray-500">
             No hay clientes con lotes en este desarrollo.
@@ -314,17 +349,25 @@ export const InvitarClientes = () => {
                           >
                             {isBusy ? 'Reparando...' : <><Link className="w-3 h-3" /> Reparar vínculo</>}
                           </Button>
-                        ) : c.portal_status === 'sin_cuenta' && c.can_invite ? (
+                        ) : (c.portal_status === 'sin_cuenta' && c.can_invite) || c.portal_status === 'invitacion_pendiente' ? (
                           <div className="flex flex-col items-end gap-1">
+                            {(() => {
+                              const cooldown = Math.max(0, Math.ceil(((resendCooldowns[c.clienteid] ?? 0) - now) / 1000))
+                              return (
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={isBusy || isDone}
-                              onClick={() => handleInvite(c)}
+                              disabled={isBusy || isDone || cooldown > 0}
+                              onClick={() => c.portal_status === 'invitacion_pendiente' ? handleResendInvite(c) : handleInvite(c)}
                               className="gap-1.5"
                             >
                               {isBusy ? (
                                 'Enviando...'
+                              ) : cooldown > 0 ? (
+                                <>
+                                  <Clock className="w-3 h-3" />
+                                  Reenviar en {cooldown}s
+                                </>
                               ) : st?.status === 'error' ? (
                                 <>
                                   <XCircle className="w-3 h-3 text-red-500" />
@@ -332,11 +375,22 @@ export const InvitarClientes = () => {
                                 </>
                               ) : (
                                 <>
-                                  <Mail className="w-3 h-3" />
-                                  Invitar
+                                  {c.portal_status === 'invitacion_pendiente' ? (
+                                    <>
+                                      <RotateCw className="w-3 h-3" />
+                                      Reenviar
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Mail className="w-3 h-3" />
+                                      Invitar
+                                    </>
+                                  )}
                                 </>
                               )}
                             </Button>
+                              )
+                            })()}
                             {st?.status === 'error' && (
                               <p className="text-xs text-red-500 max-w-[150px] text-right">
                                 {st.message}

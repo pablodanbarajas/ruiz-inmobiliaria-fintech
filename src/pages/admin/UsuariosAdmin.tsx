@@ -13,6 +13,7 @@ import {
   type AdminPanelRole,
 } from '@/config/roles'
 import { supabase } from '@/lib/supabaseClient'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 type AdminUserRecord = {
   user_id: string
@@ -176,7 +177,7 @@ export const UsuariosAdmin = () => {
       <div className="w-full">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>
+            <h1 className="text-3xl md:text-4xl font-bold text-[#142127]">
               Administracion de Usuarios
             </h1>
             <p className="text-[#9e9f92] mt-2">
@@ -206,12 +207,12 @@ export const UsuariosAdmin = () => {
 
         <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-8">
           <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-            <Users size={18} className="text-[#eaae4c]" />
+            <Users size={18} className="text-[#16a34a]" />
             <h2 className="font-semibold text-gray-800">Usuarios de administracion</h2>
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-16 text-gray-500">Cargando usuarios...</div>
+            <TableSkeleton rows={5} columns={4} />
           ) : filteredUsers.length === 0 ? (
             <div className="flex items-center justify-center py-16 text-gray-500">No se encontraron usuarios</div>
           ) : (
@@ -239,7 +240,7 @@ export const UsuariosAdmin = () => {
                         </td>
                         <td className="px-6 py-4">
                           {u.role ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-[#eaae4c]/20 text-[#504840]">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-[#16a34a]/20 text-[#504840]">
                               <ShieldCheck size={12} />
                               {ROLE_LABELS[u.role]}
                             </span>
@@ -249,7 +250,7 @@ export const UsuariosAdmin = () => {
                         </td>
                         <td className="px-6 py-4">
                           <select
-                            className="w-full max-w-[220px] px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                            className="w-full max-w-[220px] px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
                             value={selectedRole}
                             onChange={(e) =>
                               setDraftRoles((prev) => ({
@@ -378,7 +379,7 @@ export const UsuariosAdmin = () => {
             value={newRole}
             onChange={(e) => setNewRole(e.target.value as AdminPanelRole | '')}
             disabled={creating}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] disabled:bg-gray-100"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a] disabled:bg-gray-100"
           >
             <option value="">— Selecciona un rol —</option>
             {ASSIGNABLE_ADMIN_ROLES.map((r) => (

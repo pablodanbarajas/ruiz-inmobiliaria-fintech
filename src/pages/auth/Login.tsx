@@ -18,6 +18,12 @@ export const Login = () => {
 
   // Only handles the case where user is already authenticated when visiting /login (e.g. page refresh)
   useEffect(() => {
+    const isRecoveryLink = new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery'
+    if (isRecoveryLink) {
+      navigate(`/reset-password${window.location.hash}`, { replace: true })
+      return
+    }
+
     if (!authLoading && isAuthenticated && role && ADMIN_PANEL_ROLES.includes(role as AdminPanelRole)) {
       navigate('/admin/dashboard', { replace: true })
     }
@@ -85,29 +91,26 @@ export const Login = () => {
 
       {/* Login Section - Right Side */}
       <div className="w-full lg:w-1/2 bg-[#fafaf8] flex flex-col items-center justify-center px-12 overflow-hidden relative">
-        {/* Subtle top accent */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#504840] via-[#eaae4c] to-[#504840]" />
-
         <div className="w-full max-w-xl">
           {/* Logo mark visible on desktop */}
           <div className="hidden lg:flex flex-col items-center mb-12">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-5xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Ruiz</span>
-              <span className="text-5xl font-bold text-[#eaae4c]" style={{ fontFamily: 'Playfair Display, serif' }}>Inmobiliaria</span>
+              <span className="text-5xl font-bold text-black">Ruiz</span>
+              <span className="text-5xl font-bold text-[#eaae4c]">Inmobiliaria</span>
             </div>
             <p className="text-sm uppercase tracking-[0.3em] text-[#9e9f92] font-medium">Sistema de Administración</p>
           </div>
 
           {/* Mobile Logo */}
           <div className="lg:hidden mb-8 text-center">
-            <h1 className="text-5xl font-bold text-black mb-1" style={{ fontFamily: 'Playfair Display, serif' }}>Ruiz</h1>
-            <h2 className="text-3xl font-bold text-[#eaae4c]" style={{ fontFamily: 'Playfair Display, serif' }}>Inmobiliaria</h2>
+            <h1 className="text-5xl font-bold text-black mb-1">Ruiz</h1>
+            <h2 className="text-3xl font-bold text-[#eaae4c]">Inmobiliaria</h2>
           </div>
 
           {/* Card */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 px-12 py-12">
             <div className="mb-10">
-              <h1 className="text-4xl font-bold text-gray-900 mb-1" style={{ fontFamily: 'Playfair Display, serif' }}>Bienvenido</h1>
+              <h1 className="text-4xl font-bold text-gray-900 mb-1">Bienvenido</h1>
               <div className="flex items-center gap-3 mt-3 mb-3">
                 <div className="h-0.5 w-10 bg-[#eaae4c] rounded-full" />
                 <p className="text-base text-gray-500">Ingresa tus credenciales para continuar</p>
@@ -131,6 +134,7 @@ export const Login = () => {
                     className="w-full pl-10 pr-4 py-3.5 text-base border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#eaae4c] focus:border-transparent bg-gray-50"
                   />
                 </div>
+
               </div>
 
               <div>

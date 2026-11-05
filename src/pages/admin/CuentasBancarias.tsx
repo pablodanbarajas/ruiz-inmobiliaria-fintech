@@ -160,7 +160,8 @@ export const CuentasBancarias = () => {
       <div className="w-full">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Configuración financiera</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-[#142127]" style={{ fontFamily: 'var(--font-display)' }}>
               Cuentas Bancarias
             </h1>
             <p className="text-[#9e9f92] mt-2">Catálogo de cuentas para pagos por transferencia</p>
@@ -175,7 +176,7 @@ export const CuentasBancarias = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md border-t-4 border-[#504840] p-6 mb-6">
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-6 mb-6">
           <label className="block text-sm font-medium text-black mb-1">Buscar</label>
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nombre, banco, cuenta o desarrollo..." />
         </div>
@@ -260,7 +261,7 @@ export const CuentasBancarias = () => {
                 <select
                   value={form.desarrolloid}
                   onChange={(e) => setForm({ ...form, desarrolloid: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
                 >
                   <option value="">General</option>
                   {desarrollos.map((d) => (

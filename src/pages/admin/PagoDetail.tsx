@@ -12,6 +12,7 @@ import type { Pago, CorridaFinanciera, Venta, Cliente, Lote, CuentaBancaria } fr
 import { formatDate, formatCurrency, getPagoStatusLabel, getPagoStatusColor, getPagoFormaLabel } from '@/utils/helpers'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
+import { DetailSkeleton } from '@/components/ui/Skeleton'
 
 interface PagoWithDetails extends Pago {
   corridafinanciera?: CorridaFinanciera & {
@@ -78,14 +79,7 @@ export const PagoDetail = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="inline-block animate-spin">
-              <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-            </div>
-            <p className="mt-4 text-[#9e9f92]">Cargando detalles...</p>
-          </div>
-        </div>
+        <DetailSkeleton />
       </AdminLayout>
     )
   }
@@ -242,8 +236,9 @@ export const PagoDetail = () => {
         </div>
 
         {/* Pago Details */}
-        <div className="bg-white rounded-lg shadow-md p-4 md:p-8 mb-8 border-t-4 border-[#504840]">
-          <h1 className="text-3xl md:text-4xl font-bold text-black mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>Pago #{pago.pagoid}</h1>
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-4 md:p-8 mb-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Ficha financiera</p>
+          <h1 className="text-3xl md:text-4xl font-bold text-[#142127] mb-6" style={{ fontFamily: 'var(--font-display)' }}>Pago #{pago.pagoid}</h1>
 
           {/* Row 1: Monto + Recargo + Fecha + Forma + Estado */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">

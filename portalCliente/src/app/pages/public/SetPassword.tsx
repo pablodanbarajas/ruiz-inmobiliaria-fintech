@@ -10,6 +10,14 @@ export function SetPassword() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const passwordRules = [
+    { label: 'Al menos 8 caracteres', test: password.length >= 8 },
+    { label: 'Una letra mayúscula', test: /[A-ZÁÉÍÓÚÜÑ]/.test(password) },
+    { label: 'Una letra minúscula', test: /[a-záéíóúüñ]/.test(password) },
+    { label: 'Un número', test: /\d/.test(password) },
+    { label: 'Un carácter especial', test: /[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\d]/.test(password) },
+  ];
+  const isPasswordStrong = passwordRules.every((rule) => rule.test);
 
   useEffect(() => {
     // Supabase procesa automáticamente el hash #access_token=...
@@ -37,8 +45,8 @@ export function SetPassword() {
     e.preventDefault();
     setError(null);
 
-    if (password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres.');
+    if (!isPasswordStrong) {
+      setError('Completa todos los requisitos de seguridad de la contraseña.');
       return;
     }
     if (password !== confirmPassword) {
@@ -107,11 +115,19 @@ export function SetPassword() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 8 caracteres"
+              placeholder="Crea una contraseña segura"
               required
               autoComplete="new-password"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
             />
+            <ul className="mt-2 grid grid-cols-1 gap-1 text-xs sm:grid-cols-2" aria-label="Requisitos de contraseña">
+              {passwordRules.map((rule) => (
+                <li key={rule.label} className={rule.test ? 'text-emerald-600' : 'text-gray-500'}>
+                  <span className="mr-1 inline-block w-3 text-center font-bold">{rule.test ? '✓' : '○'}</span>
+                  {rule.label}
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div>
@@ -127,6 +143,11 @@ export function SetPassword() {
               autoComplete="new-password"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
             />
+            {confirmPassword && (
+              <p className={`mt-1 text-xs ${password === confirmPassword ? 'text-emerald-600' : 'text-red-600'}`}>
+                {password === confirmPassword ? 'Las contraseñas coinciden.' : 'Las contraseñas no coinciden.'}
+              </p>
+            )}
           </div>
 
           {error && (
@@ -137,7 +158,7 @@ export function SetPassword() {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isPasswordStrong || password !== confirmPassword}
             className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
           >
             {isSubmitting ? 'Guardando...' : 'Guardar contraseña y entrar'}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -258,7 +259,7 @@ export const Contratos = () => {
 
             {/* Tabla de templates */}
             {loading ? (
-              <div className="text-center py-8">Cargando...</div>
+              <TableSkeleton rows={5} columns={templateColumns.length + 1} />
             ) : (
               <div className="bg-white rounded-lg border">
                 <table className="w-full">
@@ -307,7 +308,7 @@ export const Contratos = () => {
         {activeTab === 'generados' && (
           <div className="space-y-4">
             {loading ? (
-              <div className="text-center py-8">Cargando...</div>
+              <TableSkeleton rows={5} columns={contratosColumns.length + 1} />
             ) : (
               <div className="bg-white rounded-lg border">
                 <table className="w-full">

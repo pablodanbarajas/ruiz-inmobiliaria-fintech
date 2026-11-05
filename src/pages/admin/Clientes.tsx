@@ -56,7 +56,7 @@ export const Clientes = () => {
   // Fetch all clientes once on mount
   useEffect(() => {
     const fetchAllClientes = async () => {
-      const CACHE_KEY = 'clientes:all:v2'
+      const CACHE_KEY = 'clientes:all:v4'
       const cached = getCached<{ all: Cliente[]; visible: Cliente[] }>(CACHE_KEY)
       if (cached) {
         setAllClientsSearchCache(cached.all)
@@ -67,6 +67,24 @@ export const Clientes = () => {
       try {
         setLoading(true)
         
+        const { data: adminRoleRows, error: adminRolesError } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .in('role', [
+            'admin',
+            'finanzas',
+            'vendedor',
+            'vendedor_externo',
+            'contratos',
+            'cobranza_caja',
+            'desarrollo_ri',
+          ])
+        if (adminRolesError) {
+          console.error('Error obteniendo usuarios administrativos:', adminRolesError)
+          throw adminRolesError
+        }
+        const adminUserIds = new Set((adminRoleRows ?? []).map((row) => row.user_id))
+
         // Fetch all clientes in chunks (Supabase default limit is 1000)
         let allData: Cliente[] = []
         let page = 0
@@ -96,10 +114,11 @@ export const Clientes = () => {
           }
         }
 
-        let finalCache = allData
+        const clientData = allData.filter((cliente) => !cliente.user_id || !adminUserIds.has(cliente.user_id))
+        let finalCache = clientData
 
         // In demo mode, restrict to clients that have ventas in the demo desarrollo
-        if (DEMO_DESARROLLOIDS.length > 0 && allData.length > 0) {
+        if (DEMO_DESARROLLOIDS.length > 0 && clientData.length > 0) {
           // Clientes con al menos una venta (en cualquier desarrollo)
           const { data: ventasAll } = await supabase
             .from('venta')
@@ -124,18 +143,18 @@ export const Clientes = () => {
             // Mostrar:
             // 1) clientes con ventas en desarrollos demo
             // 2) clientes sin ninguna venta (recién creados, por ejemplo)
-            finalCache = allData.filter(
+            finalCache = clientData.filter(
               (c) => demoClienteIds.has(c.clienteid) || !clientesConAlgunaVenta.has(c.clienteid)
             )
           } else {
             // Si no hay lotes demo configurados, mostrar solo clientes sin ventas
-            finalCache = allData.filter((c) => !clientesConAlgunaVenta.has(c.clienteid))
+            finalCache = clientData.filter((c) => !clientesConAlgunaVenta.has(c.clienteid))
           }
         }
 
         setAllClientsCache(finalCache)
-        setAllClientsSearchCache(allData)
-        setCached(CACHE_KEY, { all: allData, visible: finalCache })
+        setAllClientsSearchCache(finalCache)
+        setCached(CACHE_KEY, { all: finalCache, visible: finalCache })
       } catch (error) {
         console.error('Error fetching clientes:', error)
         setAllClientsCache([])
@@ -197,7 +216,7 @@ export const Clientes = () => {
       if (data && data.length > 0) {
         setAllClientsCache([...allClientsCache, data[0]])
         setAllClientsSearchCache([...allClientsSearchCache, data[0]])
-        setCached('clientes:all:v2', {
+        setCached('clientes:all:v4', {
           all: [...allClientsSearchCache, data[0]],
           visible: [...allClientsCache, data[0]],
         })
@@ -230,7 +249,7 @@ export const Clientes = () => {
       const updatedCliente = { ...clienteToEdit, ...formData }
       setAllClientsCache(allClientsCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c))
       setAllClientsSearchCache(allClientsSearchCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c))
-      setCached('clientes:all:v2', {
+      setCached('clientes:all:v4', {
         all: allClientsSearchCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c),
         visible: allClientsCache.map(c => c.clienteid === clienteToEdit?.clienteid ? updatedCliente as Cliente : c),
       })
@@ -276,7 +295,7 @@ export const Clientes = () => {
       // Remove from cache
       setAllClientsCache(allClientsCache.filter(c => c.clienteid !== clienteToDelete?.clienteid))
       setAllClientsSearchCache(allClientsSearchCache.filter(c => c.clienteid !== clienteToDelete?.clienteid))
-      setCached('clientes:all:v2', {
+      setCached('clientes:all:v4', {
         all: allClientsSearchCache.filter(c => c.clienteid !== clienteToDelete?.clienteid),
         visible: allClientsCache.filter(c => c.clienteid !== clienteToDelete?.clienteid),
       })
@@ -297,7 +316,8 @@ export const Clientes = () => {
       <div className="w-full">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Clientes</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Gestión comercial</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-[#142127]" style={{ fontFamily: 'var(--font-display)' }}>Clientes</h1>
             <p className="text-[#9e9f92] mt-2">Listado de compradores</p>
           </div>
           <Button
@@ -305,14 +325,14 @@ export const Clientes = () => {
               setClienteToEdit(null)
               setShowModal(true)
             }}
-            className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-2 px-6"
+            className="bg-[#142127] hover:bg-[#343c40] text-white font-semibold py-2 px-6 rounded-full"
           >
             + Nuevo Cliente
           </Button>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-md border-t-4 border-[#504840] p-6 mb-6">
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-black mb-1">

@@ -110,10 +110,17 @@ Deno.serve(async (req: Request) => {
 
   // Extraer datos del evento
   // Quentli puede enviar el id del cliente en username, externalId o en metadata
+  // Extraer corridafinancieraid del metadata (presente cuando el pago vino de "Pagar ahora")
+  const metadataList: Array<{ key: string; value: string }> = data?.metadata ?? []
+  const metadataMap = Object.fromEntries(metadataList.map((m: { key: string; value: string }) => [m.key, m.value]))
+  const corridaFromMetadata = metadataMap['corridafinancieraid']
+    ? parseInt(metadataMap['corridafinancieraid'], 10)
+    : null
+
   const clienteid = parseInt(
     data?.customer?.username ??
     data?.customer?.externalId ??
-    metadataMap?.['clienteid'] ??
+    metadataMap['clienteid'] ??
     '',
     10,
   )
@@ -121,13 +128,6 @@ Deno.serve(async (req: Request) => {
   const montopagado = amountCentavos / 100
   const invoiceId: string = data?.invoiceId ?? ''
   const paymentType: string = data?.payment?.type ?? 'OTHER'
-
-  // Extraer corridafinancieraid del metadata (presente cuando el pago vino de "Pagar ahora")
-  const metadataList: Array<{ key: string; value: string }> = data?.metadata ?? []
-  const metadataMap = Object.fromEntries(metadataList.map((m: { key: string; value: string }) => [m.key, m.value]))
-  const corridaFromMetadata = metadataMap['corridafinancieraid']
-    ? parseInt(metadataMap['corridafinancieraid'], 10)
-    : null
 
   // Extraer subscriptionId (presente en pagos de suscripción automática)
   const subscriptionId: string | null =

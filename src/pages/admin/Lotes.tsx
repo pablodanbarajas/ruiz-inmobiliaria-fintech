@@ -138,8 +138,7 @@ export const Lotes = () => {
       const { error } = await supabase.from('lote').insert([formData])
 
       if (error) {
-        alert(`Error: ${error.message}`)
-        return
+        throw new Error(error.message)
       }
 
       invalidateCache('lotes:')
@@ -148,7 +147,7 @@ export const Lotes = () => {
       setReloadKey((k) => k + 1)
     } catch (err) {
       console.error('Error creating lote:', err)
-      alert('Error al crear el lote')
+      throw err
     } finally {
       setIsSubmitting(false)
     }
@@ -176,8 +175,7 @@ export const Lotes = () => {
         .eq('loteid', loteEnEdicion?.loteid)
 
       if (error) {
-        alert(`Error: ${error.message}`)
-        return
+        throw new Error(error.message)
       }
 
       invalidateCache('lotes:')
@@ -186,7 +184,7 @@ export const Lotes = () => {
       setReloadKey((k) => k + 1)
     } catch (err) {
       console.error('Error updating lote:', err)
-      alert('Error al actualizar el lote')
+      throw err
     } finally {
       setIsSubmitting(false)
     }
@@ -241,8 +239,9 @@ export const Lotes = () => {
       <div className="w-full">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Lotes</h1>
-            <p className="text-[#9e9f92] mt-2">Listado de terrenos disponibles</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Inventario inmobiliario</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-[#142127]" style={{ fontFamily: 'var(--font-display)' }}>Lotes</h1>
+            <p className="text-[#63696c] mt-2">Listado de terrenos disponibles</p>
           </div>
           {canEditLotes && (
             <div className="flex gap-2">
@@ -256,7 +255,7 @@ export const Lotes = () => {
               </Button>
               <Button
                 onClick={() => setShowModal(true)}
-                className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-2 px-6"
+                className="bg-[#142127] hover:bg-[#343c40] text-white font-semibold py-2 px-6 rounded-full"
               >
                 + Nuevo Lote
               </Button>
@@ -265,14 +264,14 @@ export const Lotes = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-md border-t-4 border-[#504840] p-6 mb-6">
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-black mb-1">
                 Desarrollo
               </label>
               <select
-                className="w-full px-3 py-2 border border-[#504840] rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full px-3 py-2 border border-[#504840] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
                 value={filters.desarrolloId}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilters({ ...filters, desarrolloId: e.target.value })}
               >
@@ -289,7 +288,7 @@ export const Lotes = () => {
                 Estado
               </label>
               <select
-                className="w-full px-3 py-2 border border-[#504840] rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+                className="w-full px-3 py-2 border border-[#504840] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
                 value={filters.status}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilters({ ...filters, status: e.target.value })}
               >

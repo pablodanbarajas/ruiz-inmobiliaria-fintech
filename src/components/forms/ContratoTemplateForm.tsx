@@ -121,7 +121,7 @@ export const ContratoTemplateForm = ({
   ]
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="admin-form space-y-6">
       {/* Nombre */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -268,7 +268,7 @@ export const ContratoTemplateForm = ({
 
       {/* Botones */}
       <div className="flex justify-end gap-2 pt-4 border-t">
-        <Button variant="secondary" type="button" disabled={isSubmitting}>
+        <Button variant="outline" type="button" disabled={isSubmitting}>
           Cancelar
         </Button>
         <Button type="submit" disabled={isSubmitting}>

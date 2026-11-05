@@ -91,11 +91,11 @@ export const getLoteStatusColor = (status: string | null | undefined): string =>
     case 'D': // Disponible
       return 'bg-green-500 text-white'
     case 'V': // Vendido
-      return 'bg-[#504840] text-white'
+      return 'bg-[#64748b] text-white'
     case 'B': // Bloqueado
       return 'bg-red-600 text-white'
     case 'A': // Apartado
-      return 'bg-[#eaae4c] text-black'
+      return 'bg-[#16a34a] text-black'
     case 'N': // No disponible
       return 'bg-gray-400 text-white'
     default:
@@ -134,9 +134,9 @@ export const getVentaStatusColor = (status: string | null | undefined): string =
     case 'E': // En enganche
       return 'bg-blue-500 text-white'
     case 'A': // Activa
-      return 'bg-[#eaae4c] text-black'
+      return 'bg-[#16a34a] text-black'
     case 'V': // Finalizada
-      return 'bg-[#504840] text-white'
+      return 'bg-[#64748b] text-white'
     case 'C': // Cancelada
       return 'bg-red-600 text-white'
     default:
@@ -206,7 +206,7 @@ export const getPagoStatusLabel = (status: string | null | undefined): string =>
 export const getPagoStatusColor = (status: string | null | undefined): string => {
   switch (status?.toUpperCase()) {
     case 'P': // Pagado
-      return 'bg-[#eaae4c] text-black'
+      return 'bg-[#16a34a] text-black'
     case 'C': // Cancelado
       return 'bg-red-600 text-white'
     default:
@@ -235,9 +235,9 @@ export const getDesarrolloStatusLabel = (status: string | null | undefined): str
 export const getDesarrolloStatusColor = (status: string | null | undefined): string => {
   switch (status?.toUpperCase()) {
     case 'A': // Activo
-      return 'bg-[#eaae4c] text-black'
+      return 'bg-[#16a34a] text-black'
     case 'V': // Vendido
-      return 'bg-[#504840] text-white'
+      return 'bg-[#64748b] text-white'
     default:
       return 'bg-gray-100 text-gray-800'
   }

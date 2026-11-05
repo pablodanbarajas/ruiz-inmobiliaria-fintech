@@ -10,6 +10,7 @@ import { ChevronLeft, Edit2, AlertTriangle } from 'lucide-react'
 import type { Convenio, Venta, Cliente, Lote } from '@/types/database'
 import { formatDate, formatCurrency, getConvenioStatusLabel, getConvenioStatusColor } from '@/utils/helpers'
 import { syncExpiredConvenios } from '@/services/convenios'
+import { DetailSkeleton } from '@/components/ui/Skeleton'
 
 interface ConvenioWithDetails extends Convenio {
   venta?: Venta & { cliente?: Cliente; lote?: Lote }
@@ -102,14 +103,7 @@ export const ConvenioDetail = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="inline-block animate-spin">
-              <div className="h-8 w-8 border-4 border-[#eaae4c] border-t-transparent rounded-full" />
-            </div>
-            <p className="mt-4 text-[#9e9f92]">Cargando convenio...</p>
-          </div>
-        </div>
+        <DetailSkeleton />
       </AdminLayout>
     )
   }
@@ -167,9 +161,10 @@ export const ConvenioDetail = () => {
         </div>
 
         {/* Main card */}
-        <div className="bg-white rounded-lg shadow-md p-8 mb-8 border-t-4 border-[#504840]">
+        <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-8 mb-8">
           <div className="flex items-center gap-4 mb-6">
-            <h1 className="text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Ficha de convenio</p>
+            <h1 className="text-4xl font-bold text-[#142127]" style={{ fontFamily: 'var(--font-display)' }}>
               Convenio #{convenio.convenioid}
             </h1>
             <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getConvenioStatusColor(convenio.estatus)}`}>
@@ -257,7 +252,7 @@ export const ConvenioDetail = () => {
           {/* Descripción */}
           <div className="mb-6">
             <p className="text-sm text-gray-500 mb-1">Términos Acordados</p>
-            <p className="text-base text-gray-800 whitespace-pre-wrap bg-gray-50 rounded p-4 border border-gray-100">
+            <p className="text-base text-gray-800 whitespace-pre-wrap bg-[#f7f8f8] rounded-[14px] p-4 border border-[#e0e5e7]">
               {convenio.descripcion ?? '—'}
             </p>
           </div>

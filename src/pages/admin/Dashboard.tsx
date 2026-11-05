@@ -11,14 +11,13 @@ import { formatCurrency, formatDate, getVentaStatusLabel, getVentaStatusColor, c
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, ROLE_LABELS, type AdminPanelRole } from '@/config/roles'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 interface VentaEnRiesgo {
   ventaid: number
   clienteNombre: string
   loteLabel: string
   corridasVencidas: number
-  ultimoAviso: string | null
-  etapa: string
 }
 
 interface Stats {
@@ -424,40 +423,13 @@ export const Dashboard = () => {
           return
         }
 
-        // Query 3: último aviso por cada venta en riesgo (una sola query)
-        const ventaIds = ventasConRiesgo.map((v) => v.ventaid)
-        const { data: avisosData } = await supabase
-          .from('avisos_cancelacion')
-          .select('ventaid, tipo, fecha_envio')
-          .in('ventaid', ventaIds)
-          .order('fecha_envio', { ascending: false })
-
-        // Build aviso map: ventaid → último aviso
-        const avisosMap = new Map<number, { tipo: string; fecha_envio: string }>()
-        for (const a of avisosData || []) {
-          if (!avisosMap.has(a.ventaid)) avisosMap.set(a.ventaid, a)
-        }
-
         // Build result
-        const diffDays = (from: string) =>
-          Math.floor((new Date().getTime() - new Date(from).getTime()) / 86_400_000)
-
         const resultados: VentaEnRiesgo[] = ventasConRiesgo.map(({ ventaid, venta, vencidas }) => {
-          const ultimoAviso = avisosMap.get(ventaid) ?? null
-          let etapa = 'Sin avisos'
-          if (ultimoAviso) {
-            const dias = diffDays(ultimoAviso.fecha_envio)
-            if (ultimoAviso.tipo === 'AVISO1') etapa = dias < 5 ? `Aviso 1 (hace ${dias}d)` : `Aviso 1 vencido (${dias}d)`
-            else if (ultimoAviso.tipo === 'AVISO2') etapa = dias < 5 ? `Aviso 2 (hace ${dias}d)` : `Doc. cancelación pendiente`
-            else etapa = 'Cancelación registrada'
-          }
           return {
             ventaid,
             clienteNombre: venta?.cliente?.nombre ?? 'Sin nombre',
             loteLabel: `Mza ${venta?.lote?.manzana ?? '-'} / ${venta?.lote?.nolote ?? '-'}`,
             corridasVencidas: vencidas,
-            ultimoAviso: ultimoAviso?.fecha_envio ?? null,
-            etapa,
           }
         })
 
@@ -673,7 +645,7 @@ export const Dashboard = () => {
   }) => (
     <div
       onClick={onClick}
-      className={`flex items-center gap-3 p-3 rounded-lg border border-gray-100 transition-colors ${onClick ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+      className={`flex items-center gap-3 p-3 rounded-[14px] border border-[#e0e5e7] transition-colors ${onClick ? 'cursor-pointer hover:bg-[#fffde1]' : ''}`}
     >
       <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color }}>
         {Icon}
@@ -690,8 +662,9 @@ export const Dashboard = () => {
       <div className="w-full">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-black" style={{ fontFamily: 'Playfair Display, serif' }}>Dashboard</h1>
-            <p className="text-[#9e9f92] mt-1 capitalize">{monthName}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Resumen operativo</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-[#142127]" style={{ fontFamily: 'var(--font-display)' }}>Dashboard</h1>
+            <p className="text-[#63696c] mt-1 capitalize">{monthName}</p>
             {currentRole && (
               <p className="text-xs text-gray-500 mt-1">Vista de rol: {ROLE_LABELS[currentRole]}</p>
             )}
@@ -710,7 +683,7 @@ export const Dashboard = () => {
                   key={(item as { path: string }).path}
                   type="button"
                   onClick={() => navigate((item as { path: string }).path)}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:border-[#eaae4c] hover:text-[#504840] hover:shadow-sm transition-all"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#c7d5d9] bg-white text-xs font-medium text-[#142127] hover:border-[#142127] hover:bg-[#fffde1] transition-all"
                 >
                   {(item as { icon: React.ReactNode }).icon}
                   {(item as { label: string }).label}
@@ -720,22 +693,28 @@ export const Dashboard = () => {
           </div>
         </div>
 
-        {!loading && (loadingRiesgo || loadingRecent) && (
-          <div className="mb-4 inline-flex items-center gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs text-amber-800">
-            <span className="h-3 w-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-            Actualizando indicadores del panel...
-          </div>
-        )}
-
         {loading ? (
-          <div className="flex items-center justify-center h-48">
-            <div className="inline-block h-8 w-8 border-4 border-[#eaae4c] border-t-transparent rounded-full animate-spin" />
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            {Array.from({ length: 2 }).map((_, panel) => (
+              <div key={panel} className="rounded-[20px] border border-[#e0e5e7] bg-white p-5">
+                <Skeleton className="mb-4 h-12 w-full rounded-t-[20px]" />
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {Array.from({ length: panel === 0 ? 6 : 2 }).map((__, item) => (
+                    <div key={item} className="rounded-[14px] border border-[#e0e5e7] p-3">
+                      <Skeleton className="mb-3 h-8 w-8 rounded-lg" />
+                      <Skeleton className="mb-2 h-5 w-2/3" />
+                      <Skeleton className="h-3 w-full" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* ── KPIs generales (totales acumulados, no ligados al mes) ── */}
-            <div className="bg-white rounded-lg shadow-md p-5">
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Totales generales</h2>
+            <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#142127] px-5 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-white">Totales generales</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {canViewClientes && (
                   <MiniStat
@@ -751,7 +730,7 @@ export const Dashboard = () => {
                     title="Ventas activas"
                     value={stats.ventasActivas}
                     icon={<ShoppingCart className="w-5 h-5 text-black" />}
-                    color="#eaae4c"
+                    color="#16a34a"
                     onClick={() => navigate('/admin/ventas')}
                   />
                 )}
@@ -796,8 +775,8 @@ export const Dashboard = () => {
 
             {/* ── KPIs del mes en curso ── */}
             {(canViewPagos || canViewVentas) && (
-              <div className="bg-white rounded-lg shadow-md p-5">
-                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 capitalize">
+              <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-5">
+                <h2 className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#142127] px-5 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-white capitalize">
                   Este mes · {monthName}
                 </h2>
                 <div className="grid grid-cols-2 gap-2">
@@ -829,23 +808,31 @@ export const Dashboard = () => {
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Últimos pagos */}
           {canViewPagos && (
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden">
+            <div className="px-5 py-4 border-b border-[#253940] bg-[#142127] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CreditCard size={18} className="text-[#eaae4c]" />
-                <h3 className="font-semibold text-gray-800">Últimos pagos registrados</h3>
+                <CreditCard size={18} className="text-white" />
+                <h3 className="text-sm font-semibold text-white">Últimos pagos registrados</h3>
               </div>
               <button
                 type="button"
                 onClick={() => navigate('/admin/pagos')}
-                className="text-xs text-blue-600 hover:underline"
+                className="rounded-full border border-[#e0e5e7] bg-white px-3 py-1.5 text-xs font-semibold text-[#142127] shadow-sm transition-colors hover:bg-[#f2f4f5]"
               >
                 Ver todos
               </button>
             </div>
             {loadingRecent ? (
-              <div className="flex justify-center py-8">
-                <div className="h-5 w-5 border-4 border-[#eaae4c] border-t-transparent rounded-full animate-spin" />
+              <div className="space-y-3 p-5">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="flex items-center justify-between gap-4">
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-2/3" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </div>
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ))}
               </div>
             ) : pagosRecientes.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-8">Sin pagos recientes</p>
@@ -873,23 +860,31 @@ export const Dashboard = () => {
 
           {/* Últimas ventas */}
           {canViewVentas && (
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden">
+            <div className="px-5 py-4 border-b border-[#253940] bg-[#142127] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ShoppingCart size={18} className="text-[#eaae4c]" />
-                <h3 className="font-semibold text-gray-800">Últimas ventas registradas</h3>
+                <ShoppingCart size={18} className="text-white" />
+                <h3 className="text-sm font-semibold text-white">Últimas ventas registradas</h3>
               </div>
               <button
                 type="button"
                 onClick={() => navigate('/admin/ventas')}
-                className="text-xs text-blue-600 hover:underline"
+                className="rounded-full border border-[#e0e5e7] bg-white px-3 py-1.5 text-xs font-semibold text-[#142127] shadow-sm transition-colors hover:bg-[#f2f4f5]"
               >
                 Ver todas
               </button>
             </div>
             {loadingRecent ? (
-              <div className="flex justify-center py-8">
-                <div className="h-5 w-5 border-4 border-[#eaae4c] border-t-transparent rounded-full animate-spin" />
+              <div className="space-y-3 p-5">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="flex items-center justify-between gap-4">
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-2/3" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </div>
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ))}
               </div>
             ) : ventasRecientes.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-8">Sin ventas recientes</p>

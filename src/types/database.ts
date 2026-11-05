@@ -8,6 +8,7 @@ export type User = {
 
 export type Cliente = {
   clienteid: number
+  user_id?: string | null
   nombre: string | null
   sexo: string | null
   email: string | null

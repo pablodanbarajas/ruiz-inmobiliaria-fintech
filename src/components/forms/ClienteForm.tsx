@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import type { Cliente } from '@/types/database'
+import { FormProgress } from '@/components/ui/FormProgress'
 
 interface ClienteFormProps {
   cliente?: Cliente | null
@@ -40,6 +41,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
     pais_nacimiento: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [currentStep, setCurrentStep] = useState(0)
 
   useEffect(() => {
     if (cliente) {
@@ -154,7 +156,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
     }
 
     setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    return newErrors
   }
 
   const handleChange = (field: string, value: string) => {
@@ -162,12 +164,82 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
     if (errors[field]) {
       setErrors({ ...errors, [field]: '' })
     }
+
+  }
+
+  const validateStep = async (step: number) => {
+    const stepErrors: Record<string, string> = {}
+    if (step === 0) {
+      if (!formData.nombre.trim()) stepErrors.nombre = 'Nombre requerido'
+      if (!formData.rfc.trim()) stepErrors.rfc = 'RFC requerido'
+      if (!formData.curp.trim()) stepErrors.curp = 'CURP requerido'
+      if (formData.rfc && !/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{2,3}$/.test(formData.rfc.toUpperCase().trim())) {
+        stepErrors.rfc = 'RFC inválido (ej: XAXX000101000)'
+      }
+      if (formData.curp && !/^[A-Z]{4}\d{6}[HM][A-Z]{5}[0-9A-Z]{2}$/.test(formData.curp.toUpperCase().trim())) {
+        stepErrors.curp = 'CURP inválido (18 caracteres)'
+      }
+
+      if (!stepErrors.rfc && formData.rfc.trim()) {
+        const { data: existingRfc } = await supabase
+          .from('cliente')
+          .select('clienteid')
+          .eq('rfc', formData.rfc.toUpperCase().trim())
+          .neq('clienteid', cliente?.clienteid ?? '')
+          .maybeSingle()
+        if (existingRfc) stepErrors.rfc = 'RFC ya existe en la base de datos'
+      }
+
+      if (!stepErrors.curp && formData.curp.trim()) {
+        const { data: existingCurp } = await supabase
+          .from('cliente')
+          .select('clienteid')
+          .eq('curp', formData.curp.toUpperCase().trim())
+          .neq('clienteid', cliente?.clienteid ?? '')
+          .maybeSingle()
+        if (existingCurp) stepErrors.curp = 'CURP ya existe en la base de datos'
+      }
+    }
+    if (step === 1) {
+      if (!formData.email.trim()) stepErrors.email = 'Email requerido'
+      if (!formData.telefonocelular.trim()) stepErrors.telefonocelular = 'Teléfono celular requerido'
+      if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        stepErrors.email = 'Email inválido'
+      }
+
+      if (!stepErrors.email && formData.email.trim()) {
+        const { data: existingEmail } = await supabase
+          .from('cliente')
+          .select('clienteid')
+          .eq('email', formData.email.toLowerCase().trim())
+          .neq('clienteid', cliente?.clienteid ?? '')
+          .maybeSingle()
+        if (existingEmail) stepErrors.email = 'Email ya existe en la base de datos'
+      }
+    }
+    setErrors((current) => ({ ...current, ...stepErrors }))
+    return Object.keys(stepErrors).length === 0
+  }
+
+  const goToNextStep = async () => {
+    if (await validateStep(currentStep)) setCurrentStep((step) => Math.min(step + 1, 2))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const isValid = await validateForm()
-    if (!isValid) return
+    const validationErrors = await validateForm()
+    if (Object.keys(validationErrors).length > 0) {
+      const firstInvalidField = ['nombre', 'rfc', 'curp', 'email', 'telefonocelular']
+        .find((field) => validationErrors[field])
+      const invalidStep = firstInvalidField === 'email' || firstInvalidField === 'telefonocelular' ? 1 : 0
+      setCurrentStep(invalidStep)
+      window.setTimeout(() => {
+        if (firstInvalidField) {
+          document.querySelector<HTMLElement>(`[name="${firstInvalidField}"]`)?.focus()
+        }
+      }, 0)
+      return
+    }
 
     try {
       const submitData = {
@@ -205,14 +277,24 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="admin-form space-y-6">
+      <FormProgress
+        steps={[
+          { label: 'Identidad', description: 'Datos generales y fiscales' },
+          { label: 'Contacto', description: 'Teléfonos y domicilio' },
+          { label: 'Perfil', description: 'Información adicional' },
+        ]}
+        currentStep={currentStep}
+        onStepChange={setCurrentStep}
+      />
       {/* Información General */}
-      <div>
+      <div className={currentStep === 0 ? '' : 'hidden'}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Información General</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
             <Input
+              name="nombre"
               type="text"
               placeholder="Nombre completo"
               value={formData.nombre}
@@ -226,7 +308,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
             <select
               value={formData.sexo}
               onChange={(e) => handleChange('sexo', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
             >
               <option value="">Seleccionar</option>
               <option value="M">Masculino</option>
@@ -238,7 +320,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
             <select
               value={formData.estadocivil}
               onChange={(e) => handleChange('estadocivil', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
             >
               <option value="">Seleccionar</option>
               <option value="Soltero">Soltero</option>
@@ -252,7 +334,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
             <select
               value={formData.estatus}
               onChange={(e) => handleChange('estatus', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
             >
               <option value="A">Activo</option>
               <option value="I">Inactivo</option>
@@ -262,12 +344,13 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       </div>
 
       {/* Datos Fiscales */}
-      <div>
+      <div className={currentStep === 0 ? '' : 'hidden'}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Datos Fiscales</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">RFC *</label>
             <Input
+              name="rfc"
               type="text"
               placeholder="RFC"
               value={formData.rfc}
@@ -279,6 +362,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">CURP *</label>
             <Input
+              name="curp"
               type="text"
               placeholder="CURP"
               value={formData.curp}
@@ -300,12 +384,13 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       </div>
 
       {/* Contacto */}
-      <div>
+      <div className={currentStep === 1 ? '' : 'hidden'}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Contacto</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
             <Input
+              name="email"
               type="email"
               placeholder="email@ejemplo.com"
               value={formData.email}
@@ -317,6 +402,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono Celular *</label>
             <Input
+              name="telefonocelular"
               type="tel"
               placeholder="Teléfono"
               value={formData.telefonocelular}
@@ -338,7 +424,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       </div>
 
       {/* Domicilio */}
-      <div>
+      <div className={currentStep === 1 ? '' : 'hidden'}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Domicilio</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
@@ -426,7 +512,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       </div>
 
       {/* Información Matrimonial */}
-      <div>
+      <div className={currentStep === 2 ? '' : 'hidden'}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Información Matrimonial</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -434,7 +520,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
             <select
               value={formData.regimenmatrimonial}
               onChange={(e) => handleChange('regimenmatrimonial', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
             >
               <option value="">Seleccionar</option>
               <option value="Separación de bienes">Separación de bienes</option>
@@ -454,7 +540,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       </div>
 
       {/* Lugar de Nacimiento */}
-      <div>
+      <div className={currentStep === 2 ? '' : 'hidden'}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Lugar de Nacimiento</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -488,7 +574,7 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       </div>
 
       {/* Información Adicional */}
-      <div>
+      <div className={currentStep === 2 ? '' : 'hidden'}>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Información Adicional</h3>
         <div className="space-y-4">
           <div>
@@ -506,17 +592,22 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
               placeholder="Observaciones adicionales"
               value={formData.comentarios}
               onChange={(e) => handleChange('comentarios', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#eaae4c]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
               rows={4}
             />
           </div>
         </div>
       </div>
 
-      <div className="flex gap-4 justify-end pt-6 border-t">
-        <Button type="submit" disabled={isLoading} className="bg-[#eaae4c] hover:bg-[#d99c38] text-black font-semibold py-2 px-6">
-          {isLoading ? 'Guardando...' : cliente ? 'Actualizar' : 'Crear'}
+      <div className="flex items-center justify-between gap-4 border-t border-[#e0e5e7] pt-5">
+        <Button type="button" variant="outline" onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))} disabled={currentStep === 0 || isLoading}>
+          Atrás
         </Button>
+        {currentStep < 2 ? (
+          <Button type="button" onClick={goToNextStep}>Continuar</Button>
+        ) : (
+          <Button type="submit" disabled={isLoading}>{isLoading ? 'Guardando...' : cliente ? 'Actualizar' : 'Crear'}</Button>
+        )}
       </div>
     </form>
   )

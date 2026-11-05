@@ -1,9 +1,12 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import { AuthProvider } from '@/context/AuthContext'
 import { ToastProvider } from '@/context/ToastContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { ScrollRestorer } from '@/components/ScrollRestorer'
 import { Login } from '@/pages/auth/Login'
+import { ForgotPassword } from '@/pages/auth/ForgotPassword'
+import { ResetPassword } from '@/pages/auth/ResetPassword'
 import { Dashboard } from '@/pages/admin/Dashboard'
 import { Desarrollos } from '@/pages/admin/Desarrollos'
 import { DesarrolloDetail } from '@/pages/admin/DesarrolloDetail'
@@ -34,6 +37,17 @@ const ROLES_EDITAR_CLIENTES = ['admin', 'contratos'] as const
 const ROLES_EDITAR_VENTAS = ['admin', 'contratos', 'cobranza_caja', 'vendedor_externo'] as const
 const ROLES_PAGOS = ['admin', 'finanzas', 'contratos', 'cobranza_caja'] as const
 
+function RecoveryRedirect({ fallback }: { fallback: string }) {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const isRecoveryLink = new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery'
+    navigate(isRecoveryLink ? `/reset-password${window.location.hash}` : fallback, { replace: true })
+  }, [fallback, navigate])
+
+  return null
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -43,6 +57,8 @@ function App() {
           <Routes>
         {/* Auth Routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Admin Routes */}
         <Route
@@ -260,8 +276,8 @@ function App() {
         />
 
         {/* Default redirect */}
-        <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<RecoveryRedirect fallback="/admin/dashboard" />} />
+        <Route path="*" element={<RecoveryRedirect fallback="/login" />} />
           </Routes>
         </ToastProvider>
       </AuthProvider>

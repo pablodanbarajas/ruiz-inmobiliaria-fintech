@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { Upload, FileText, Trash2, Eye, Loader2, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 // Bucket: create in Supabase Dashboard → Storage → New Bucket
 // Name: "contratos-firmados", Private
@@ -17,6 +18,7 @@ interface ArchivoContrato {
 
 interface ContratoFirmadoProps {
   ventaid: number
+  compact?: boolean
 }
 
 const formatBytes = (b: number) => {
@@ -26,7 +28,7 @@ const formatBytes = (b: number) => {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export const ContratoFirmado = ({ ventaid }: ContratoFirmadoProps) => {
+export const ContratoFirmado = ({ ventaid, compact = false }: ContratoFirmadoProps) => {
   const [archivos, setArchivos] = useState<ArchivoContrato[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -140,15 +142,15 @@ export const ContratoFirmado = ({ ventaid }: ContratoFirmadoProps) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden mt-8 mb-8">
+    <div className={`bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden ${compact ? '' : 'mt-8 mb-8'}`}>
       {/* Header */}
-      <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200 flex items-center justify-between">
+      <div className={`px-4 md:px-8 flex items-center justify-between gap-3 ${compact ? 'py-3' : 'py-4 md:py-6'} border-b border-gray-200`}>
         <div className="flex items-center gap-3">
-          <FileText size={22} className="text-[#504840]" />
+          <FileText size={compact ? 18 : 22} className="text-[#504840]" />
           <div>
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Contrato Firmado</h2>
+            <h2 className={`${compact ? 'text-base' : 'text-xl md:text-2xl'} font-bold text-gray-900`}>Contrato Firmado</h2>
             {archivos.length > 0 && (
-              <p className="text-sm text-green-600 mt-0.5 flex items-center gap-1">
+              <p className="text-xs text-green-600 mt-0.5 flex items-center gap-1">
                 <CheckCircle2 size={13} />
                 {archivos.length} archivo{archivos.length > 1 ? 's' : ''} cargado{archivos.length > 1 ? 's' : ''}
               </p>
@@ -172,26 +174,27 @@ export const ContratoFirmado = ({ ventaid }: ContratoFirmadoProps) => {
             {uploading ? (
               <><Loader2 size={15} className="animate-spin" /> Subiendo...</>
             ) : (
-              <><Upload size={15} /> Subir Contrato Firmado</>
+              <><Upload size={15} /> {compact ? 'Subir contrato' : 'Subir Contrato Firmado'}</>
             )}
           </Button>
         </div>
       </div>
 
       {/* File list */}
-      <div className="px-4 md:px-8 py-4">
+      <div className={`px-4 md:px-8 ${compact ? 'py-3' : 'py-4'}`}>
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-gray-400">
-            <Loader2 size={20} className="animate-spin mr-2" /> Cargando...
+          <div className={`space-y-3 ${compact ? 'py-2' : 'py-10'}`}>
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3 w-1/3" />
           </div>
         ) : archivos.length === 0 ? (
           <div
-            className="border-2 border-dashed border-gray-200 rounded-lg py-12 flex flex-col items-center gap-3 cursor-pointer hover:border-[#eaae4c] hover:bg-[#fdfaf3] transition-colors"
+            className={`border border-dashed border-gray-200 rounded-lg ${compact ? 'px-3 py-2' : 'py-12 flex flex-col items-center gap-3'} flex items-center justify-center gap-3 cursor-pointer hover:border-[#16a34a] hover:bg-[#fdfaf3] transition-colors`}
             onClick={() => fileInputRef.current?.click()}
           >
-            <Upload size={32} className="text-gray-300" />
-            <p className="text-sm text-gray-400">No hay contrato firmado. Haz clic para subir uno.</p>
-            <p className="text-xs text-gray-300">PDF, JPG, PNG o WEBP · máx. 20 MB</p>
+            <Upload size={compact ? 16 : 32} className="text-gray-300" />
+            <p className="text-xs text-gray-400">{compact ? 'No hay archivo cargado' : 'No hay contrato firmado. Haz clic para subir uno.'}</p>
+            {!compact && <p className="text-xs text-gray-300">PDF, JPG, PNG o WEBP · máx. 20 MB</p>}
           </div>
         ) : (
           <div className="space-y-2">
