@@ -17,8 +17,6 @@ interface VentaEnRiesgo {
   clienteNombre: string
   loteLabel: string
   corridasVencidas: number
-  ultimoAviso: string | null
-  etapa: string
 }
 
 interface Stats {
@@ -424,40 +422,13 @@ export const Dashboard = () => {
           return
         }
 
-        // Query 3: último aviso por cada venta en riesgo (una sola query)
-        const ventaIds = ventasConRiesgo.map((v) => v.ventaid)
-        const { data: avisosData } = await supabase
-          .from('avisos_cancelacion')
-          .select('ventaid, tipo, fecha_envio')
-          .in('ventaid', ventaIds)
-          .order('fecha_envio', { ascending: false })
-
-        // Build aviso map: ventaid → último aviso
-        const avisosMap = new Map<number, { tipo: string; fecha_envio: string }>()
-        for (const a of avisosData || []) {
-          if (!avisosMap.has(a.ventaid)) avisosMap.set(a.ventaid, a)
-        }
-
         // Build result
-        const diffDays = (from: string) =>
-          Math.floor((new Date().getTime() - new Date(from).getTime()) / 86_400_000)
-
         const resultados: VentaEnRiesgo[] = ventasConRiesgo.map(({ ventaid, venta, vencidas }) => {
-          const ultimoAviso = avisosMap.get(ventaid) ?? null
-          let etapa = 'Sin avisos'
-          if (ultimoAviso) {
-            const dias = diffDays(ultimoAviso.fecha_envio)
-            if (ultimoAviso.tipo === 'AVISO1') etapa = dias < 5 ? `Aviso 1 (hace ${dias}d)` : `Aviso 1 vencido (${dias}d)`
-            else if (ultimoAviso.tipo === 'AVISO2') etapa = dias < 5 ? `Aviso 2 (hace ${dias}d)` : `Doc. cancelación pendiente`
-            else etapa = 'Cancelación registrada'
-          }
           return {
             ventaid,
             clienteNombre: venta?.cliente?.nombre ?? 'Sin nombre',
             loteLabel: `Mza ${venta?.lote?.manzana ?? '-'} / ${venta?.lote?.nolote ?? '-'}`,
             corridasVencidas: vencidas,
-            ultimoAviso: ultimoAviso?.fecha_envio ?? null,
-            etapa,
           }
         })
 

@@ -11,7 +11,6 @@ import { PagoForm } from '@/components/forms/PagoForm'
 import type { PagoFormData } from '@/components/forms/PagoForm'
 import { ConvenioForm } from '@/components/forms/ConvenioForm'
 import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
-import { AlertaCancelacion } from '@/components/AlertaCancelacion'
 import { ContratoFirmado } from '@/components/ContratoFirmado'
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, ArrowLeftRight } from 'lucide-react'
 import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Convenio, Devolucion, DevolucionParcialidad, CargoExtra, Traspaso } from '@/types/database'
@@ -801,13 +800,6 @@ export const VentaDetail = () => {
   const montoDevolucion = precioVenta * 0.20
   const isExternalVenta = Boolean(venta.vendedor_user_id || venta.vendedor)
 
-  // Corridas vencidas sin pago activo (para alerta de cancelación)
-  const corridasVencidas = corridas.filter((c) => {
-    if (!c.fecha || c.fecha >= today || c.nopago === 0) return false
-    const totalCorrida = c.pagos?.filter((p) => p.estatus !== 'C').reduce((s, p) => s + getPagoAplicado(p), 0) ?? 0
-    return totalCorrida < (c.mensualidad || 0)
-  }).length
-
   return (
     <AdminLayout>
       <div className="w-full">
@@ -826,13 +818,6 @@ export const VentaDetail = () => {
 
           {/* Action buttons (only when active) */}
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
-            {venta.estatus !== 'C' && (
-              <AlertaCancelacion
-                ventaid={venta.ventaid}
-                corridasVencidas={corridasVencidas}
-                compact
-              />
-            )}
             <Button
               variant="outline"
               onClick={() => setShowEditModal(true)}
