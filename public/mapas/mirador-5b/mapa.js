@@ -9,9 +9,9 @@
     lindNorte:'linderonte', lindSur:'linderosur', lindEste:'linderoote', lindOeste:'linderopte',
     colNorte:'colindanciante', colSur:'colindanciasur', colEste:'colindanciaote', colOeste:'colindanciapte', comentarios:'comentarios'
   };
-  const estadoColores = {disponible:'#87BFA8', vendido:'#DFA39A', apartado:'#E7C38D', bloqueado:'#ACB7C6'};
-  const estadoOscuro = {disponible:'#397E66', vendido:'#A85F59', apartado:'#9A7134', bloqueado:'#596A7C'};
-  const estadoBordes = {disponible:'#397E66', vendido:'#A85F59', apartado:'#9A7134', bloqueado:'#596A7C'};
+  const estadoColores = {disponible:'#86c8a4', vendido:'#94a3b8', apartado:'#e7c38d', bloqueado:'#cbd5e1'};
+  const estadoOscuro = {disponible:'#15803d', vendido:'#475569', apartado:'#9a7134', bloqueado:'#64748b'};
+  const estadoBordes = {disponible:'#15803d', vendido:'#475569', apartado:'#9a7134', bloqueado:'#64748b'};
   const SVG_URL = new URL('./mapa.svg', document.currentScript.src);
   // Configurar ruta de los detalles de lote en el proyecto.
   const DETALLE_LOTE_RUTA = '/admin/lotes/{loteid}';

@@ -18,19 +18,19 @@
 
   <link rel="stylesheet" href="./estilos.css">
 </head>
-<body class="h-screen w-screen flex flex-col overflow-hidden text-slate-800 select-none bg-[#EFEFEF]">
+<body class="h-screen w-screen flex flex-col overflow-hidden text-slate-800 select-none bg-[#f6f8f8]">
 
   <!-- ==================== 1. BARRA SUPERIOR (NAVBAR) ==================== -->
-  <header class="bg-navbar border-b-2 border-gold px-4 py-3 flex items-center justify-between text-white shadow-md z-30 shrink-0">
+  <header class="bg-white border-b border-[#e0e5e7] px-4 py-3 flex items-center justify-between text-[#142127] shadow-sm z-30 shrink-0">
     <!-- Izquierda: Botón Regresar + Título -->
     <div class="flex items-center gap-4">
-      <button data-action="regresar" class="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 px-3.5 py-1.5 rounded-lg border border-neutral-700 text-sm font-medium transition-colors">
+      <button data-action="regresar" class="flex items-center gap-2 bg-white hover:bg-[#f1f5f5] text-[#142127] px-3.5 py-1.5 rounded-full border border-[#c7d5d9] text-sm font-medium transition-colors">
         <i data-lucide="arrow-left" class="w-4 h-4"></i>
         <span>Regresar</span>
       </button>
 
-      <h1 class="text-gold font-bold tracking-wide text-base md:text-lg flex items-center gap-2">
-        MIRADOR 5B <span class="text-neutral-400 font-normal">—</span> MAPA ADMIN
+      <h1 class="text-[#142127] font-bold tracking-tight text-base md:text-lg flex items-center gap-2">
+        MIRADOR 5B <span class="text-[#9e9f92] font-normal">—</span> MAPA ADMIN
       </h1>
     </div>
 
@@ -40,7 +40,7 @@
   <main class="flex-1 relative flex flex-col items-center justify-start p-3 sm:p-5 overflow-hidden">
 
     <!-- ==================== 2. TARJETA DE ESTADÍSTICAS FLOTANTE ==================== -->
-    <div class="z-20 mb-3 bg-white border border-slate-200/80 rounded-full shadow-md px-6 py-2.5 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm font-medium">
+    <div class="z-20 mb-3 bg-white border border-[#e0e5e7] rounded-[16px] shadow-sm px-6 py-2.5 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm font-medium">
       <div class="text-slate-600">
         Total: <span id="stat-total" class="font-bold text-slate-900">0</span>
       </div>
@@ -109,7 +109,7 @@
     <div id="lote-drawer" class="fixed top-0 right-0 h-full w-full max-w-[430px] bg-white shadow-2xl z-50 flex flex-col translate-x-full drawer-panel font-sans">
       
       <!-- HEADER DRAWER (Color café/marrón oscuro exacto de las capturas: #48413a) -->
-      <div class="bg-[#48413a] text-white px-7 pt-6 pb-6 shrink-0 relative">
+      <div class="bg-[#142127] text-white px-7 pt-6 pb-6 shrink-0 relative">
         <button data-action="cerrar" class="absolute top-5 right-5 text-neutral-300 hover:text-white transition-colors p-1">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
@@ -243,7 +243,7 @@
 
       <!-- BOTÓN INFERIOR -->
       <div class="p-4 bg-white border-t border-slate-100 shrink-0">
-        <button id="ver-detalle-completo" type="button" data-action="detalle" class="w-full bg-[#eeb34b] hover:bg-[#e2a439] text-[#1f190e] font-bold py-3.5 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 text.sm tracking-wide">
+        <button id="ver-detalle-completo" type="button" data-action="detalle" class="w-full bg-[#16a34a] hover:bg-[#15803d] text-white font-bold py-3.5 px-4 rounded-full shadow-sm transition-all flex items-center justify-center gap-2 text-sm tracking-wide">
           <i data-lucide="external-link" class="w-4 h-4 stroke-[2.2]"></i>
           <span>Ver detalle completo</span>
         </button>
