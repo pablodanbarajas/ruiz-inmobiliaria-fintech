@@ -37,6 +37,10 @@
     font: inherit;
   }
 
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
   select {
     @apply rounded-[10px] border-[#ebebeb] bg-white text-[#131416] focus:outline-none focus:ring-2 focus:ring-[#fffa56] focus:ring-offset-2;
   }

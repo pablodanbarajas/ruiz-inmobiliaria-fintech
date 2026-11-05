@@ -688,7 +688,15 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
           Atrás
         </Button>
         {currentStep < 2 ? (
-          <Button type="button" onClick={goToNextStep}>Continuar</Button>
+          <Button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault()
+              goToNextStep()
+            }}
+          >
+            Continuar
+          </Button>
         ) : (
           <Button type="submit" disabled={isLoading}>
             {isLoading ? 'Guardando…' : isEditMode ? 'Guardar Cambios' : 'Registrar Venta'}

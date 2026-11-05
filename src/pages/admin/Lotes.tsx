@@ -138,8 +138,7 @@ export const Lotes = () => {
       const { error } = await supabase.from('lote').insert([formData])
 
       if (error) {
-        alert(`Error: ${error.message}`)
-        return
+        throw new Error(error.message)
       }
 
       invalidateCache('lotes:')
@@ -148,7 +147,7 @@ export const Lotes = () => {
       setReloadKey((k) => k + 1)
     } catch (err) {
       console.error('Error creating lote:', err)
-      alert('Error al crear el lote')
+      throw err
     } finally {
       setIsSubmitting(false)
     }
@@ -176,8 +175,7 @@ export const Lotes = () => {
         .eq('loteid', loteEnEdicion?.loteid)
 
       if (error) {
-        alert(`Error: ${error.message}`)
-        return
+        throw new Error(error.message)
       }
 
       invalidateCache('lotes:')
@@ -186,7 +184,7 @@ export const Lotes = () => {
       setReloadKey((k) => k + 1)
     } catch (err) {
       console.error('Error updating lote:', err)
-      alert('Error al actualizar el lote')
+      throw err
     } finally {
       setIsSubmitting(false)
     }

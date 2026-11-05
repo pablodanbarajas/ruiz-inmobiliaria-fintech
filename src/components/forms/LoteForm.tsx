@@ -104,6 +104,8 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
 
     if (!formData.desarrolloid) newErrors.desarrolloid = 'Desarrollo requerido'
     if (!formData.manzana.trim()) newErrors.manzana = 'Manzana requerida'
+    if (formData.manzana.length > 2) newErrors.manzana = 'La manzana debe tener máximo 2 caracteres'
+    if (formData.coto.length > 2) newErrors.coto = 'El coto debe tener máximo 2 caracteres'
     if (!formData.nolote.trim()) newErrors.nolote = 'No. Lote requerido'
     if (!formData.superficie) newErrors.superficie = 'Superficie requerida'
     if (formData.superficie && isNaN(parseFloat(formData.superficie))) {
@@ -183,7 +185,13 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     try {
       await onSubmit(submitData)
     } catch (err) {
-      console.error('Error submitting form:', err)
+      const message = err instanceof Error ? err.message : 'No se pudo guardar el lote.'
+      setErrors((current) => ({
+        ...current,
+        _form: message.includes('character varying(2)')
+          ? 'Uno de los campos permite máximo 2 caracteres. Revisa la manzana o el coto.'
+          : message,
+      }))
     }
   }
 
@@ -266,8 +274,10 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
               setFormData(prev => ({ ...prev, coto: val, ...(autoClaveKey ? { clavelote: clave } : {}) }))
             }}
             placeholder="Ej: 01, 00"
+            maxLength={2}
             disabled={isLoading}
           />
+          {errors.coto && <p className="text-red-500 text-sm mt-1">{errors.coto}</p>}
         </div>
 
         <div>
@@ -283,6 +293,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
               setFormData(prev => ({ ...prev, manzana: val, ...(autoClaveKey ? { clavelote: clave } : {}) }))
             }}
             placeholder="Ej: 02, 03"
+            maxLength={2}
             disabled={isLoading}
           />
           {errors.manzana && <p className="text-red-500 text-sm mt-1">{errors.manzana}</p>}
@@ -468,6 +479,12 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
       </div>
 
       {/* Row 4: Precios y Superficie */}
+      {errors._form && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errors._form}
+        </p>
+      )}
+
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Valores del Lote</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
