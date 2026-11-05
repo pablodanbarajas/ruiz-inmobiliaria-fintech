@@ -49,7 +49,7 @@ export const supabaseDevelopmentsService: IDevelopmentsService = {
       mapsUrl: (row.google_maps_url && row.google_maps_url !== '#') ? row.google_maps_url : '',
       minApartado: row.min_apartado ?? undefined,
       enganche: row.enganche ?? undefined,
-      hasInteractiveMap: row.id === 7
+      hasInteractiveMap: row.id === 7 || row.id === 11
     }));
   }
 };
