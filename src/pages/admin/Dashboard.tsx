@@ -693,13 +693,6 @@ export const Dashboard = () => {
           </div>
         </div>
 
-        {!loading && (loadingRiesgo || loadingRecent) && (
-          <div className="mb-4 inline-flex items-center gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs text-amber-800">
-            <span className="h-3 w-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-            Actualizando indicadores del panel...
-          </div>
-        )}
-
         {loading ? (
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             {Array.from({ length: 2 }).map((_, panel) => (
