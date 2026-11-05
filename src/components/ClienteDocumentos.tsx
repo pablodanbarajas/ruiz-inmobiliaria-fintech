@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/Button'
-import { Upload, Download, Trash2, CheckCircle, Circle, FileText, Loader2 } from 'lucide-react'
+import { Upload, Download, Trash2, CheckCircle, Circle, FileText, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 
 // Bucket name — create it in Supabase Dashboard > Storage before using this feature.
 // Set it as private; RLS policy: allow ALL for (auth.jwt() ->> 'role') = 'admin'
@@ -46,6 +46,7 @@ export const ClienteDocumentos = ({ clienteid }: ClienteDocumentosProps) => {
   const [uploading, setUploading] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [activeUploadTipo, setActiveUploadTipo] = useState<TipoKey | null>(null)
+  const [isExpanded, setIsExpanded] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchDocumentos = async () => {
@@ -170,7 +171,12 @@ export const ClienteDocumentos = ({ clienteid }: ClienteDocumentosProps) => {
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
       {/* Header */}
-      <div className="px-8 py-6 border-b border-gray-200 flex items-center justify-between">
+      <button
+        type="button"
+        onClick={() => setIsExpanded((expanded) => !expanded)}
+        aria-expanded={isExpanded}
+        className="w-full px-8 py-6 border-b border-gray-200 flex items-center justify-between gap-4 text-left"
+      >
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Expediente Documental</h2>
           <p className="text-sm text-gray-500 mt-1">
@@ -193,24 +199,30 @@ export const ClienteDocumentos = ({ clienteid }: ClienteDocumentosProps) => {
           </div>
           <p className="text-xs text-gray-400 mt-1">{pct}%</p>
         </div>
-      </div>
+        <span className="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700">
+          {isExpanded ? 'Contraer' : 'Ver documentos'}
+          {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </span>
+      </button>
 
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        accept=".pdf,.jpg,.jpeg,.png,.webp"
-        onChange={handleFileSelected}
-      />
+      {isExpanded && (
+        <>
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
+            onChange={handleFileSelected}
+          />
 
-      {loading ? (
-        <div className="px-8 py-10 text-center text-gray-400">
-          <Loader2 className="inline-block animate-spin mb-2" size={22} />
-          <p className="text-sm">Cargando documentos...</p>
-        </div>
-      ) : (
-        <ul className="divide-y divide-gray-100">
+          {loading ? (
+            <div className="px-8 py-10 text-center text-gray-400">
+              <Loader2 className="inline-block animate-spin mb-2" size={22} />
+              <p className="text-sm">Cargando documentos...</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-gray-100">
           {TIPOS_DOCUMENTO.map((tipo) => {
             const files = filesByTipo[tipo.key] ?? []
             const hasFiles = files.length > 0
@@ -305,7 +317,9 @@ export const ClienteDocumentos = ({ clienteid }: ClienteDocumentosProps) => {
               </li>
             )
           })}
-        </ul>
+            </ul>
+          )}
+        </>
       )}
     </div>
   )

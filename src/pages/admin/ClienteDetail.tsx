@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { ClienteForm } from '@/components/forms/ClienteForm'
 import { ClienteDocumentos } from '@/components/ClienteDocumentos'
-import { ChevronLeft, Edit2, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronLeft, Edit2, Trash2, ChevronUp } from 'lucide-react'
 import type { Cliente, Venta, Lote, Pago, CorridaFinanciera, Desarrollo } from '@/types/database'
 import { useAuth } from '@/context/AuthContext'
 import { formatDate, formatCurrency, getStatusLabel, getPagoStatusLabel, getPagoStatusColor } from '@/utils/helpers'
@@ -36,6 +36,7 @@ export const ClienteDetail = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [isFichaExpanded, setIsFichaExpanded] = useState(false)
 
   useEffect(() => {
     const fetchClienteDetail = async () => {
@@ -223,11 +224,26 @@ export const ClienteDetail = () => {
 
         {/* Cliente Details */}
         <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-4 md:p-6 mb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Ficha de cliente</p>
-          <h1 className="text-3xl font-bold text-[#142127] mb-6" style={{ fontFamily: 'var(--font-display)' }}>
-            {cliente.nombre}
-          </h1>
+          <button
+            type="button"
+            onClick={() => setIsFichaExpanded((expanded) => !expanded)}
+            aria-expanded={isFichaExpanded}
+            className="w-full flex items-center justify-between gap-4 text-left"
+          >
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Ficha de cliente</p>
+              <h1 className="text-3xl font-bold text-[#142127]" style={{ fontFamily: 'var(--font-display)' }}>
+                {cliente.nombre}
+              </h1>
+            </div>
+            <span className="flex items-center gap-2 rounded-full border border-[#e0e5e7] px-3 py-2 text-sm font-semibold text-[#142127]">
+              {isFichaExpanded ? 'Contraer' : 'Ver información'}
+              {isFichaExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </span>
+          </button>
 
+          {isFichaExpanded && (
+            <div className="mt-6">
           {/* Section 1: General Info */}
           <div className="bg-[#f7f8f8] rounded-[14px] p-4 mb-4">
             <h2 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Información General</h2>
@@ -387,7 +403,9 @@ export const ClienteDetail = () => {
               <p className="text-xs text-gray-600">Comentarios</p>
               <p className="text-sm text-gray-900">{cliente.comentarios || '-'}</p>
             </div>
-          </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Expediente Documental */}
