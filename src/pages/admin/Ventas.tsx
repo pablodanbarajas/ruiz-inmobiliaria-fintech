@@ -31,12 +31,14 @@ export const Ventas = () => {
     clienteId: '',
     fechaDesde: '',
     fechaHasta: '',
+    desarrolloId: '',
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
   const itemsPerPage = 10
   const [prevFilters, setPrevFilters] = useState(filters)
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const [desarrollos, setDesarrollos] = useState<Desarrollo[]>([])
   const [showCreateModal, setShowCreateModal] = useState(() => searchParams.get('new') === 'true')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -48,7 +50,7 @@ export const Ventas = () => {
   }, [searchParams, setSearchParams])
 
   useEffect(() => {
-    const fetchClientes = async () => {
+    const fetchFilterOptions = async () => {
       const all: Cliente[] = []
       const pageSize = 1000
       let page = 0
@@ -65,8 +67,17 @@ export const Ventas = () => {
         page++
       }
       setClientes(all)
+      const { data, error } = await supabase
+        .from('desarrollo')
+        .select('*')
+        .order('nombre', { ascending: true })
+      if (error) {
+        console.error('Error fetching desarrollos:', error)
+        return
+      }
+      setDesarrollos((data || []) as Desarrollo[])
     }
-    fetchClientes()
+    fetchFilterOptions()
   }, [])
 
   // Reset to page 1 when filters change
@@ -102,6 +113,13 @@ export const Ventas = () => {
         if (DEMO_DESARROLLOIDS.length > 0) {
           filteredData = filteredData.filter(
             (v) => DEMO_DESARROLLOIDS.includes(v.lote?.desarrolloid as number)
+          )
+        }
+
+        if (filters.desarrolloId) {
+          const desarrolloId = Number(filters.desarrolloId)
+          filteredData = filteredData.filter(
+            (venta) => venta.lote?.desarrolloid === desarrolloId
           )
         }
 
@@ -275,7 +293,7 @@ export const Ventas = () => {
 
         {/* Filters */}
         <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-black mb-1">
                 Cliente
@@ -310,6 +328,23 @@ export const Ventas = () => {
                 value={filters.fechaHasta}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilters({ ...filters, fechaHasta: e.target.value })}
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-black mb-1">
+                Desarrollo
+              </label>
+              <select
+                value={filters.desarrolloId}
+                onChange={(e) => setFilters({ ...filters, desarrolloId: e.target.value })}
+                className="w-full h-10 rounded-lg border border-[#d9e0e2] bg-white px-3 text-sm text-[#142127] focus:outline-none focus:ring-2 focus:ring-[#9e9f92]"
+              >
+                <option value="">Todos los desarrollos</option>
+                {desarrollos.map((desarrollo) => (
+                  <option key={desarrollo.desarrolloid} value={desarrollo.desarrolloid}>
+                    {desarrollo.nombre}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
