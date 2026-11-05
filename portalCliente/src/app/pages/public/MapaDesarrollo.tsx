@@ -81,11 +81,12 @@ export function MapaDesarrollo() {
       <div className="flex-1 overflow-hidden">
         {development.hasInteractiveMap ? (
           /*
-           * RUTA CORRECTA: public/mapa/index.html → servido en /mapa/index.html
-           * (Vite sirve public/ desde la raíz, sin prefijo de ruta)
+           * Each development keeps its own public map implementation.
            */
           <iframe
-            src={`/portal/mapa/index.html?desarrolloid=${id}`}
+            src={id === '7'
+              ? '/mapas/mirador-5b/index.html'
+              : `/portal/mapa/index.html?desarrolloid=${id}`}
             className="w-full h-full border-0 block"
             title={`Mapa interactivo — ${development.name}`}
           />
