@@ -75,7 +75,12 @@ export const Ventas = () => {
         console.error('Error fetching desarrollos:', error)
         return
       }
-      setDesarrollos((data || []) as Desarrollo[])
+      setDesarrollos(
+        ((data || []).filter((desarrollo) =>
+          DEMO_DESARROLLOIDS.length === 0 ||
+          DEMO_DESARROLLOIDS.includes(desarrollo.desarrolloid)
+        )) as Desarrollo[]
+      )
     }
     fetchFilterOptions()
   }, [])

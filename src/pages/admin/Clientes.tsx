@@ -59,7 +59,7 @@ export const Clientes = () => {
   // Fetch all clientes once on mount
   useEffect(() => {
     const fetchAllClientes = async () => {
-      const CACHE_KEY = 'clientes:all:v5'
+      const CACHE_KEY = 'clientes:all:v6'
       const cached = getCached<{
         all: Cliente[]
         visible: Cliente[]
@@ -132,7 +132,11 @@ export const Clientes = () => {
         if (developmentsError) throw developmentsError
         if (salesError) throw salesError
 
-        const developmentData = (developmentRows || []) as Desarrollo[]
+        const developmentData = (developmentRows || [])
+          .filter((development) =>
+            DEMO_DESARROLLOIDS.length === 0 ||
+            DEMO_DESARROLLOIDS.includes(development.desarrolloid)
+          ) as Desarrollo[]
         const developmentIdsByClient: Record<number, number[]> = {}
         ;(salesRows || []).forEach((sale: any) => {
           const desarrolloId = sale.lote?.desarrolloid
