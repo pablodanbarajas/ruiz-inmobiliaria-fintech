@@ -15,6 +15,7 @@ import { ReciboPago } from '@/components/ReciboPago'
 import type { ReciboPagoData } from '@/components/ReciboPago'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import type { Pago, CorridaFinanciera, Venta, Cliente, Lote, Desarrollo } from '@/types/database'
 import {
@@ -1017,7 +1018,7 @@ export const Pagos = () => {
                 )}
               </div>
               {loading ? (
-                <div className="py-10 text-center text-gray-500">Cargando...</div>
+                <TableSkeleton rows={6} columns={6} />
               ) : pendingByClient.length === 0 ? (
                 <div className="py-10 text-center text-gray-500">No hay cartera pendiente con los filtros actuales.</div>
               ) : (
@@ -1153,7 +1154,7 @@ export const Pagos = () => {
                   <h2 className="font-semibold text-gray-800">Corte por cuenta bancaria</h2>
                 </div>
                 {loading ? (
-                  <div className="py-10 text-center text-gray-500">Cargando...</div>
+                  <TableSkeleton rows={5} columns={5} />
                 ) : corteCtaBancaria.length === 0 ? (
                   <div className="py-10 text-center text-gray-500">No hay datos de cuentas con los filtros actuales.</div>
                 ) : (
@@ -1191,7 +1192,7 @@ export const Pagos = () => {
                     <h2 className="font-semibold text-gray-800">Corte por cobrador</h2>
                   </div>
                   {loading ? (
-                    <div className="py-10 text-center text-gray-500">Cargando...</div>
+                    <TableSkeleton rows={5} columns={5} />
                   ) : cortePorCobrador.length === 0 ? (
                     <div className="py-10 text-center text-gray-500">No hay datos de corte con los filtros actuales.</div>
                   ) : (
@@ -1225,7 +1226,7 @@ export const Pagos = () => {
                     <h2 className="font-semibold text-gray-800">Conciliacion diaria</h2>
                   </div>
                   {loading ? (
-                    <div className="py-10 text-center text-gray-500">Cargando...</div>
+                    <TableSkeleton rows={5} columns={5} />
                   ) : conciliacionDiaria.length === 0 ? (
                     <div className="py-10 text-center text-gray-500">No hay datos de conciliacion con los filtros actuales.</div>
                   ) : (

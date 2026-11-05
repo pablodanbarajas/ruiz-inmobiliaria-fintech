@@ -13,6 +13,7 @@ import {
   type AdminPanelRole,
 } from '@/config/roles'
 import { supabase } from '@/lib/supabaseClient'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 type AdminUserRecord = {
   user_id: string
@@ -211,7 +212,7 @@ export const UsuariosAdmin = () => {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-16 text-gray-500">Cargando usuarios...</div>
+            <TableSkeleton rows={5} columns={4} />
           ) : filteredUsers.length === 0 ? (
             <div className="flex items-center justify-center py-16 text-gray-500">No se encontraron usuarios</div>
           ) : (

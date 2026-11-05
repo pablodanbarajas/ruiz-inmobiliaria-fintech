@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import type { UserRole } from '@/context/AuthContext'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -14,11 +15,9 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin">
-            <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-          </div>
-          <p className="mt-4 text-gray-600">Cargando...</p>
+        <div className="w-56 space-y-3">
+          <Skeleton className="mx-auto h-10 w-10 rounded-full" />
+          <Skeleton className="h-3 w-full" />
         </div>
       </div>
     )

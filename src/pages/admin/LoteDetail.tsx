@@ -13,6 +13,7 @@ import type { Lote, Desarrollo, Venta, Cliente } from '@/types/database'
 import { getLoteStatusLabel, getLoteStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
+import { DetailSkeleton } from '@/components/ui/Skeleton'
 
 interface VentaWithCliente extends Venta {
   cliente?: Cliente
@@ -282,14 +283,7 @@ export const LoteDetail = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="inline-block animate-spin">
-              <div className="h-8 w-8 border-4 border-[#16a34a] border-t-transparent rounded-full"></div>
-            </div>
-            <p className="mt-4 text-[#9e9f92]">Cargando detalles...</p>
-          </div>
-        </div>
+        <DetailSkeleton />
       </AdminLayout>
     )
   }

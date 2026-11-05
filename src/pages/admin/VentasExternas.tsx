@@ -13,6 +13,7 @@ import { formatDate, getVentaStatusLabel, getVentaStatusColor, formatCurrency } 
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { Plus, Eye, RefreshCw, XCircle, Pencil, CheckCircle2 } from 'lucide-react'
 import type { Venta, Cliente, Lote, Desarrollo } from '@/types/database'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 interface VentaExternaRow extends Venta {
   cliente?: Cliente
@@ -538,9 +539,7 @@ export const VentasExternas = () => {
 
         {/* Table */}
         {loading ? (
-          <div className="flex justify-center py-16">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#16a34a]" />
-          </div>
+          <TableSkeleton rows={6} columns={6} />
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-gray-500">
             {isVendedorExterno

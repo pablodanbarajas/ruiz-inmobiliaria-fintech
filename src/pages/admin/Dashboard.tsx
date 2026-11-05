@@ -11,6 +11,7 @@ import { formatCurrency, formatDate, getVentaStatusLabel, getVentaStatusColor, c
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, ROLE_LABELS, type AdminPanelRole } from '@/config/roles'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 interface VentaEnRiesgo {
   ventaid: number
@@ -700,8 +701,21 @@ export const Dashboard = () => {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center h-48">
-            <div className="inline-block h-8 w-8 border-4 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            {Array.from({ length: 2 }).map((_, panel) => (
+              <div key={panel} className="rounded-[20px] border border-[#e0e5e7] bg-white p-5">
+                <Skeleton className="mb-4 h-12 w-full rounded-t-[20px]" />
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {Array.from({ length: panel === 0 ? 6 : 2 }).map((__, item) => (
+                    <div key={item} className="rounded-[14px] border border-[#e0e5e7] p-3">
+                      <Skeleton className="mb-3 h-8 w-8 rounded-lg" />
+                      <Skeleton className="mb-2 h-5 w-2/3" />
+                      <Skeleton className="h-3 w-full" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -816,8 +830,16 @@ export const Dashboard = () => {
               </button>
             </div>
             {loadingRecent ? (
-              <div className="flex justify-center py-8">
-                <div className="h-5 w-5 border-4 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
+              <div className="space-y-3 p-5">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="flex items-center justify-between gap-4">
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-2/3" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </div>
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ))}
               </div>
             ) : pagosRecientes.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-8">Sin pagos recientes</p>
@@ -860,8 +882,16 @@ export const Dashboard = () => {
               </button>
             </div>
             {loadingRecent ? (
-              <div className="flex justify-center py-8">
-                <div className="h-5 w-5 border-4 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
+              <div className="space-y-3 p-5">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="flex items-center justify-between gap-4">
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-2/3" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </div>
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ))}
               </div>
             ) : ventasRecientes.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-8">Sin ventas recientes</p>

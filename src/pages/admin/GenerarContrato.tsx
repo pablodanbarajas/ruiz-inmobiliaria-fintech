@@ -5,6 +5,7 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { ChevronLeft, Printer } from 'lucide-react'
 import { numeroALetras } from '@/utils/helpers'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 // ── Meses en español ──────────────────────────────────────────────────────
 const MESES_ES = [
@@ -609,11 +610,9 @@ export const GenerarContrato = () => {
 
         {loading && (
           <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="inline-block animate-spin">
-                <div className="h-8 w-8 border-4 border-[#16a34a] border-t-transparent rounded-full"></div>
-              </div>
-              <p className="mt-4 text-gray-500">Cargando contrato...</p>
+            <div className="w-48 space-y-3">
+              <Skeleton className="mx-auto h-8 w-8 rounded-full" />
+              <Skeleton className="h-3 w-full" />
             </div>
           </div>
         )}

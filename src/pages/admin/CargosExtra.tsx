@@ -17,6 +17,7 @@ import {
 import type { CargoExtra, Desarrollo, Lote } from '@/types/database'
 import { formatDate, formatCurrency } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { TableSkeleton, Skeleton } from '@/components/ui/Skeleton'
 
 interface CargoExtraWithDetails extends CargoExtra {
   lote?: Lote & { desarrollo?: Desarrollo }
@@ -412,7 +413,7 @@ export const CargosExtra = () => {
         {/* ── Table ─────────────────────────────────────────── */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {loading ? (
-            <div className="p-12 text-center text-gray-500">Cargando…</div>
+            <TableSkeleton rows={6} columns={6} />
           ) : cargos.length === 0 ? (
             <div className="p-12 text-center text-gray-500">
               No se encontraron cargos extra
@@ -568,7 +569,7 @@ export const CargosExtra = () => {
             {aplicarForm.desarrolloid && (
               <div className="rounded-lg border border-gray-200 bg-white p-3 space-y-3">
                 {loadingPreview ? (
-                  <p className="text-sm text-gray-500">Cargando lotes…</p>
+                  <Skeleton className="h-4 w-32" />
                 ) : lotesPreview.length === 0 ? (
                   <div className="flex items-center gap-2 text-amber-700 text-sm">
                     <AlertTriangle size={15} />
@@ -815,7 +816,7 @@ export const CargosExtra = () => {
           {cancelForm.concepto && (
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-3">
               {loadingCancelables ? (
-                <p className="text-sm text-gray-500">Cargando lotes…</p>
+                <Skeleton className="h-4 w-32" />
               ) : lotesCancelables.length === 0 ? (
                 <p className="text-sm text-amber-700">No se encontraron cargos pendientes con este concepto.</p>
               ) : (

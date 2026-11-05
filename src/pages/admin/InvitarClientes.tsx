@@ -5,6 +5,7 @@ import { getCached, setCached, invalidateCache } from '@/lib/queryCache'
 import { Button } from '@/components/ui/Button'
 import { Mail, CheckCircle, Clock, XCircle, RefreshCw, Users, Send, AlertTriangle, Link, RotateCw } from 'lucide-react'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 type InviteCandidate = {
   clienteid: number
@@ -271,7 +272,7 @@ export const InvitarClientes = () => {
 
         {/* Tabla */}
         {loading ? (
-          <div className="text-center py-16 text-gray-500">Cargando clientes...</div>
+          <TableSkeleton rows={6} columns={5} />
         ) : candidates.length === 0 ? (
           <div className="text-center py-16 text-gray-500">
             No hay clientes con lotes en este desarrollo.

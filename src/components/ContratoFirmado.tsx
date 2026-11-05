@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { Upload, FileText, Trash2, Eye, Loader2, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 // Bucket: create in Supabase Dashboard → Storage → New Bucket
 // Name: "contratos-firmados", Private
@@ -182,8 +183,9 @@ export const ContratoFirmado = ({ ventaid, compact = false }: ContratoFirmadoPro
       {/* File list */}
       <div className={`px-4 md:px-8 ${compact ? 'py-3' : 'py-4'}`}>
         {loading ? (
-          <div className={`flex items-center justify-center ${compact ? 'py-2' : 'py-10'} text-gray-400`}>
-            <Loader2 size={20} className="animate-spin mr-2" /> Cargando...
+          <div className={`space-y-3 ${compact ? 'py-2' : 'py-10'}`}>
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3 w-1/3" />
           </div>
         ) : archivos.length === 0 ? (
           <div

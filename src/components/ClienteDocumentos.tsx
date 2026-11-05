@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/Button'
 import { Upload, Download, Trash2, CheckCircle, Circle, FileText, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 // Bucket name — create it in Supabase Dashboard > Storage before using this feature.
 // Set it as private; RLS policy: allow ALL for (auth.jwt() ->> 'role') = 'admin'
@@ -228,9 +229,10 @@ export const ClienteDocumentos = ({ clienteid }: ClienteDocumentosProps) => {
           />
 
           {loading ? (
-            <div className="px-8 py-10 text-center text-gray-400">
-              <Loader2 className="inline-block animate-spin mb-2" size={22} />
-              <p className="text-sm">Cargando documentos...</p>
+            <div className="space-y-3 px-8 py-10">
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-3/4" />
             </div>
           ) : (
             <ul className="divide-y divide-gray-100">

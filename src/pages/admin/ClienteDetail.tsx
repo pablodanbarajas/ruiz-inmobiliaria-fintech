@@ -11,6 +11,7 @@ import type { Cliente, Venta, Lote, Pago, CorridaFinanciera, Desarrollo } from '
 import { useAuth } from '@/context/AuthContext'
 import { formatDate, formatCurrency, getStatusLabel, getPagoStatusLabel, getPagoStatusColor } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { DetailSkeleton } from '@/components/ui/Skeleton'
 
 interface VentaWithDetails extends Venta {
   lote?: Lote & { desarrollo?: Desarrollo }
@@ -179,14 +180,7 @@ export const ClienteDetail = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="inline-block animate-spin">
-              <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-            </div>
-            <p className="mt-4 text-[#9e9f92]">Cargando detalles...</p>
-          </div>
-        </div>
+        <DetailSkeleton />
       </AdminLayout>
     )
   }

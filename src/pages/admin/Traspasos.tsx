@@ -11,6 +11,7 @@ import { formatDate, formatDateTime } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { SearchCombobox, type ComboOption } from '@/components/ui/SearchCombobox'
 import { TraspasoDocumentos } from '@/components/TraspasoDocumentos'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 
 interface TraspasoWithDetails extends Traspaso {
   cliente_anterior?: { nombre: string | null }
@@ -414,7 +415,7 @@ export const Traspasos = () => {
         {/* Table */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
           {loading ? (
-            <div className="flex items-center justify-center py-20 text-gray-500">Cargando…</div>
+            <TableSkeleton rows={6} columns={5} />
           ) : traspasos.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-2">
               <ArrowLeftRight size={40} className="text-gray-300" />
