@@ -839,7 +839,7 @@ export const Dashboard = () => {
               <button
                 type="button"
                 onClick={() => navigate('/admin/pagos')}
-                className="text-xs text-blue-600 hover:underline"
+                className="rounded-full border border-white/30 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/10"
               >
                 Ver todos
               </button>
@@ -883,7 +883,7 @@ export const Dashboard = () => {
               <button
                 type="button"
                 onClick={() => navigate('/admin/ventas')}
-                className="text-xs text-blue-600 hover:underline"
+                className="rounded-full border border-white/30 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/10"
               >
                 Ver todas
               </button>
