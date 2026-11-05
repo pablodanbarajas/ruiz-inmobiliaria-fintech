@@ -43,6 +43,7 @@ export const AlertaCancelacion = ({
   const [registrando, setRegistrando] = useState(false)
   const [notas, setNotas] = useState('')
   const [showNotasInput, setShowNotasInput] = useState<string | null>(null) // tipo de aviso siendo registrado
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const fetchAvisos = async () => {
     const { data } = await supabase
@@ -81,6 +82,7 @@ export const AlertaCancelacion = ({
   const registrarAviso = async (tipo: 'AVISO1' | 'AVISO2' | 'DOCUMENTO') => {
     try {
       setRegistrando(true)
+      setErrorMessage(null)
       const { error } = await supabase.from('avisos_cancelacion').insert({
         ventaid,
         tipo,
@@ -93,7 +95,7 @@ export const AlertaCancelacion = ({
       await fetchAvisos()
       onAvisoRegistrado?.()
     } catch (err: any) {
-      alert(`Error al registrar aviso: ${err.message}`)
+      setErrorMessage(err.message || 'No se pudo registrar el aviso. Inténtalo nuevamente.')
     } finally {
       setRegistrando(false)
     }
@@ -210,6 +212,14 @@ export const AlertaCancelacion = ({
         <div className={compact ? 'ml-auto flex-shrink-0' : 'mt-4'}>
           {showNotasInput === current.actionTipo ? (
             <div className={compact ? 'absolute right-4 top-14 z-10 w-80 rounded-xl border border-[#e0e5e7] bg-white p-3 shadow-lg space-y-2' : 'space-y-2'}>
+              {errorMessage && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+                >
+                  {errorMessage}
+                </div>
+              )}
               <textarea
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#eaae4c] resize-none"
                 rows={2}
@@ -229,7 +239,7 @@ export const AlertaCancelacion = ({
                 <button
                   type="button"
                   className="px-4 py-2 rounded-md text-sm font-medium bg-gray-200 hover:bg-gray-300 text-gray-700"
-                  onClick={() => { setShowNotasInput(null); setNotas('') }}
+                  onClick={() => { setShowNotasInput(null); setNotas(''); setErrorMessage(null) }}
                   disabled={registrando}
                 >
                   Cancelar

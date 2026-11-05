@@ -69,6 +69,7 @@ export const VentaDetail = () => {
   const [isSubmittingPago, setIsSubmittingPago] = useState(false)
   const [convenios, setConvenios] = useState<Convenio[]>([])
   const [conveniosEsteAnio, setConveniosEsteAnio] = useState(0)
+  const [isConveniosExpanded, setIsConveniosExpanded] = useState(false)
   const [showConvenioModal, setShowConvenioModal] = useState(false)
   const [isSubmittingConvenio, setIsSubmittingConvenio] = useState(false)
   const [numParcialidades, setNumParcialidades] = useState(3)
@@ -1233,16 +1234,17 @@ export const VentaDetail = () => {
           </div>
         </Modal>
 
-        {/* Contrato Firmado */}
-        <ContratoFirmado ventaid={venta.ventaid} />
+        <div className="grid grid-cols-1 gap-4 mb-8 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.6fr)]">
+          {/* Contrato Firmado */}
+          <ContratoFirmado ventaid={venta.ventaid} compact />
 
-        {/* Convenios */}
-        <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden mt-8 mb-8">
-          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4">
+          {/* Convenios */}
+          <div className="bg-white rounded-[20px] border border-[#e0e5e7] overflow-hidden">
+          <div className="px-4 md:px-6 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold text-gray-900">Convenios</h2>
+              <h2 className="text-base md:text-lg font-bold text-gray-900">Convenios</h2>
               <span
-                className={`px-2 py-0.5 text-sm font-semibold rounded-full ${
+                className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
                   conveniosEsteAnio >= 3
                     ? 'bg-red-100 text-red-700'
                     : conveniosEsteAnio === 2
@@ -1253,20 +1255,44 @@ export const VentaDetail = () => {
                 {conveniosEsteAnio}/3 este año
               </span>
             </div>
-            {venta.estatus !== 'C' && canManageConvenios && (
-              <Button
-                onClick={() => setShowConvenioModal(true)}
-                className="inline-flex items-center gap-2"
-              >
-                <Plus size={16} />
-                Nuevo Convenio
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {venta.estatus !== 'C' && canManageConvenios && (
+                <Button size="sm" onClick={() => setShowConvenioModal(true)} className="inline-flex items-center gap-2">
+                  <Plus size={14} />
+                  Nuevo convenio
+                </Button>
+              )}
+              {convenios.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsConveniosExpanded((expanded) => !expanded)}
+                  className="inline-flex items-center gap-1"
+                >
+                  {isConveniosExpanded ? 'Ocultar' : 'Ver historial'}
+                  {isConveniosExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </Button>
+              )}
+            </div>
           </div>
 
-          {convenios.length === 0 ? (
-            <div className="px-8 py-12 text-center text-gray-500">No hay convenios registrados</div>
-          ) : (
+          {!isConveniosExpanded && (
+            <div className="px-4 md:px-6 py-3">
+              {convenios.length === 0 ? (
+                <p className="text-sm text-gray-500">No hay convenios registrados.</p>
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-600">
+                  <span><strong className="text-gray-900">{convenios.length}</strong> convenio{convenios.length !== 1 ? 's' : ''} registrado{convenios.length !== 1 ? 's' : ''}</span>
+                  <span>Último: <strong className="text-gray-900">{formatDate(convenios[0].fecha)}</strong></span>
+                  <span className="text-gray-500">{getConvenioStatusLabel(convenios[0].estatus)}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {isConveniosExpanded && convenios.length === 0 ? (
+            <div className="px-6 py-6 text-center text-sm text-gray-500">No hay convenios registrados</div>
+          ) : isConveniosExpanded ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-[#142127] border-b border-[#142127]">
@@ -1286,44 +1312,19 @@ export const VentaDetail = () => {
                     <tr key={conv.convenioid} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-semibold text-gray-900">#{conv.convenioid}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{formatDate(conv.fecha)}</td>
-                      <td className="px-6 py-4 text-sm font-semibold">
-                        {(conv.meses_atraso ?? 0) > 0 ? (
-                          <span className="text-orange-600">{conv.meses_atraso}</span>
-                        ) : (
-                          <span className="text-gray-500">0</span>
-                        )}
-                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold">{(conv.meses_atraso ?? 0) > 0 ? <span className="text-orange-600">{conv.meses_atraso}</span> : <span className="text-gray-500">0</span>}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{conv.meses_convenio ?? '—'}</td>
-                      <td className="px-6 py-4 text-sm font-semibold text-green-700">
-                        {conv.pago_total_mensual_objetivo != null ? formatCurrency(conv.pago_total_mensual_objetivo) : '—'}
-                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-green-700">{conv.pago_total_mensual_objetivo != null ? formatCurrency(conv.pago_total_mensual_objetivo) : '—'}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{conv.motivo ?? '—'}</td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                            getConvenioStatusColor(conv.estatus)
-                          }`}
-                        >
-                          {getConvenioStatusLabel(conv.estatus)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/admin/convenios/${conv.convenioid}`)}
-                          className="inline-flex items-center gap-1"
-                        >
-                          <Eye size={14} />
-                          Ver
-                        </Button>
-                      </td>
+                      <td className="px-6 py-4"><span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${getConvenioStatusColor(conv.estatus)}`}>{getConvenioStatusLabel(conv.estatus)}</span></td>
+                      <td className="px-6 py-4"><Button variant="ghost" size="sm" onClick={() => navigate(`/admin/convenios/${conv.convenioid}`)} className="inline-flex items-center gap-1"><Eye size={14} />Ver</Button></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
+          ) : null}
+          </div>
         </div>
 
         {/* Corrida Financiera */}
