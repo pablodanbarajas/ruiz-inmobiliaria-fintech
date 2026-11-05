@@ -179,25 +179,36 @@ export const ClienteDocumentos = ({ clienteid }: ClienteDocumentosProps) => {
       >
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Expediente Documental</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="mt-1 flex items-center gap-2 text-sm text-gray-500">
             <span className="font-medium text-gray-700">{completedCount}/{totalCount}</span> documentos cargados
             {' · '}
             <span className={requiredDone < requiredTotal ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}>
               {requiredDone}/{requiredTotal} requeridos
             </span>
+            <span className="relative inline-block h-5 w-5 flex-shrink-0" aria-label={`Progreso documental: ${pct}%`}>
+              <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36" role="img">
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15.5"
+                  fill="none"
+                  stroke="#f1f3f4"
+                  strokeWidth="3"
+                />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15.5"
+                  fill="none"
+                  stroke={pct === 100 ? '#22c55e' : '#eaae4c'}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray={`${pct} 100`}
+                  className="transition-all duration-500"
+                />
+              </svg>
+            </span>
           </p>
-        </div>
-        <div className="w-28 text-right">
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${pct}%`,
-                backgroundColor: pct === 100 ? '#22c55e' : '#eaae4c',
-              }}
-            />
-          </div>
-          <p className="text-xs text-gray-400 mt-1">{pct}%</p>
         </div>
         <span className="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700">
           {isExpanded ? 'Contraer' : 'Ver documentos'}
