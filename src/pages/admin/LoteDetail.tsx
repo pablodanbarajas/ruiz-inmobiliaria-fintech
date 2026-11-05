@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/Modal'
 import { LoteForm } from '@/components/forms/LoteForm'
 import { VentaForm } from '@/components/forms/VentaForm'
 import type { VentaFormData } from '@/components/forms/VentaForm'
-import { ChevronLeft, Plus } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronUp, Plus } from 'lucide-react'
 import type { Lote, Desarrollo, Venta, Cliente } from '@/types/database'
 import { getLoteStatusLabel, getLoteStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
 import { useAuth } from '@/context/AuthContext'
@@ -31,6 +31,7 @@ export const LoteDetail = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showVentaModal, setShowVentaModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isFichaExpanded, setIsFichaExpanded] = useState(false)
 
   const currentRole = role && role in ROLE_CAPABILITIES ? (role as AdminPanelRole) : null
   const canEditLotes = !!currentRole && ROLE_CAPABILITIES[currentRole].editar_lotes
@@ -338,11 +339,26 @@ export const LoteDetail = () => {
 
         {/* Lote Details */}
         <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-4 md:p-6 mb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Ficha de inventario</p>
-          <h1 className="text-3xl font-bold text-[#142127] mb-6" style={{ fontFamily: 'var(--font-display)' }}>
-            Lote {lote.nolote} - Manzana {lote.manzana}
-          </h1>
+          <button
+            type="button"
+            onClick={() => setIsFichaExpanded((expanded) => !expanded)}
+            aria-expanded={isFichaExpanded}
+            className="w-full flex items-center justify-between gap-4 text-left"
+          >
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Ficha de inventario</p>
+              <h1 className="text-3xl font-bold text-[#142127]">
+                Lote {lote.nolote} - Manzana {lote.manzana}
+              </h1>
+            </div>
+            <span className="flex items-center gap-2 rounded-full border border-[#e0e5e7] px-3 py-2 text-sm font-semibold text-[#142127]">
+              {isFichaExpanded ? 'Contraer' : 'Ver información'}
+              {isFichaExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </span>
+          </button>
 
+          {isFichaExpanded && (
+            <div className="mt-6">
           {/* Section 1: Identifiers & Status */}
           <div className="bg-[#f7f8f8] rounded-[14px] p-4 mb-4">
             <h2 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Información General</h2>
@@ -469,6 +485,8 @@ export const LoteDetail = () => {
             <div className="bg-indigo-50 rounded-lg p-4">
               <h2 className="text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Comentarios</h2>
               <p className="text-sm text-gray-700">{lote.comentarios}</p>
+            </div>
+          )}
             </div>
           )}
         </div>
