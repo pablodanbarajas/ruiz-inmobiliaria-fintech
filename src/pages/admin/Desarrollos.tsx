@@ -312,7 +312,7 @@ export const Desarrollos = () => {
                       <Trash2 size={16} />
                     </Button>
                   )}
-                  {[7, 11].includes(row.desarrolloid) && (
+                  {([7, 11].includes(row.desarrolloid) || row.tipodesarrollo?.descripcion?.toLowerCase().includes('panteon')) && (
                     <Button
                       variant="ghost"
                       size="sm"

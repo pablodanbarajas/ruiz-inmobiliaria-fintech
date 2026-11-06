@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { getCached, setCached, invalidateCache, onFocusRefetch } from '@/lib/queryCache'
 import { fetchAllByKey } from '@/lib/fetchAllByKey'
 import { AdminLayout } from '@/components/layout/AdminLayout'
-import { formatCurrency, formatDate, getVentaStatusLabel, getVentaStatusColor, calcularRecargo } from '@/utils/helpers'
+import { formatCurrency, formatDate, getEspacioLabel, getVentaStatusLabel, getVentaStatusColor, calcularRecargo } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, ROLE_LABELS, type AdminPanelRole } from '@/config/roles'
@@ -425,7 +425,7 @@ export const Dashboard = () => {
 
         let corridasQuery = supabase
           .from('corridafinanciera')
-          .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(estatus, clienteid, dias_tolerancia, cliente:cliente(nombre), lote:lote(manzana, nolote, desarrolloid)), pagos:pagos(pagoid, montopagado, servicios_extra, estatus, recargo)')
+          .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(estatus, clienteid, dias_tolerancia, cliente:cliente(nombre), lote:lote(manzana, nolote, clavelote, desarrolloid)), pagos:pagos(pagoid, montopagado, servicios_extra, estatus, recargo)')
           .lt('fecha', today)
 
         if (demoVentaIds) corridasQuery = corridasQuery.in('ventaid', demoVentaIds)
@@ -512,7 +512,7 @@ export const Dashboard = () => {
           return {
             ventaid,
             clienteNombre: venta?.cliente?.nombre ?? 'Sin nombre',
-            loteLabel: `Mza ${venta?.lote?.manzana ?? '-'} / ${venta?.lote?.nolote ?? '-'}`,
+            loteLabel: getEspacioLabel(venta?.lote) ?? `Mza ${venta?.lote?.manzana ?? '-'} / ${venta?.lote?.nolote ?? '-'}`,
             corridasVencidas: vencidas,
           }
         })
@@ -579,7 +579,7 @@ export const Dashboard = () => {
                   precio: v.preciolote,
                   estatus: v.estatus,
                   clienteNombre: cliente?.nombre ?? `Cliente #${v.clienteid}`,
-                  loteLabel: lote ? `Mza ${lote.manzana} – L${lote.nolote}${lote.clavelote ? ` (${lote.clavelote})` : ''}` : '—',
+                  loteLabel: lote ? getEspacioLabel(lote) ?? `Mza ${lote.manzana} – L${lote.nolote}${lote.clavelote ? ` (${lote.clavelote})` : ''}` : '—',
                 }
               })
             setCached('dashboard:ventas_recientes', list)
@@ -620,7 +620,7 @@ export const Dashboard = () => {
             const ventaLoteIds = [...new Set((ventasData || []).map((v: any) => v.loteid).filter(Boolean))]
             const ventaClienteIds = [...new Set((ventasData || []).map((v: any) => v.clienteid).filter(Boolean))]
             const [{ data: vLotesData }, { data: vClientesData }] = await Promise.all([
-              supabase.from('lote').select('loteid, manzana, nolote, desarrolloid').in('loteid', ventaLoteIds),
+              supabase.from('lote').select('loteid, manzana, nolote, clavelote, desarrolloid').in('loteid', ventaLoteIds),
               supabase.from('cliente').select('clienteid, nombre').in('clienteid', ventaClienteIds),
             ])
             const vLoteMap = new Map((vLotesData || []).map((l: any) => [l.loteid, l]))
@@ -642,7 +642,7 @@ export const Dashboard = () => {
                 montopagado: p.montopagado,
                 fecha: p.fechapago,
                 clienteNombre: cliente?.nombre ?? `Cliente #${venta.clienteid}`,
-                loteLabel: lote ? `Mza ${lote.manzana} – L${lote.nolote}` : '—',
+                loteLabel: lote ? getEspacioLabel(lote) ?? `Mza ${lote.manzana} – L${lote.nolote}` : '—',
                 ventaid,
               })
               if (pagosList.length >= 6) break

@@ -30,6 +30,7 @@ import {
   calcularRecargo,
   getConvenioStatusLabel,
   getConvenioStatusColor,
+  getEspacioLabel,
 } from '@/utils/helpers'
 
 interface VentaWithDetails extends Venta {
@@ -961,8 +962,12 @@ export const VentaDetail = () => {
                 className="p-0 text-left text-base font-semibold text-blue-600 hover:underline"
                 onClick={() => navigate(`/admin/lotes/${venta.loteid}`)}
               >
-                Mza {venta.lote?.manzana} — Lote {venta.lote?.nolote}
-                {venta.lote?.clavelote ? ` (${venta.lote.clavelote})` : ''}
+                {getEspacioLabel(venta.lote) ?? (
+                  <>
+                    Mza {venta.lote?.manzana} — Lote {venta.lote?.nolote}
+                    {venta.lote?.clavelote ? ` (${venta.lote.clavelote})` : ''}
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -1719,7 +1724,7 @@ export const VentaDetail = () => {
             <li>
               El lote{' '}
               <span className="font-semibold">
-                {venta?.lote?.manzana} – {venta?.lote?.nolote}
+                {getEspacioLabel(venta?.lote) ?? `${venta?.lote?.manzana} – ${venta?.lote?.nolote}`}
               </span>{' '}
               volverá a estar{' '}
               <span className="font-semibold text-green-700">Disponible</span>.

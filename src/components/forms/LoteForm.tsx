@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import type { Lote, Desarrollo, Duenio } from '@/types/database'
-import { formatCurrency } from '@/utils/helpers'
+import { buildPanteonesClaveBase, formatCurrency } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 interface LoteFormProps {
@@ -43,9 +43,6 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
   const [autoClaveKey, setAutoClaveKey] = useState(!lote)
   const formRef = useRef<HTMLFormElement>(null)
 
-  const normalizeClavePart = (value: string) =>
-    value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase()
-
   const buildClave = (
     desarrolloid: string,
     coto: string,
@@ -57,12 +54,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     const des = desarrollos.find(d => d.desarrolloid?.toString() === desarrolloid)
     if (!des?.clavedesarrollo) return ''
     if (tipoPanteonesIds.includes(des.tipodesarrolloid || 0)) {
-      const parts = [
-        normalizeClavePart(des.clavedesarrollo).slice(0, 3),
-        normalizeClavePart(zona).slice(0, 3),
-        normalizeClavePart(tipolote).slice(0, 3),
-      ]
-      return parts.filter(Boolean).join('-')
+      return buildPanteonesClaveBase(des.clavedesarrollo, zona, tipolote)
     }
     const parts = [des.clavedesarrollo]
     if (coto) parts.push(coto.padStart(2, '0'))
@@ -209,13 +201,17 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     if (!isPanteones && formData.coto.length > 2) newErrors.coto = 'El coto debe tener máximo 2 caracteres'
     if (!isPanteones && !formData.nolote.trim()) newErrors.nolote = 'No. Lote requerido'
     if (formData.clavelote.length > 15) newErrors.clavelote = 'La clave no puede superar 15 caracteres'
-    if (!formData.superficie) newErrors.superficie = 'Superficie requerida'
-    if (formData.superficie && isNaN(parseFloat(formData.superficie))) {
-      newErrors.superficie = 'Debe ser un número'
-    }
-    if (!formData.preciopormt2) newErrors.preciopormt2 = 'Precio/m² requerido'
-    if (formData.preciopormt2 && isNaN(parseFloat(formData.preciopormt2))) {
-      newErrors.preciopormt2 = 'Debe ser un número'
+    if (isPanteones) {
+      if (!(parseFloat(formData.preciolote) > 0)) newErrors.preciolote = 'Precio requerido'
+    } else {
+      if (!formData.superficie) newErrors.superficie = 'Superficie requerida'
+      if (formData.superficie && isNaN(parseFloat(formData.superficie))) {
+        newErrors.superficie = 'Debe ser un número'
+      }
+      if (!formData.preciopormt2) newErrors.preciopormt2 = 'Precio/m² requerido'
+      if (formData.preciopormt2 && isNaN(parseFloat(formData.preciopormt2))) {
+        newErrors.preciopormt2 = 'Debe ser un número'
+      }
     }
 
     setErrors(newErrors)
@@ -304,6 +300,14 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
           })
         const nextNumber = Math.max(0, ...usedNumbers) + 1
         clavePanteones = `${baseClave}-${String(nextNumber).padStart(3, '0')}`
+      }
+
+      if (clavePanteones.length > 15) {
+        setErrors((current) => ({
+          ...current,
+          _form: `La clave ${clavePanteones} supera los 15 caracteres permitidos.`,
+        }))
+        return
       }
     }
 
@@ -530,6 +534,26 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
         </div>
       </div>}
 
+      {isPanteones && (
+        <div className="md:w-1/4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Estado *
+          </label>
+          <select
+            value={formData.estatus}
+            onChange={(e) => setFormData({ ...formData, estatus: e.target.value })}
+            disabled={isLoading}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
+          >
+            <option value="D">Disponible</option>
+            <option value="A">Apartado</option>
+            <option value="V">Vendido</option>
+            <option value="B">Bloqueado</option>
+            <option value="N">No disponible</option>
+          </select>
+        </div>
+      )}
+
       {/* Clave del lote */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -566,7 +590,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
       </div>
 
       {/* Row 3: Medidas (Linderos) */}
-      <div>
+      {!isPanteones && <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Linderos y Colindancias</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -673,7 +697,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             />
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Row 4: Precios y Superficie */}
       {errors._form && (
@@ -684,6 +708,24 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
 
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Valores del Lote</h3>
+        {isPanteones ? (
+          <div className="md:w-1/3">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Precio *
+            </label>
+            <Input
+              name="preciolote"
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.preciolote}
+              onChange={(e) => setFormData({ ...formData, preciolote: e.target.value })}
+              placeholder="0.00"
+              disabled={isLoading}
+            />
+            {errors.preciolote && <p className="text-red-500 text-sm mt-1">{errors.preciolote}</p>}
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -727,6 +769,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             <p className="text-xs text-green-600 mt-1">Auto-calculado (Superficie × Precio/m²)</p>
           </div>
         </div>
+        )}
       </div>
 
       {/* Comentarios */}

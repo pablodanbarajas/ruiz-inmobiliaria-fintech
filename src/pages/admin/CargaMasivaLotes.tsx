@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabaseClient'
 import { invalidateCache } from '@/lib/queryCache'
+import { fetchAllByKey } from '@/lib/fetchAllByKey'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { UploadCloud, Download, CheckCircle2, XCircle, AlertTriangle, ChevronLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Desarrollo, Duenio } from '@/types/database'
-import { formatCurrency } from '@/utils/helpers'
+import { buildPanteonesClaveBase, formatCurrency } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 const TEMPLATE_COLS = [
@@ -29,7 +30,12 @@ const TEMPLATE_COLS = [
   'linderopte',
   'colindanciapte',
   'comentarios',
+  'zona',
+  'preciolote',
 ]
+
+const PANTEONES_PRODUCTS = ['Gaveta', 'Cripta', 'Nicho']
+const MAX_CLAVE_LENGTH = 15
 
 interface RowPreview {
   _row: number
@@ -51,10 +57,13 @@ interface RowPreview {
   linderopte: string
   colindanciapte: string
   comentarios: string
+  zona: string
   _errors: string[]
   _desarrolloid?: number
   _duenioid?: number
   _preciolote?: number
+  _isPanteones: boolean
+  _clavelote?: string
 }
 
 type UploadStatus = 'idle' | 'parsing' | 'previewing' | 'uploading' | 'done' | 'error'
@@ -64,13 +73,55 @@ function cellStr(val: unknown): string {
   return String(val).trim()
 }
 
+/** Numbers each valid cemetery space after the highest key already used for its zone and product. */
+async function assignPanteonesKeys(rows: RowPreview[]) {
+  const pending = rows.filter((row) => row._isPanteones && row._errors.length === 0)
+  if (pending.length === 0) return
+
+  const desarrolloIds = [...new Set(pending.map((row) => row._desarrolloid as number))]
+  const existing = await fetchAllByKey<{ loteid: number; clavelote: string | null }>(
+    (afterKey, pageSize) =>
+      supabase
+        .from('lote')
+        .select('loteid, clavelote')
+        .in('desarrolloid', desarrolloIds)
+        .gt('loteid', afterKey)
+        .order('loteid', { ascending: true })
+        .limit(pageSize),
+    (lote) => lote.loteid,
+  )
+
+  const lastNumberByBase = new Map<string, number>()
+  for (const { clavelote } of existing) {
+    const match = clavelote?.match(/^(.*)-(\d+)$/)
+    if (!match) continue
+    lastNumberByBase.set(match[1], Math.max(lastNumberByBase.get(match[1]) ?? 0, Number(match[2])))
+  }
+
+  for (const row of pending) {
+    const base = buildPanteonesClaveBase(row.clavedesarrollo, row.zona, row.tipolote)
+    const nextNumber = (lastNumberByBase.get(base) ?? 0) + 1
+    const clave = `${base}-${String(nextNumber).padStart(3, '0')}`
+    if (clave.length > MAX_CLAVE_LENGTH) {
+      row._errors.push(`La clave ${clave} supera ${MAX_CLAVE_LENGTH} caracteres`)
+      continue
+    }
+    lastNumberByBase.set(base, nextNumber)
+    row._clavelote = clave
+  }
+}
+
 function downloadTemplate() {
   const wb = XLSX.utils.book_new()
   const example = [
     'PRU', '', '1', '01', '001', 'Habitacional', 'D', '120', '2500',
-    '10', 'Calle San Antonio', '10', 'Lote 15', '12', 'Lote 2', '12', 'Lote 4', '',
+    '10', 'Calle San Antonio', '10', 'Lote 15', '12', 'Lote 2', '12', 'Lote 4', '', '', '',
   ]
-  const ws = XLSX.utils.aoa_to_sheet([TEMPLATE_COLS, example])
+  const examplePanteones = [
+    'VAF', '', '', '', '', 'Gaveta', 'D', '', '',
+    '', '', '', '', '', '', '', '', '', 'Centro', '50000',
+  ]
+  const ws = XLSX.utils.aoa_to_sheet([TEMPLATE_COLS, example, examplePanteones])
   ws['!cols'] = TEMPLATE_COLS.map((h) => ({ wch: Math.max(h.length + 4, 18) }))
   XLSX.utils.book_append_sheet(wb, ws, 'Lotes')
   XLSX.writeFile(wb, 'plantilla_carga_masiva_lotes.xlsx')
@@ -86,18 +137,21 @@ export const CargaMasivaLotes = () => {
   const [uploadResults, setUploadResults] = useState<{ ok: number; failed: number }>({ ok: 0, failed: 0 })
   const [dragOver, setDragOver] = useState(false)
   const [fileName, setFileName] = useState('')
+  const [panteonesTypeIds, setPanteonesTypeIds] = useState<number[]>([])
 
   useEffect(() => {
-    let devQuery = supabase.from('desarrollo').select('desarrolloid, nombre, clavedesarrollo').order('nombre')
+    let devQuery = supabase.from('desarrollo').select('desarrolloid, nombre, clavedesarrollo, tipodesarrolloid').order('nombre')
     if (DEMO_DESARROLLOIDS.length > 0) {
       devQuery = devQuery.in('desarrolloid', DEMO_DESARROLLOIDS)
     }
     Promise.all([
       devQuery,
       supabase.from('duenio').select('duenioid, nombre').order('nombre'),
-    ]).then(([{ data: devData }, { data: duenData }]) => {
+      supabase.from('tipodesarrollo').select('tipodesarrolloid').ilike('descripcion', '%panteon%'),
+    ]).then(([{ data: devData }, { data: duenData }, { data: typeData }]) => {
       setDesarrollos((devData || []) as Desarrollo[])
       setDuenios((duenData || []) as Duenio[])
+      setPanteonesTypeIds((typeData || []).map((type) => type.tipodesarrolloid))
     })
   }, [])
 
@@ -106,7 +160,7 @@ export const CargaMasivaLotes = () => {
     setFileName(file.name)
     setStatus('parsing')
     const reader = new FileReader()
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = new Uint8Array(e.target!.result as ArrayBuffer)
         const wb = XLSX.read(data, { type: 'array' })
@@ -146,20 +200,33 @@ export const CargaMasivaLotes = () => {
           const superficieStr = get('superficie')
           const precioMtStr = get('preciopormt2')
           const estatus = get('estatus').toUpperCase() || 'D'
+          const zona = get('zona')
+          const precioTotalStr = get('preciolote')
 
-          if (!clave && !manzana && !nolote) continue
-
-          const errors: string[] = []
-          if (!clave) errors.push('clavedesarrollo requerida')
-          if (!manzana) errors.push('Manzana requerida')
-          if (!nolote) errors.push('No. Lote requerido')
-          if (!superficieStr || isNaN(Number(superficieStr))) errors.push('Superficie inválida')
-          if (!precioMtStr || isNaN(Number(precioMtStr))) errors.push('Precio/m² inválido')
-          if (!['D', 'B', 'N', 'A', 'V'].includes(estatus)) errors.push('Estatus inválido (D/B/N)')
+          if (!clave && !manzana && !nolote && !zona) continue
 
           const dev = desarrollos.find(
             (d) => d.clavedesarrollo?.toUpperCase().trim() === clave.toUpperCase()
           )
+          const isPanteones = panteonesTypeIds.includes(dev?.tipodesarrolloid || 0)
+          const tipoLoteRaw = get('tipolote')
+          const productoPanteones = PANTEONES_PRODUCTS.find(
+            (producto) => producto.toLowerCase() === tipoLoteRaw.toLowerCase()
+          )
+
+          const errors: string[] = []
+          if (!clave) errors.push('clavedesarrollo requerida')
+          if (isPanteones) {
+            if (!zona) errors.push('Zona requerida')
+            if (!productoPanteones) errors.push('Tipo debe ser Gaveta, Cripta o Nicho')
+            if (!(Number(precioTotalStr) > 0)) errors.push('Precio inválido')
+          } else {
+            if (!manzana) errors.push('Manzana requerida')
+            if (!nolote) errors.push('No. Lote requerido')
+            if (!superficieStr || isNaN(Number(superficieStr))) errors.push('Superficie inválida')
+            if (!precioMtStr || isNaN(Number(precioMtStr))) errors.push('Precio/m² inválido')
+          }
+          if (!['D', 'B', 'N', 'A', 'V'].includes(estatus)) errors.push('Estatus inválido (D/B/N)')
           if (clave && !dev) errors.push(`Clave "${clave}" no encontrada`)
 
           const duenioNombre = get('duenio')
@@ -177,7 +244,7 @@ export const CargaMasivaLotes = () => {
             coto: get('coto'),
             manzana,
             nolote,
-            tipolote: get('tipolote') || 'Habitacional',
+            tipolote: isPanteones ? productoPanteones ?? tipoLoteRaw : tipoLoteRaw || 'Habitacional',
             estatus,
             superficie: superficieStr,
             preciopormt2: precioMtStr,
@@ -190,12 +257,15 @@ export const CargaMasivaLotes = () => {
             linderopte: get('linderopte'),
             colindanciapte: get('colindanciapte'),
             comentarios: get('comentarios'),
+            zona,
             _errors: errors,
             _desarrolloid: dev?.desarrolloid,
             _duenioid: duenio?.duenioid,
-            _preciolote: parseFloat((superficie * precioMt).toFixed(2)),
+            _preciolote: isPanteones ? Number(precioTotalStr) : parseFloat((superficie * precioMt).toFixed(2)),
+            _isPanteones: isPanteones,
           })
         }
+        await assignPanteonesKeys(parsed)
         setRows(parsed)
         setStatus('previewing')
       } catch {
@@ -229,8 +299,9 @@ export const CargaMasivaLotes = () => {
         desarrolloid: r._desarrolloid ?? null,
         duenioid: r._duenioid ?? null,
         coto: r.coto || null,
-        manzana: r.manzana,
-        nolote: r.nolote,
+        manzana: r.manzana || null,
+        nolote: r.nolote || null,
+        ...(r._isPanteones ? { zona: r.zona, clavelote: r._clavelote } : {}),
         tipolote: r.tipolote || 'Habitacional',
         estatus: r.estatus || 'D',
         superficie: r.superficie ? parseFloat(r.superficie) : null,
@@ -282,7 +353,7 @@ export const CargaMasivaLotes = () => {
               <div>
                 <p className="font-semibold text-blue-800 text-sm">Paso 1 — Descarga la plantilla</p>
                 <p className="text-blue-600 text-xs mt-0.5">
-                  Usa la clave corta del desarrollo (ej: PRU, PUB). El precio total se calcula: Superficie × Precio/m².
+                  Usa la clave corta del desarrollo (ej: PRU, PUB). En terrenos el precio total se calcula: Superficie × Precio/m². En Panteones cada fila es un espacio y su clave se genera sola.
                 </p>
               </div>
               <Button variant="outline" size="sm" onClick={downloadTemplate} className="shrink-0">
@@ -296,13 +367,15 @@ export const CargaMasivaLotes = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                 {[
                   { col: 'clavedesarrollo', req: true,  desc: 'Clave del desarrollo (PRU, PUB…)' },
-                  { col: 'manzana',         req: true,  desc: 'Número o clave de manzana' },
-                  { col: 'nolote',          req: true,  desc: 'Número del lote' },
-                  { col: 'superficie',      req: true,  desc: 'Metros cuadrados' },
-                  { col: 'preciopormt2',    req: true,  desc: 'Precio/m² — precio total se calcula' },
+                  { col: 'manzana',         req: true,  desc: 'Terrenos: número o clave de manzana' },
+                  { col: 'nolote',          req: true,  desc: 'Terrenos: número del lote' },
+                  { col: 'superficie',      req: true,  desc: 'Terrenos: metros cuadrados' },
+                  { col: 'preciopormt2',    req: true,  desc: 'Terrenos: precio/m², el total se calcula' },
+                  { col: 'zona',            req: true,  desc: 'Panteones: zona o sección' },
+                  { col: 'preciolote',      req: true,  desc: 'Panteones: precio del espacio' },
                   { col: 'duenio',          req: false, desc: 'Nombre del dueño (opcional)' },
                   { col: 'coto',            req: false, desc: 'Coto (opcional)' },
-                  { col: 'tipolote',        req: false, desc: 'Habitacional, Comercial…' },
+                  { col: 'tipolote',        req: false, desc: 'Habitacional, Comercial… Panteones (obligatorio): Gaveta, Cripta o Nicho' },
                   { col: 'estatus',         req: false, desc: 'D=Disponible B=Bloqueado N=No disp.' },
                   { col: 'linderonte/sur/ote/pte', req: false, desc: 'Linderos en metros' },
                   { col: 'colindanciante/sur/ote/pte', req: false, desc: 'Descripción de colindancias' },
@@ -392,7 +465,7 @@ export const CargaMasivaLotes = () => {
               <table className="min-w-full text-xs">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {['Fila','Clave','Dueño','Coto','Mza','Lote','Tipo','Est.','Sup. m²','Precio/m²','Precio Total','Errores'].map((h) => (
+                    {['Fila','Clave','Dueño','Coto','Zona','Mza','Lote','Clave de lote','Tipo','Est.','Sup. m²','Precio/m²','Precio Total','Errores'].map((h) => (
                       <th key={h} className="px-3 py-2 text-left font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -408,8 +481,10 @@ export const CargaMasivaLotes = () => {
                         </td>
                         <td className="px-3 py-2 text-gray-500">{row.duenio || '—'}</td>
                         <td className="px-3 py-2 text-gray-500">{row.coto || '—'}</td>
+                        <td className="px-3 py-2 text-gray-500">{row.zona || '—'}</td>
                         <td className="px-3 py-2 text-gray-700">{row.manzana || '—'}</td>
                         <td className="px-3 py-2 text-gray-700">{row.nolote || '—'}</td>
+                        <td className="px-3 py-2 font-mono text-gray-700">{row._clavelote || '—'}</td>
                         <td className="px-3 py-2 text-gray-600">{row.tipolote}</td>
                         <td className="px-3 py-2 text-center">
                           <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-semibold ${

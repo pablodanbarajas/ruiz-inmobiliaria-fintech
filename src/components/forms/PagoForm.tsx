@@ -14,6 +14,7 @@ import {
   getPagoStatusColor,
   FORMAS_PAGO,
   calcularRecargo,
+  getEspacioLabel,
 } from '@/utils/helpers'
 import { AlertTriangle, Info } from 'lucide-react'
 
@@ -147,7 +148,7 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
             .filter((v: any) => DEMO_DESARROLLOIDS.length === 0 || DEMO_DESARROLLOIDS.includes(v.lote?.desarrolloid))
             .map((v: any) => ({
             ventaid: v.ventaid,
-            label: `#${v.ventaid} — ${v.cliente?.nombre ?? 'Sin cliente'} | Mza ${v.lote?.manzana ?? '-'} Lote ${v.lote?.nolote ?? '-'}${v.lote?.clavelote ? ` (${v.lote.clavelote})` : ''}`,
+            label: `#${v.ventaid} — ${v.cliente?.nombre ?? 'Sin cliente'} | ${getEspacioLabel(v.lote) ?? `Mza ${v.lote?.manzana ?? '-'} Lote ${v.lote?.nolote ?? '-'}${v.lote?.clavelote ? ` (${v.lote.clavelote})` : ''}`}`,
             cliente: v.cliente,
             lote: v.lote,
           }))

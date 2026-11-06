@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllByKey } from '@/lib/fetchAllByKey'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import type { Lote, Cliente, Venta, Desarrollo } from '@/types/database'
-import { formatCurrency } from '@/utils/helpers'
+import { formatCurrency, getEspacioLabel } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { FormProgress } from '@/components/ui/FormProgress'
 
@@ -95,7 +96,9 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
   // Combobox option arrays (memoised from loaded data)
   const loteOptions: ComboOption[] = lotes.map((l) => ({
     value: l.loteid.toString(),
-    label: `${l.desarrollo?.nombre ?? '?'} · Mza ${l.manzana} Lote ${l.nolote}`,
+    label: getEspacioLabel(l)
+      ? `${l.desarrollo?.nombre ?? '?'} · ${[l.tipolote, l.zona, getEspacioLabel(l)].filter(Boolean).join(' · ')}`
+      : `${l.desarrollo?.nombre ?? '?'} · Mza ${l.manzana} Lote ${l.nolote}`,
     sublabel: [
       l.superficie ? `${l.superficie} m²` : '',
       l.preciolote ? formatCurrency(l.preciolote) : '',
@@ -119,21 +122,19 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
 
   useEffect(() => {
     const fetchCatalogos = async () => {
-      const [{ data: lotesData }] = await Promise.all([
-        supabase
-          .from('lote')
-          .select('loteid, desarrolloid, manzana, nolote, clavelote, superficie, preciolote, estatus, desarrollo:desarrollo(*)')
-          .eq('estatus', 'D')
-          .order('desarrolloid')
-          .then((res) => ({
-            ...res,
-            data: DEMO_DESARROLLOIDS.length > 0
-              ? (res.data || []).filter((l: any) => DEMO_DESARROLLOIDS.includes(l.desarrolloid))
-              : res.data,
-          })),
-        // clientes: placeholder, fetched with pagination below
-        Promise.resolve({ data: null }),
-      ])
+      // Filtered on the server and paged: the API returns at most 1000 rows per request.
+      const lotesData = await fetchAllByKey<LoteWithDesarrollo>(
+        (afterKey, pageSize) =>
+          supabase
+            .from('lote')
+            .select('loteid, desarrolloid, zona, tipolote, manzana, nolote, clavelote, superficie, preciolote, estatus, desarrollo:desarrollo(*)')
+            .eq('estatus', 'D')
+            .in('desarrolloid', DEMO_DESARROLLOIDS)
+            .gt('loteid', afterKey)
+            .order('loteid', { ascending: true })
+            .limit(pageSize),
+        (lote) => lote.loteid,
+      )
 
       // Fetch ALL clientes in pages of 1000 (Supabase default limit)
       let allClientes: Cliente[] = []
@@ -155,7 +156,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
         }
       }
 
-      let lotesResult = (lotesData || []) as unknown as LoteWithDesarrollo[]
+      let lotesResult = [...lotesData].sort((a, b) => (a.desarrolloid ?? 0) - (b.desarrolloid ?? 0))
 
       // In edit mode, include the current lote even if it's no longer 'D'
       if (venta?.loteid) {
@@ -163,7 +164,7 @@ export const VentaForm = ({ venta, onSubmit, isLoading = false, defaultLoteId, a
         if (!already) {
           const { data: currentLote } = await supabase
             .from('lote')
-            .select('loteid, desarrolloid, manzana, nolote, clavelote, superficie, preciolote, estatus, desarrollo:desarrollo(*)')
+            .select('loteid, desarrolloid, zona, tipolote, manzana, nolote, clavelote, superficie, preciolote, estatus, desarrollo:desarrollo(*)')
             .eq('loteid', venta.loteid)
             .single()
           if (currentLote) {

@@ -9,7 +9,7 @@ import type { PagoFormData } from '@/components/forms/PagoForm'
 import { ChevronLeft, Edit2, XCircle, AlertTriangle, Printer } from 'lucide-react'
 import { ReciboPago } from '@/components/ReciboPago'
 import type { Pago, CorridaFinanciera, Venta, Cliente, Lote, CuentaBancaria } from '@/types/database'
-import { formatDate, formatCurrency, getPagoStatusLabel, getPagoStatusColor, getPagoFormaLabel } from '@/utils/helpers'
+import { formatDate, formatCurrency, getPagoStatusLabel, getPagoStatusColor, getPagoFormaLabel, getEspacioLabel } from '@/utils/helpers'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
 import { DetailSkeleton } from '@/components/ui/Skeleton'
@@ -351,7 +351,7 @@ export const PagoDetail = () => {
                         className="p-0 text-left text-lg font-semibold text-blue-600 hover:underline"
                         onClick={() => navigate(`/admin/lotes/${lote?.loteid}`)}
                       >
-                        {lote?.manzana} - {lote?.nolote}
+                        {getEspacioLabel(lote) ?? `${lote?.manzana} - ${lote?.nolote}`}
                       </Button>
                     </div>
                     <div className="mb-6">

@@ -14,7 +14,7 @@ import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import type { Venta, Cliente, Lote, Desarrollo } from '@/types/database'
-import { formatCurrency, formatDate, getVentaStatusLabel, getVentaStatusColor } from '@/utils/helpers'
+import { formatCurrency, formatDate, getEspacioLabel, getVentaStatusLabel, getVentaStatusColor } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 interface VentaWithDetails extends Venta {
@@ -372,7 +372,7 @@ export const Ventas = () => {
             {
               key: 'lote',
               label: 'Lote',
-              render: (row: VentaWithDetails) => `${row.lote?.manzana} - ${row.lote?.nolote}`,
+              render: (row: VentaWithDetails) => getEspacioLabel(row.lote) ?? `${row.lote?.manzana} - ${row.lote?.nolote}`,
             },
             {
               key: 'fecha',

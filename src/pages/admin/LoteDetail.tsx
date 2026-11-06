@@ -10,7 +10,7 @@ import { VentaForm } from '@/components/forms/VentaForm'
 import type { VentaFormData } from '@/components/forms/VentaForm'
 import { ChevronDown, ChevronLeft, ChevronUp, Plus } from 'lucide-react'
 import type { Lote, Desarrollo, Venta, Cliente } from '@/types/database'
-import { getLoteStatusLabel, getLoteStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
+import { getLoteStatusLabel, getLoteStatusColor, formatCurrency, formatDate, getEspacioLabel } from '@/utils/helpers'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
 import { DetailSkeleton } from '@/components/ui/Skeleton'
@@ -342,7 +342,7 @@ export const LoteDetail = () => {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#63696c]">Ficha de inventario</p>
               <h1 className="text-3xl font-bold text-[#142127]">
-                Lote {lote.nolote} - Manzana {lote.manzana}
+                {getEspacioLabel(lote) ?? `Lote ${lote.nolote} - Manzana ${lote.manzana}`}
               </h1>
             </div>
             <span className="flex items-center gap-2 rounded-full border border-[#e0e5e7] px-3 py-2 text-sm font-semibold text-[#142127]">

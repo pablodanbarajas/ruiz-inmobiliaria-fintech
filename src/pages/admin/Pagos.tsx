@@ -25,6 +25,7 @@ import {
   getPagoFormaLabel,
   formatCurrency,
   formatDate,
+  getEspacioLabel,
   FORMAS_PAGO,
   calcularRecargo,
 } from '@/utils/helpers'
@@ -265,7 +266,7 @@ export const Pagos = () => {
           (afterKey, pageSize) =>
             supabase
               .from('pagos')
-              .select('pagoid, fechapago, montopagado, servicios_extra, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera!inner(corridafinancieraid, nopago, mensualidad, saldo, fecha, venta:venta!inner(ventaid, clienteid, preciolote, plazo, cliente:cliente(clienteid, nombre, email, telefonocelular), lote:lote!inner(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
+              .select('pagoid, fechapago, montopagado, servicios_extra, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera!inner(corridafinancieraid, nopago, mensualidad, saldo, fecha, venta:venta!inner(ventaid, clienteid, preciolote, plazo, cliente:cliente(clienteid, nombre, email, telefonocelular), lote:lote!inner(loteid, desarrolloid, manzana, nolote, clavelote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
               .in('corridafinanciera.venta.lote.desarrolloid', DEMO_DESARROLLOIDS)
               .gt('pagoid', afterKey)
               .order('pagoid', { ascending: true })
@@ -897,7 +898,7 @@ export const Pagos = () => {
                     label: 'Lote',
                     render: (row: PagoWithDetails) => {
                       const ctx = getPagoContext(row)
-                      return ctx.lote ? `M${ctx.lote.manzana} L${ctx.lote.nolote}` : '-'
+                      return ctx.lote ? getEspacioLabel(ctx.lote) ?? `M${ctx.lote.manzana} L${ctx.lote.nolote}` : '-'
                     },
                   },
                   {

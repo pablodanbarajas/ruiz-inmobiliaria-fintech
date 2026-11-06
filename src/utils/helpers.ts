@@ -343,3 +343,21 @@ export const numeroALetras = (monto: number | null | undefined): string => {
   const entero = Math.floor(Math.abs(monto))
   return _cifrasEnLetras(entero)
 }
+
+/**
+ * Identifies a cemetery space, which has no manzana or nolote.
+ * Returns null for regular lots, so each screen keeps its own label for them.
+ */
+export const getEspacioLabel = (
+  lote?: { manzana?: string | null; nolote?: string | null; clavelote?: string | null } | null
+): string | null => (lote && !lote.manzana && !lote.nolote ? lote.clavelote || 'Sin clave' : null)
+
+const normalizeClavePart = (value: string) =>
+  value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase()
+
+/** Key prefix shared by the spaces of one zone and product, such as VAF-CEN-GAV. */
+export const buildPanteonesClaveBase = (claveDesarrollo: string, zona: string, tipolote: string): string =>
+  [claveDesarrollo, zona, tipolote]
+    .map((part) => normalizeClavePart(part).slice(0, 3))
+    .filter(Boolean)
+    .join('-')
