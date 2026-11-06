@@ -145,9 +145,6 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     if (!isPanteones && formData.manzana.length > 2) newErrors.manzana = 'La manzana debe tener máximo 2 caracteres'
     if (!isPanteones && formData.coto.length > 2) newErrors.coto = 'El coto debe tener máximo 2 caracteres'
     if (!isPanteones && !formData.nolote.trim()) newErrors.nolote = 'No. Lote requerido'
-    if (isPanteones && (!formData.cantidad_disponible || Number(formData.cantidad_disponible) < 1)) {
-      newErrors.cantidad_disponible = 'La disponibilidad debe ser mayor a cero'
-    }
     if (!formData.superficie) newErrors.superficie = 'Superficie requerida'
     if (formData.superficie && isNaN(parseFloat(formData.superficie))) {
       newErrors.superficie = 'Debe ser un número'
@@ -208,45 +205,53 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
 
     if (!validateForm()) return
 
+    let clavePanteones = formData.clavelote || null
     if (isPanteones) {
-      const { data: existingLots, error: existingLotsError } = await supabase
+      const baseClave = buildClave(
+        formData.desarrolloid,
+        formData.coto,
+        formData.manzana,
+        formData.nolote,
+        formData.zona,
+        formData.tipolote,
+      )
+      let existingLotsQuery = supabase
         .from('lote')
-        .select('loteid, zona')
+        .select('loteid, clavelote')
         .eq('desarrolloid', Number(formData.desarrolloid))
         .eq('tipolote', formData.tipolote)
+      if (lote?.loteid) existingLotsQuery = existingLotsQuery.neq('loteid', lote.loteid)
+      const { data: existingLots, error: existingLotsError } = await existingLotsQuery
 
       if (existingLotsError) {
         setErrors((current) => ({ ...current, _form: existingLotsError.message }))
         return
       }
 
-      const normalizedZone = formData.zona.trim().toLocaleLowerCase()
-      const duplicate = existingLots?.some((existingLot) =>
-        existingLot.loteid !== lote?.loteid &&
-        existingLot.zona?.trim().toLocaleLowerCase() === normalizedZone
-      )
-
-      if (duplicate) {
-        const duplicateMessage = `Ya existe un producto ${formData.tipolote} para la zona "${formData.zona.trim()}". Actualiza la disponibilidad de ese registro en lugar de crear otro.`
-        setErrors((current) => ({ ...current, zona: duplicateMessage }))
-        window.setTimeout(() => {
-          const field = formRef.current?.querySelector<HTMLElement>('[name="zona"]')
-          field?.focus()
-          field?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }, 0)
-        return
+      if (lote?.clavelote?.startsWith(`${baseClave}-`)) {
+        clavePanteones = lote.clavelote
+      } else {
+        const usedNumbers = (existingLots || [])
+          .map((existingLot) => {
+            const suffix = existingLot.clavelote?.startsWith(`${baseClave}-`)
+              ? existingLot.clavelote.slice(baseClave.length + 1)
+              : ''
+            return /^\d+$/.test(suffix) ? Number(suffix) : 0
+          })
+        const nextNumber = Math.max(0, ...usedNumbers) + 1
+        clavePanteones = `${baseClave}-${String(nextNumber).padStart(3, '0')}`
       }
     }
 
     const submitData = {
       desarrolloid: formData.desarrolloid ? parseInt(formData.desarrolloid) : null,
       zona: formData.zona || null,
-      cantidad_disponible: isPanteones ? parseInt(formData.cantidad_disponible, 10) : null,
+      cantidad_disponible: isPanteones ? 1 : null,
       duenioid: formData.duenioid ? parseInt(formData.duenioid) : null,
       coto: isPanteones ? null : (formData.coto || null),
       manzana: isPanteones ? null : (formData.manzana || null),
       nolote: isPanteones ? null : (formData.nolote || null),
-      clavelote: formData.clavelote || null,
+      clavelote: clavePanteones,
       tipolote: formData.tipolote || null,
       linderonte: formData.linderonte ? parseFloat(formData.linderonte) : null,
       colindanciante: formData.colindanciante || null,
@@ -334,7 +339,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
         {isPanteones && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Disponibilidad *
+            Unidad disponible
           </label>
           <Input
             name="cantidad_disponible"
@@ -342,10 +347,9 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             min="1"
             step="1"
             value={formData.cantidad_disponible}
-            onChange={(e) => setFormData({ ...formData, cantidad_disponible: e.target.value })}
-            disabled={isLoading}
+            disabled
           />
-          {errors.cantidad_disponible && <p className="text-red-500 text-sm mt-1">{errors.cantidad_disponible}</p>}
+          <p className="mt-1 text-xs text-gray-500">Cada registro representa una unidad vendible.</p>
         </div>
         )}
         <div>
