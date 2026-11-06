@@ -44,9 +44,23 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
   const [autoClaveKey, setAutoClaveKey] = useState(!lote)
   const formRef = useRef<HTMLFormElement>(null)
 
-  const buildClave = (desarrolloid: string, coto: string, manzana: string, nolote: string) => {
+  const normalizeClavePart = (value: string) =>
+    value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toUpperCase()
+
+  const buildClave = (
+    desarrolloid: string,
+    coto: string,
+    manzana: string,
+    nolote: string,
+    zona = formData.zona,
+    tipolote = formData.tipolote,
+  ) => {
     const des = desarrollos.find(d => d.desarrolloid?.toString() === desarrolloid)
     if (!des?.clavedesarrollo) return ''
+    if (tipoPanteonesIds.includes(des.tipodesarrolloid || 0)) {
+      const parts = [des.clavedesarrollo, normalizeClavePart(zona), normalizeClavePart(tipolote)]
+      return parts.filter(Boolean).join('-')
+    }
     const parts = [des.clavedesarrollo]
     if (coto) parts.push(coto.padStart(2, '0'))
     if (manzana) parts.push(manzana.padStart(2, '0'))
@@ -248,7 +262,14 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             name="zona"
             type="text"
             value={formData.zona}
-            onChange={(e) => setFormData({ ...formData, zona: e.target.value })}
+            onChange={(e) => {
+              const zona = e.target.value
+              setFormData(prev => ({
+                ...prev,
+                zona,
+                ...(autoClaveKey ? { clavelote: buildClave(prev.desarrolloid, prev.coto, prev.manzana, prev.nolote, zona) } : {}),
+              }))
+            }}
             placeholder="Ej: Sección Jardines"
             disabled={isLoading}
           />
@@ -323,7 +344,14 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
           </label>
           <select
             value={formData.tipolote}
-            onChange={(e) => setFormData({ ...formData, tipolote: e.target.value })}
+            onChange={(e) => {
+              const tipolote = e.target.value
+              setFormData(prev => ({
+                ...prev,
+                tipolote,
+                ...(autoClaveKey ? { clavelote: buildClave(prev.desarrolloid, prev.coto, prev.manzana, prev.nolote, prev.zona, tipolote) } : {}),
+              }))
+            }}
             disabled={isLoading}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
           >
