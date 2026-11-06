@@ -16,7 +16,6 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
   const [formData, setFormData] = useState({
     desarrolloid: '',
     zona: '',
-    cantidad_disponible: '1',
     duenioid: '',
     clavelote: '',
     coto: '',
@@ -73,7 +72,6 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
       setFormData({
         desarrolloid: lote.desarrolloid?.toString() || '',
         zona: lote.zona || '',
-        cantidad_disponible: lote.cantidad_disponible?.toString() || '1',
         duenioid: lote.duenioid?.toString() || '',
         clavelote: lote.clavelote || '',
         coto: lote.coto || '',
@@ -246,7 +244,6 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     const submitData = {
       desarrolloid: formData.desarrolloid ? parseInt(formData.desarrolloid) : null,
       zona: formData.zona || null,
-      cantidad_disponible: isPanteones ? 1 : null,
       duenioid: formData.duenioid ? parseInt(formData.duenioid) : null,
       coto: isPanteones ? null : (formData.coto || null),
       manzana: isPanteones ? null : (formData.manzana || null),
@@ -336,22 +333,6 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
           {errors.desarrolloid && <p className="text-red-500 text-sm mt-1">{errors.desarrolloid}</p>}
         </div>
 
-        {isPanteones && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Unidad disponible
-          </label>
-          <Input
-            name="cantidad_disponible"
-            type="number"
-            min="1"
-            step="1"
-            value={formData.cantidad_disponible}
-            disabled
-          />
-          <p className="mt-1 text-xs text-gray-500">Cada registro representa una unidad vendible.</p>
-        </div>
-        )}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Dueño
