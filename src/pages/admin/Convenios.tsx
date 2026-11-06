@@ -12,7 +12,7 @@ import { ConvenioForm } from '@/components/forms/ConvenioForm'
 import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
 import { ChevronLeft, ChevronRight, Eye, Plus } from 'lucide-react'
 import type { Convenio, Venta, Cliente, Lote } from '@/types/database'
-import { formatDate, getConvenioStatusLabel, getConvenioStatusColor } from '@/utils/helpers'
+import { formatDate, getConvenioStatusLabel, getConvenioStatusColor, getEspacioLabel } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { syncExpiredConvenios } from '@/services/convenios'
 
@@ -214,7 +214,7 @@ export const Convenios = () => {
               label: 'Lote',
               render: (row) =>
                 row.venta?.lote
-                  ? `Mza ${row.venta.lote.manzana ?? '-'} / ${row.venta.lote.nolote ?? '-'}`
+                  ? getEspacioLabel(row.venta.lote) ?? `Mza ${row.venta.lote.manzana ?? '-'} / ${row.venta.lote.nolote ?? '-'}`
                   : '—',
             },
             {

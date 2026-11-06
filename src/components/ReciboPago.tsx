@@ -28,6 +28,7 @@ export interface ReciboPagoData {
   clienteEmail?: string | null
   clienteTelefono?: string | null
   // Lote
+  clavelote?: string | null
   manzana?: string | null
   nolote?: string | null
   desarrollo?: string | null
@@ -360,7 +361,7 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
           <div>
             <div style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Lote</div>
             <div style={{ fontSize: 13, fontWeight: 600 }}>
-              {data.manzana && data.nolote ? `Manzana ${data.manzana} – Lote ${data.nolote}` : '—'}
+              {data.manzana && data.nolote ? `Manzana ${data.manzana} – Lote ${data.nolote}` : data.clavelote || '—'}
             </div>
           </div>
           {data.preciolote != null && (

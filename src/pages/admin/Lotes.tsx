@@ -11,7 +11,7 @@ import { Modal } from '@/components/ui/Modal'
 import { LoteForm } from '@/components/forms/LoteForm'
 import { Eye, Edit2, Trash2, ChevronLeft, ChevronRight, UploadCloud } from 'lucide-react'
 import type { Lote, Desarrollo } from '@/types/database'
-import { getLoteStatusLabel, getLoteStatusColor, formatCurrency } from '@/utils/helpers'
+import { getEspacioLabel, getLoteStatusLabel, getLoteStatusColor, formatCurrency } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
@@ -457,7 +457,7 @@ export const Lotes = () => {
       <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Eliminar Lote">
         <div className="space-y-4">
           <p className="text-gray-700">
-            ¿Estás seguro de que deseas eliminar el lote {loteEnEdicion?.nolote} de la manzana {loteEnEdicion?.manzana}? Esta acción no se puede deshacer.
+            ¿Estás seguro de que deseas eliminar {getEspacioLabel(loteEnEdicion) ? `el espacio ${getEspacioLabel(loteEnEdicion)}` : `el lote ${loteEnEdicion?.nolote} de la manzana ${loteEnEdicion?.manzana}`}? Esta acción no se puede deshacer.
           </p>
           <div className="flex gap-4 justify-end pt-4">
             <Button

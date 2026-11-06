@@ -9,7 +9,7 @@ import { ClienteDocumentos } from '@/components/ClienteDocumentos'
 import { ChevronDown, ChevronLeft, ChevronRight, Edit2, Trash2, ChevronUp } from 'lucide-react'
 import type { Cliente, Venta, Lote, Pago, CorridaFinanciera, Desarrollo } from '@/types/database'
 import { useAuth } from '@/context/AuthContext'
-import { formatDate, formatCurrency, getStatusLabel, getPagoStatusLabel, getPagoStatusColor } from '@/utils/helpers'
+import { formatDate, formatCurrency, getEspacioLabel, getStatusLabel, getPagoStatusLabel, getPagoStatusColor } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { DetailSkeleton } from '@/components/ui/Skeleton'
 
@@ -449,7 +449,7 @@ export const ClienteDetail = () => {
                         {venta.lote?.desarrollo?.nombre || '-'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">
-                        {venta.lote?.manzana || '-'}
+                        {getEspacioLabel(venta.lote) ?? (venta.lote?.manzana || '-')}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">
                         {venta.lote?.nolote || '-'}
@@ -540,7 +540,7 @@ export const ClienteDetail = () => {
                         {pago.corridafinanciera?.venta?.lote?.desarrollo?.nombre || '-'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">
-                        {pago.corridafinanciera?.venta?.lote?.manzana || '-'}
+                        {getEspacioLabel(pago.corridafinanciera?.venta?.lote) ?? (pago.corridafinanciera?.venta?.lote?.manzana || '-')}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">
                         {pago.corridafinanciera?.venta?.lote?.nolote || '-'}

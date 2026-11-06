@@ -7,7 +7,7 @@ import { Modal } from '@/components/ui/Modal'
 import { DesarrolloForm } from '@/components/forms/DesarrolloForm'
 import { ChevronDown, ChevronLeft, ChevronRight, Edit2, Trash2, ChevronUp } from 'lucide-react'
 import type { Desarrollo, Lote, TipoDesarrollo } from '@/types/database'
-import { getStatusLabel, getLoteStatusLabel, getLoteStatusColor, formatCurrency } from '@/utils/helpers'
+import { getEspacioLabel, getStatusLabel, getLoteStatusLabel, getLoteStatusColor, formatCurrency } from '@/utils/helpers'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
 import { DetailSkeleton } from '@/components/ui/Skeleton'
@@ -293,8 +293,8 @@ export const DesarrolloDetail = () => {
                 <tbody className="divide-y divide-gray-200">
                   {visibleLotes.map((lote) => (
                     <tr key={lote.loteid} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm text-gray-700">{lote.manzana}</td>
-                      <td className="px-6 py-4 text-sm text-gray-700">{lote.nolote}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{getEspacioLabel(lote) ?? lote.manzana}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{lote.nolote || '—'}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{formatCurrency(lote.preciolote)}</td>
                       <td className="px-6 py-4 text-sm">
                         <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getLoteStatusColor(lote.estatus)}`}>

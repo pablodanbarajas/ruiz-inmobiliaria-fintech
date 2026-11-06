@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getCached, setCached, invalidateCache, onFocusRefetch } from '@/lib/queryCache'
 import { fetchAllByKey } from '@/lib/fetchAllByKey'
+import { fetchPanteonesDesarrolloIds } from '@/lib/panteones'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
 import { Input } from '@/components/ui/Input'
@@ -143,7 +144,9 @@ export const Pagos = () => {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
 
+  const [panteonesIds, setPanteonesIds] = useState<number[]>([])
   const [filters, setFilters] = usePersistedFilters('pagosFilters', {
+    unidad: 'ruiz',
     clienteId: '',
     desarrolloId: '',
     fechaDesde: '',
@@ -173,13 +176,17 @@ export const Pagos = () => {
   const canRegistrarPagos = !!currentRole && ROLE_CAPABILITIES[currentRole].registrar_pagos
 
   useEffect(() => {
+    const unidad = searchParams.get('unidad')
+    if (unidad === 'ruiz' || unidad === 'valle') {
+      setFilters((current) => ({ ...current, unidad, desarrolloId: '' }))
+    }
     if (searchParams.get('new') === 'true') {
       if (canRegistrarPagos) setShowCreateModal(true)
       setSearchParams({}, { replace: true })
-    } else if (searchParams.get('tab')) {
+    } else if (searchParams.get('tab') || unidad) {
       setSearchParams({}, { replace: true })
     }
-  }, [searchParams, setSearchParams, canRegistrarPagos])
+  }, [searchParams, setSearchParams, setFilters, canRegistrarPagos])
 
   useEffect(() => {
     const fetchClientes = async () => {
@@ -210,11 +217,12 @@ export const Pagos = () => {
   const fetchPagosAndPendientes = async (bypassCache = false) => {
     const CACHE_KEY = 'pagos:all'
     if (!bypassCache) {
-      const cached = getCached<{ pagos: PagoWithDetails[]; pendientes: PendingRow[]; desarrollos: Desarrollo[] }>(CACHE_KEY)
+      const cached = getCached<{ pagos: PagoWithDetails[]; pendientes: PendingRow[]; desarrollos: Desarrollo[]; panteonesIds: number[] }>(CACHE_KEY)
       if (cached) {
         setAllPagos(cached.pagos)
         setPendientes(cached.pendientes)
         setDesarrollos(cached.desarrollos)
+        setPanteonesIds(cached.panteonesIds)
         setLoading(false)
         return
       }
@@ -259,7 +267,7 @@ export const Pagos = () => {
           : corridasQuery.eq('ventaid', -1) // no results if no matching ventas
       }
 
-      const [pagosData, desarrollosRes] = await Promise.all([
+      const [pagosData, desarrollosRes, panteonesIdsData] = await Promise.all([
         // Filtered on the server and paged: the API returns at most 1000 rows per request,
         // so filtering afterwards would drop whole developments from the totals.
         fetchAllByKey<PagoWithDetails>(
@@ -278,6 +286,7 @@ export const Pagos = () => {
           .select('desarrolloid, nombre')
           .in('desarrolloid', DEMO_DESARROLLOIDS.length > 0 ? DEMO_DESARROLLOIDS : [-1])
           .order('nombre', { ascending: true }),
+        fetchPanteonesDesarrolloIds(),
       ])
 
       if (desarrollosRes.error) throw desarrollosRes.error
@@ -309,6 +318,7 @@ export const Pagos = () => {
       )
       setAllPagos(pagosRows)
       setDesarrollos((desarrollosRes.data || []) as Desarrollo[])
+      setPanteonesIds(panteonesIdsData)
 
       const pagosPorCorrida = new Map<number, Pago[]>()
       for (const pago of pagosRows) {
@@ -359,7 +369,7 @@ export const Pagos = () => {
       }
 
       setPendientes(pendingRows)
-      setCached('pagos:all', { pagos: pagosRows, pendientes: pendingRows, desarrollos: desarrollosRes.data as Desarrollo[] })
+      setCached('pagos:all', { pagos: pagosRows, pendientes: pendingRows, desarrollos: desarrollosRes.data as Desarrollo[], panteonesIds: panteonesIdsData })
     } catch (error) {
       console.error('Error fetching pagos:', error)
       setLoadError(true)
@@ -383,31 +393,60 @@ export const Pagos = () => {
     }
   }, [filters, prevFilters])
 
-  const filteredPagos = useMemo(() => {
+  const isInSelectedUnidad = useCallback(
+    (desarrolloid: number | null) => (filters.unidad === 'valle') === panteonesIds.includes(desarrolloid as number),
+    [filters.unidad, panteonesIds]
+  )
+
+  // A saved development from the other unit would silently empty the screen.
+  useEffect(() => {
+    if (filters.desarrolloId && !loading && !isInSelectedUnidad(Number(filters.desarrolloId))) {
+      setFilters((current) => ({ ...current, desarrolloId: '' }))
+    }
+  }, [filters.desarrolloId, loading, isInSelectedUnidad, setFilters])
+
+  const desarrollosUnidad = useMemo(
+    () => desarrollos.filter((d) => isInSelectedUnidad(d.desarrolloid)),
+    [desarrollos, isInSelectedUnidad]
+  )
+
+  // Every filter except unit and development, which the comparison chart ignores on purpose.
+  const pagosComparables = useMemo(() => {
     return allPagos.filter((pago) => {
       const { cliente, lote, desarrollo } = getPagoContext(pago)
       const desarrolloid = (desarrollo?.desarrolloid ?? lote?.desarrolloid ?? null) as number | null
 
       if (DEMO_DESARROLLOIDS.length > 0 && desarrolloid && !DEMO_DESARROLLOIDS.includes(desarrolloid)) return false
       if (filters.clienteId && String(cliente?.clienteid || '') !== filters.clienteId) return false
-      if (filters.desarrolloId && String(desarrolloid || '') !== filters.desarrolloId) return false
       if (filters.fechaDesde && (pago.fechapago || '').slice(0, 10) < filters.fechaDesde) return false
       if (filters.fechaHasta && (pago.fechapago || '').slice(0, 10) > filters.fechaHasta) return false
       if (filters.formaPago && String(pago.formapago || '') !== filters.formaPago) return false
       if (filters.cobrador && !(pago.cobrador || '').toLowerCase().includes(filters.cobrador.toLowerCase())) return false
       return true
     })
-  }, [allPagos, filters])
+  }, [allPagos, filters.clienteId, filters.fechaDesde, filters.fechaHasta, filters.formaPago, filters.cobrador])
+
+  const filteredPagos = useMemo(() => {
+    return pagosComparables.filter((pago) => {
+      const { lote, desarrollo } = getPagoContext(pago)
+      const desarrolloid = (desarrollo?.desarrolloid ?? lote?.desarrolloid ?? null) as number | null
+
+      if (!isInSelectedUnidad(desarrolloid)) return false
+      if (filters.desarrolloId && String(desarrolloid || '') !== filters.desarrolloId) return false
+      return true
+    })
+  }, [pagosComparables, isInSelectedUnidad, filters.desarrolloId])
 
   const filteredPendientes = useMemo(() => {
     return pendientes.filter((p) => {
+      if (!isInSelectedUnidad(p.desarrolloid)) return false
       if (filters.clienteId && String(p.clienteid) !== filters.clienteId) return false
       if (filters.desarrolloId && String(p.desarrolloid || '') !== filters.desarrolloId) return false
       if (filters.fechaDesde && (p.fecha || '') < filters.fechaDesde) return false
       if (filters.fechaHasta && (p.fecha || '') > filters.fechaHasta) return false
       return true
     })
-  }, [pendientes, filters])
+  }, [pendientes, filters, isInSelectedUnidad])
 
   const pendingByClient = useMemo(() => {
     const byClient = new Map<number, { clienteNombre: string; totalPendiente: number; corridasPendientes: number; corridas: PendingRow[] }>()
@@ -546,6 +585,25 @@ export const Pagos = () => {
       if (b.fecha === 'Sin fecha') return -1
       return a.fecha < b.fecha ? 1 : -1
     })
+  }, [pagosVigentes])
+
+  const cobradoPorDesarrollo = useMemo(() => {
+    const totals = new Map<string, number>()
+    for (const pago of pagosComparables) {
+      if (pago.estatus === 'C') continue
+      const nombre = getPagoContext(pago).desarrollo?.nombre || 'Sin desarrollo'
+      totals.set(nombre, (totals.get(nombre) || 0) + Number(pago.montopagado || 0) + Math.max(0, Number(pago.servicios_extra || 0)))
+    }
+    return Array.from(totals, ([nombre, monto]) => ({ nombre, monto })).sort((a, b) => b.monto - a.monto)
+  }, [pagosComparables])
+
+  const cobradoPorMetodo = useMemo(() => {
+    const totals = new Map<string, number>()
+    for (const pago of pagosVigentes) {
+      const nombre = getPagoFormaLabel(pago.formapago)
+      totals.set(nombre, (totals.get(nombre) || 0) + Number(pago.montopagado || 0) + Math.max(0, Number(pago.servicios_extra || 0)))
+    }
+    return Array.from(totals, ([nombre, monto]) => ({ nombre, monto })).sort((a, b) => b.monto - a.monto)
   }, [pagosVigentes])
 
   const corteCtaBancaria = useMemo<CorteCtaBancariaRow[]>(() => {
@@ -739,6 +797,25 @@ export const Pagos = () => {
             </div>
           )}
 
+          <div role="group" aria-label="Unidad de negocio" className="mb-6 inline-flex rounded-full border border-[#e0e5e7] bg-white p-1">
+            {[
+              { value: 'ruiz', label: 'Inmobiliaria Ruiz', activeClass: 'bg-[#142127] text-white' },
+              { value: 'valle', label: 'Valle de Flores', activeClass: 'bg-[#4c3a63] text-white' },
+            ].map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={filters.unidad === option.value}
+                onClick={() => setFilters({ ...filters, unidad: option.value, desarrolloId: '' })}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  filters.unidad === option.value ? option.activeClass : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
           {/* KPIs Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
             <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4">
@@ -835,7 +912,7 @@ export const Pagos = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
                   >
                     <option value="">Todos</option>
-                    {desarrollos.map((d) => (
+                    {desarrollosUnidad.map((d) => (
                       <option key={d.desarrolloid} value={d.desarrolloid}>
                         {d.nombre}
                       </option>
@@ -977,6 +1054,7 @@ export const Pagos = () => {
                                 clienteNombre: ctx.cliente?.nombre,
                                 clienteEmail: (ctx.cliente as any)?.email,
                                 clienteTelefono: (ctx.cliente as any)?.telefonocelular,
+                                clavelote: ctx.lote?.clavelote,
                                 manzana: ctx.lote?.manzana,
                                 nolote: ctx.lote?.nolote,
                                 desarrollo: ctx.desarrollo?.nombre,
@@ -1167,6 +1245,8 @@ export const Pagos = () => {
                   accounts={corteCtaBancaria}
                   collectors={cortePorCobrador}
                   daily={conciliacionDiaria}
+                  developments={cobradoPorDesarrollo}
+                  methods={cobradoPorMetodo}
                 />
               )}
               {showReportDetails && (

@@ -558,7 +558,7 @@ export const LoteDetail = () => {
       </Modal>
 
       {/* Nueva Venta Modal */}
-      <Modal isOpen={showVentaModal} onClose={() => setShowVentaModal(false)} title={`Nueva Venta — Lote ${lote.nolote} Mza ${lote.manzana}`} size="xl">
+      <Modal isOpen={showVentaModal} onClose={() => setShowVentaModal(false)} title={`Nueva Venta — ${getEspacioLabel(lote) ?? `Lote ${lote.nolote} Mza ${lote.manzana}`}`} size="xl">
         <VentaForm
           defaultLoteId={lote.loteid}
           onSubmit={handleCreateVenta}

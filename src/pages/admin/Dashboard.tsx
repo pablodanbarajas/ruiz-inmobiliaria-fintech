@@ -7,6 +7,7 @@ import {
 import { supabase } from '@/lib/supabaseClient'
 import { getCached, setCached, invalidateCache, onFocusRefetch } from '@/lib/queryCache'
 import { fetchAllByKey } from '@/lib/fetchAllByKey'
+import { fetchPanteonesDesarrolloIds } from '@/lib/panteones'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { formatCurrency, formatDate, getEspacioLabel, getVentaStatusLabel, getVentaStatusColor, calcularRecargo } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
@@ -141,6 +142,10 @@ export const Dashboard = () => {
         const firstOfNextMonth = `${firstOfNextMonthDate.getFullYear()}-${String(firstOfNextMonthDate.getMonth() + 1).padStart(2, '0')}-01`
 
         if (DEMO_DESARROLLOIDS.length > 0) {
+          // General figures cover Inmobiliaria Ruiz only; cemeteries have their own panel.
+          const panteonesIds = await fetchPanteonesDesarrolloIds()
+          const ruizIds = DEMO_DESARROLLOIDS.filter((id) => !panteonesIds.includes(id))
+
           // Filtered on the server and paged: the API returns at most 1000 rows per request.
           const [lotesDemo, ventasDemo, pagosDemo] = await Promise.all([
             fetchAllByKey<{ loteid: number; estatus: string | null }>(
@@ -148,7 +153,7 @@ export const Dashboard = () => {
                 supabase
                   .from('lote')
                   .select('loteid, estatus')
-                  .in('desarrolloid', DEMO_DESARROLLOIDS)
+                  .in('desarrolloid', ruizIds)
                   .gt('loteid', afterKey)
                   .order('loteid', { ascending: true })
                   .limit(pageSize),
@@ -159,7 +164,7 @@ export const Dashboard = () => {
                 supabase
                   .from('venta')
                   .select('ventaid, clienteid, estatus, fecha, lote:lote!inner(desarrolloid)')
-                  .in('lote.desarrolloid', DEMO_DESARROLLOIDS)
+                  .in('lote.desarrolloid', ruizIds)
                   .gt('ventaid', afterKey)
                   .order('ventaid', { ascending: true })
                   .limit(pageSize),
@@ -170,7 +175,7 @@ export const Dashboard = () => {
                 supabase
                   .from('pagos')
                   .select('pagoid, montopagado, servicios_extra, fechapago, corridafinanciera:corridafinanciera!inner(venta:venta!inner(lote:lote!inner(desarrolloid)))')
-                  .in('corridafinanciera.venta.lote.desarrolloid', DEMO_DESARROLLOIDS)
+                  .in('corridafinanciera.venta.lote.desarrolloid', ruizIds)
                   .or('estatus.neq.C,estatus.is.null')
                   .gt('pagoid', afterKey)
                   .order('pagoid', { ascending: true })
@@ -196,7 +201,7 @@ export const Dashboard = () => {
 
           setStats({
             totalClientes: clienteIds.length,
-            totalDesarrollos: DEMO_DESARROLLOIDS.length,
+            totalDesarrollos: ruizIds.length,
             totalVentas: ventaIds.length,
             totalPagado,
             pagosDelMes,
@@ -206,7 +211,7 @@ export const Dashboard = () => {
           })
           setCached('dashboard:stats', {
             totalClientes: clienteIds.length,
-            totalDesarrollos: DEMO_DESARROLLOIDS.length,
+            totalDesarrollos: ruizIds.length,
             totalVentas: ventaIds.length,
             totalPagado,
             pagosDelMes,
@@ -288,29 +293,7 @@ export const Dashboard = () => {
         const firstOfNextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1)
         const firstOfNextMonth = `${firstOfNextMonthDate.getFullYear()}-${String(firstOfNextMonthDate.getMonth() + 1).padStart(2, '0')}-01`
 
-        const { data: panteonesTypes, error: typesError } = await supabase
-          .from('tipodesarrollo')
-          .select('tipodesarrolloid')
-          .ilike('descripcion', '%panteon%')
-        if (typesError) throw typesError
-
-        const typeIds = (panteonesTypes || []).map((type) => type.tipodesarrolloid)
-        let developmentsQuery = supabase
-          .from('desarrollo')
-          .select('desarrolloid')
-          .or(
-            typeIds.length
-              ? `tipodesarrolloid.in.(${typeIds.join(',')}),nombre.ilike.*valle*flores*`
-              : 'nombre.ilike.*valle*flores*'
-          )
-        if (DEMO_DESARROLLOIDS.length > 0) {
-          developmentsQuery = developmentsQuery.in('desarrolloid', DEMO_DESARROLLOIDS)
-        }
-
-        const { data: panteonesDevelopments, error: developmentsError } = await developmentsQuery
-        if (developmentsError) throw developmentsError
-
-        const developmentIds = (panteonesDevelopments || []).map((development) => development.desarrolloid)
+        const developmentIds = await fetchPanteonesDesarrolloIds()
         if (developmentIds.length === 0) {
           const emptyStats = { ventasUltimoMes: 0, totalCobradoMes: 0, clientes: 0 }
           setPanteonesStats(emptyStats)
@@ -405,8 +388,9 @@ export const Dashboard = () => {
         // Pre-fetch ventaIds for DEMO developments (same fix as Pendientes tab)
         let demoVentaIds: number[] | null = null
         if (DEMO_DESARROLLOIDS.length > 0) {
+          const panteonesIds = await fetchPanteonesDesarrolloIds()
           const { data: lotesData } = await supabase
-            .from('lote').select('loteid').in('desarrolloid', DEMO_DESARROLLOIDS)
+            .from('lote').select('loteid').in('desarrolloid', DEMO_DESARROLLOIDS.filter((id) => !panteonesIds.includes(id)))
           const loteIds = (lotesData || []).map((l: any) => l.loteid as number)
           if (loteIds.length > 0) {
             const { data: ventasData } = await supabase
@@ -720,7 +704,9 @@ export const Dashboard = () => {
     icon: Icon,
     color,
     onClick,
+    className = '',
   }: {
+    className?: string
     title: string
     value: string | number
     icon: React.ReactNode
@@ -729,7 +715,7 @@ export const Dashboard = () => {
   }) => (
     <div
       onClick={onClick}
-      className={`flex items-center gap-3 p-3 rounded-[14px] border border-[#e0e5e7] transition-colors ${onClick ? 'cursor-pointer hover:bg-[#fffde1]' : ''}`}
+      className={`flex items-center gap-3 p-3 rounded-[14px] border border-[#e0e5e7] bg-white transition-colors ${onClick ? 'cursor-pointer hover:bg-[#fffde1]' : ''} ${className}`}
     >
       <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color }}>
         {Icon}
@@ -795,127 +781,141 @@ export const Dashboard = () => {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {/* ── KPIs generales (totales acumulados, no ligados al mes) ── */}
-            <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-5">
-              <h2 className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#142127] px-5 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-white">Totales generales</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {canViewClientes && (
-                  <MiniStat
-                    title="Clientes"
-                    value={stats.totalClientes}
-                    icon={<Users className="w-5 h-5 text-white" />}
-                    color="#9e9f92"
-                    onClick={() => navigate('/admin/clientes')}
-                  />
-                )}
-                {canViewVentas && (
-                  <MiniStat
-                    title="Ventas activas"
-                    value={stats.ventasActivas}
-                    icon={<ShoppingCart className="w-5 h-5 text-black" />}
-                    color="#16a34a"
-                    onClick={() => navigate('/admin/ventas')}
-                  />
-                )}
-                {canViewPagos && (
-                  <MiniStat
-                    title="Cartera vencida"
-                    value={loadingRiesgo ? '…' : formatCurrency(totalCarteraVencida)}
-                    icon={<DollarSign className="w-5 h-5 text-white" />}
-                    color={totalCarteraVencida > 0 ? '#dc2626' : '#16a34a'}
-                    onClick={() => navigate('/admin/pagos')}
-                  />
-                )}
-                {canViewLotes && (
-                  <MiniStat
-                    title="Lotes disponibles"
-                    value={stats.lotesDisponibles}
-                    icon={<Home className="w-5 h-5 text-white" />}
-                    color="#9e9f92"
-                    onClick={() => navigate('/admin/lotes')}
-                  />
-                )}
-                {canViewDesarrollos && (
-                  <MiniStat
-                    title="Desarrollos"
-                    value={stats.totalDesarrollos}
-                    icon={<MapPin className="w-5 h-5 text-white" />}
-                    color="#504840"
-                    onClick={() => navigate('/admin/desarrollos')}
-                  />
-                )}
-                {canViewRiesgo && (
-                  <MiniStat
-                    title="En riesgo de cancelación"
-                    value={loadingRiesgo ? '…' : ventasEnRiesgo.length}
-                    icon={<AlertTriangle className="w-5 h-5 text-white" />}
-                    color="#dc2626"
-                    onClick={() => navigate('/admin/pagos?tab=pendientes')}
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* ── KPIs del mes en curso ── */}
-            {(canViewPagos || canViewVentas) && (
+          <div className={`grid grid-cols-1 gap-5 ${canViewVentas ? 'min-[1750px]:grid-cols-[2fr_1fr]' : ''}`}>
+            <div className="flex flex-col gap-5">
+              {/* ── KPIs generales (totales acumulados, no ligados al mes) ── */}
               <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-5">
-                <h2 className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#142127] px-5 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-white capitalize">
-                  Este mes · {monthName}
-                </h2>
-                <div className="grid grid-cols-2 gap-2">
+                <h2 className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#142127] px-5 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-white">Inmobiliaria Ruiz · Totales</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {canViewPagos && (
                     <MiniStat
-                      title="Cobrado este mes"
-                      value={loading ? '…' : formatCurrency(stats.pagosDelMes)}
-                      icon={<TrendingUp className="w-5 h-5 text-white" />}
-                      color="#504840"
-                      onClick={() => navigate('/admin/pagos')}
+                      className="col-span-2"
+                      title="Total pagado"
+                      value={formatCurrency(stats.totalPagado)}
+                      icon={<DollarSign className="w-5 h-5 text-white" />}
+                      color="#16a34a"
+                      onClick={() => navigate('/admin/pagos?unidad=ruiz')}
+                    />
+                  )}
+                  {canViewClientes && (
+                    <MiniStat
+                      title="Clientes"
+                      value={stats.totalClientes}
+                      icon={<Users className="w-5 h-5 text-white" />}
+                      color="#9e9f92"
+                      onClick={() => navigate('/admin/clientes')}
                     />
                   )}
                   {canViewVentas && (
                     <MiniStat
-                      title="Ventas nuevas este mes"
-                      value={loading ? '…' : stats.ventasEsteMes}
-                      icon={<ShoppingCart className="w-5 h-5 text-white" />}
+                      title="Ventas activas"
+                      value={stats.ventasActivas}
+                      icon={<ShoppingCart className="w-5 h-5 text-black" />}
                       color="#16a34a"
                       onClick={() => navigate('/admin/ventas')}
                     />
                   )}
+                  {canViewPagos && (
+                    <MiniStat
+                      title="Cartera vencida"
+                      value={loadingRiesgo ? '…' : formatCurrency(totalCarteraVencida)}
+                      icon={<DollarSign className="w-5 h-5 text-white" />}
+                      color={totalCarteraVencida > 0 ? '#dc2626' : '#16a34a'}
+                      onClick={() => navigate('/admin/pagos?tab=pendientes&unidad=ruiz')}
+                    />
+                  )}
+                  {canViewLotes && (
+                    <MiniStat
+                      title="Lotes disponibles"
+                      value={stats.lotesDisponibles}
+                      icon={<Home className="w-5 h-5 text-white" />}
+                      color="#9e9f92"
+                      onClick={() => navigate('/admin/lotes')}
+                    />
+                  )}
+                  {canViewDesarrollos && (
+                    <MiniStat
+                      title="Desarrollos"
+                      value={stats.totalDesarrollos}
+                      icon={<MapPin className="w-5 h-5 text-white" />}
+                      color="#504840"
+                      onClick={() => navigate('/admin/desarrollos')}
+                    />
+                  )}
+                  {canViewRiesgo && (
+                    <MiniStat
+                      title="En riesgo de cancelación"
+                      value={loadingRiesgo ? '…' : ventasEnRiesgo.length}
+                      icon={<AlertTriangle className="w-5 h-5 text-white" />}
+                      color="#dc2626"
+                      onClick={() => navigate('/admin/pagos?tab=pendientes&unidad=ruiz')}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* ── KPIs del mes en curso ── */}
+              {(canViewPagos || canViewVentas) && (
+                <div className="flex-1 bg-white rounded-[20px] border border-[#e0e5e7] p-5">
+                  <h2 className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#142127] px-5 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-white capitalize">
+                    Inmobiliaria Ruiz · Este mes · {monthName}
+                  </h2>
+                  <div className="grid grid-cols-2 gap-2">
+                    {canViewPagos && (
+                      <MiniStat
+                        title="Cobrado este mes"
+                        value={formatCurrency(stats.pagosDelMes)}
+                        icon={<TrendingUp className="w-5 h-5 text-white" />}
+                        color="#504840"
+                        onClick={() => navigate('/admin/pagos?unidad=ruiz')}
+                      />
+                    )}
+                    {canViewVentas && (
+                      <MiniStat
+                        title="Ventas nuevas este mes"
+                        value={stats.ventasEsteMes}
+                        icon={<ShoppingCart className="w-5 h-5 text-white" />}
+                        color="#16a34a"
+                        onClick={() => navigate('/admin/ventas')}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Valle de Flores: its own color and column, apart from the general figures ── */}
+            {canViewVentas && (
+              <div className="flex flex-col rounded-[20px] border border-[#ddd5e8] bg-[#fbf9fd] p-5">
+                <div className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#4c3a63] px-5 py-4 text-white">
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.12em]">Valle de Flores</h2>
+                  <p className="mt-0.5 text-xs text-[#ddd5e8]">Panteones</p>
+                </div>
+                <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-3 min-[1750px]:auto-rows-fr min-[1750px]:grid-cols-1">
+                  <MiniStat
+                    title="Ventas del último mes"
+                    value={loadingPanteonesStats ? '…' : panteonesStats.ventasUltimoMes}
+                    icon={<ShoppingCart className="h-5 w-5 text-white" />}
+                    color="#6b5488"
+                    onClick={() => navigate('/admin/ventas')}
+                  />
+                  <MiniStat
+                    title="Total cobrado del mes"
+                    value={loadingPanteonesStats ? '…' : formatCurrency(panteonesStats.totalCobradoMes)}
+                    icon={<DollarSign className="h-5 w-5 text-white" />}
+                    color="#6b5488"
+                    onClick={() => navigate('/admin/pagos?unidad=valle')}
+                  />
+                  <MiniStat
+                    title="Clientes"
+                    value={loadingPanteonesStats ? '…' : panteonesStats.clientes}
+                    icon={<Users className="h-5 w-5 text-white" />}
+                    color="#6b5488"
+                    onClick={() => navigate('/admin/clientes')}
+                  />
                 </div>
               </div>
             )}
-          </div>
-        )}
-
-        {canViewVentas && (
-          <div className="mt-5 rounded-[20px] border border-[#e0e5e7] bg-white p-5">
-            <h2 className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#142127] px-5 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-white">
-              Valle de Flores
-            </h2>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <MiniStat
-                title="Ventas del último mes"
-                value={loadingPanteonesStats ? '…' : panteonesStats.ventasUltimoMes}
-                icon={<ShoppingCart className="h-5 w-5 text-white" />}
-                color="#9e9f92"
-                onClick={() => navigate('/admin/ventas')}
-              />
-              <MiniStat
-                title="Total cobrado del mes"
-                value={loadingPanteonesStats ? '…' : formatCurrency(panteonesStats.totalCobradoMes)}
-                icon={<DollarSign className="h-5 w-5 text-white" />}
-                color="#504840"
-                onClick={() => navigate('/admin/pagos')}
-              />
-              <MiniStat
-                title="Clientes"
-                value={loadingPanteonesStats ? '…' : panteonesStats.clientes}
-                icon={<Users className="h-5 w-5 text-white" />}
-                color="#9e9f92"
-                onClick={() => navigate('/admin/clientes')}
-              />
-            </div>
           </div>
         )}
 

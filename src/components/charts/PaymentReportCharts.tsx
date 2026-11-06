@@ -3,6 +3,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  LabelList,
   Legend,
   Line,
   LineChart,
@@ -38,10 +39,17 @@ interface DailyRow {
   diferenciaAjustes: number
 }
 
+interface NamedAmountRow {
+  nombre: string
+  monto: number
+}
+
 interface PaymentReportChartsProps {
   accounts: AccountRow[]
   collectors: CollectorRow[]
   daily: DailyRow[]
+  developments: NamedAmountRow[]
+  methods: NamedAmountRow[]
 }
 
 const compactCurrency = (value: number) =>
@@ -63,7 +71,23 @@ const parseReportDate = (value: string): Date | null => {
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-export const PaymentReportCharts = ({ accounts, collectors, daily }: PaymentReportChartsProps) => {
+const AmountBars = ({ data, fill }: { data: NamedAmountRow[]; fill: string }) => (
+  <div className="h-72 w-full">
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 48, left: 12, bottom: 4 }}>
+        <CartesianGrid stroke="#ebebeb" horizontal={false} />
+        <XAxis type="number" tickFormatter={compactCurrency} tick={{ fontSize: 11, fill: '#787574' }} tickLine={false} axisLine={false} />
+        <YAxis type="category" dataKey="nombre" width={130} tick={{ fontSize: 11, fill: '#343c40' }} tickLine={false} axisLine={false} />
+        <Tooltip contentStyle={tooltipStyle} formatter={(value) => tooltipCurrency(value as number)} />
+        <Bar dataKey="monto" name="Cobrado" fill={fill} radius={[0, 4, 4, 0]} maxBarSize={28}>
+          <LabelList dataKey="monto" position="right" formatter={(value) => compactCurrency(Number(value))} style={{ fontSize: 11, fill: '#343c40' }} />
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  </div>
+)
+
+export const PaymentReportCharts = ({ accounts, collectors, daily, developments, methods }: PaymentReportChartsProps) => {
   const dailyData = daily
     .filter((row) => row.fecha !== 'Sin fecha')
     .slice()
@@ -89,6 +113,14 @@ export const PaymentReportCharts = ({ accounts, collectors, daily }: PaymentRepo
 
   return (
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+      <ChartCard title="Cobrado por desarrollo" subtitle="Inmobiliaria Ruiz y Valle de Flores, sin importar la unidad elegida">
+        <AmountBars data={developments} fill="#142127" />
+      </ChartCard>
+
+      <ChartCard title="Cobrado por método de pago" subtitle="De la unidad elegida">
+        <AmountBars data={methods} fill="#2563eb" />
+      </ChartCard>
+
       <ChartCard
         title="Cobrado a lo largo del tiempo"
         subtitle="Comparación entre monto cobrado y aplicado"

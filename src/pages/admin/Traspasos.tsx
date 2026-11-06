@@ -7,7 +7,7 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Input } from '@/components/ui/Input'
 import { ChevronLeft, ChevronRight, ArrowLeftRight, ExternalLink, Plus, X, FileText } from 'lucide-react'
 import type { Traspaso } from '@/types/database'
-import { formatDate, formatDateTime } from '@/utils/helpers'
+import { formatDate, formatDateTime, getEspacioLabel } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { SearchCombobox, type ComboOption } from '@/components/ui/SearchCombobox'
 import { TraspasoDocumentos } from '@/components/TraspasoDocumentos'
@@ -156,7 +156,7 @@ export const Traspasos = () => {
       setVentaOptions(
         list.map((v: any) => {
           const lote = Array.isArray(v.lote) ? v.lote[0] : v.lote
-          const loteLabel = lote ? `Mza ${lote.manzana} – Lote ${lote.nolote}${lote.clavelote ? ` (${lote.clavelote})` : ''}` : ''
+          const loteLabel = lote ? getEspacioLabel(lote) ?? `Mza ${lote.manzana} – Lote ${lote.nolote}${lote.clavelote ? ` (${lote.clavelote})` : ''}` : ''
           const clienteArr = Array.isArray(v.cliente) ? v.cliente[0] : v.cliente
           return {
             value: v.ventaid.toString(),
@@ -446,7 +446,7 @@ export const Traspasos = () => {
                     {traspasos.map((t, idx) => {
                       const lote = Array.isArray(t.venta?.lote) ? t.venta!.lote![0] : t.venta?.lote as any
                       const loteLabel = lote
-                        ? `Mza ${lote.manzana} – Lote ${lote.nolote}${lote.clavelote ? ` (${lote.clavelote})` : ''}`
+                        ? getEspacioLabel(lote) ?? `Mza ${lote.manzana} – Lote ${lote.nolote}${lote.clavelote ? ` (${lote.clavelote})` : ''}`
                         : '—'
                       return (
                         <tr key={t.traspasoid} className="hover:bg-gray-50 transition-colors">

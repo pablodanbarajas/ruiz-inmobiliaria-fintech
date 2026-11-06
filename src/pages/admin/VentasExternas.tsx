@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { ApartadoExternoForm } from '@/components/forms/ApartadoExternoForm'
 import type { ApartadoExternoFormData } from '@/components/forms/ApartadoExternoForm'
-import { formatDate, getVentaStatusLabel, getVentaStatusColor, formatCurrency } from '@/utils/helpers'
+import { formatDate, getEspacioLabel, getVentaStatusLabel, getVentaStatusColor, formatCurrency } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { Plus, Eye, RefreshCw, XCircle, Pencil, CheckCircle2 } from 'lucide-react'
 import type { Venta, Cliente, Lote, Desarrollo } from '@/types/database'
@@ -579,7 +579,7 @@ export const VentasExternas = () => {
                     </td>
                     <td className="px-4 py-3 text-gray-700">
                       {row.lote
-                        ? `Mza ${row.lote.manzana} Lote ${row.lote.nolote}`
+                        ? getEspacioLabel(row.lote) ?? `Mza ${row.lote.manzana} Lote ${row.lote.nolote}`
                         : `#${row.loteid}`}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
@@ -861,7 +861,7 @@ export const VentasExternas = () => {
                 </p>
                 <p className="text-amber-700">
                   {formalizarRow.lote
-                    ? `Mza ${formalizarRow.lote.manzana} Lote ${formalizarRow.lote.nolote} · ${formalizarRow.lote.desarrollo?.nombre ?? ''}`
+                    ? `${getEspacioLabel(formalizarRow.lote) ?? `Mza ${formalizarRow.lote.manzana} Lote ${formalizarRow.lote.nolote}`} · ${formalizarRow.lote.desarrollo?.nombre ?? ''}`
                     : `Lote #${formalizarRow.loteid}`}
                 </p>
               </div>

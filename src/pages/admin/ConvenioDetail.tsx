@@ -8,7 +8,7 @@ import { ConvenioForm } from '@/components/forms/ConvenioForm'
 import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
 import { ChevronLeft, Edit2, AlertTriangle } from 'lucide-react'
 import type { Convenio, Venta, Cliente, Lote } from '@/types/database'
-import { formatDate, formatCurrency, getConvenioStatusLabel, getConvenioStatusColor } from '@/utils/helpers'
+import { formatDate, formatCurrency, getConvenioStatusLabel, getConvenioStatusColor, getEspacioLabel } from '@/utils/helpers'
 import { syncExpiredConvenios } from '@/services/convenios'
 import { DetailSkeleton } from '@/components/ui/Skeleton'
 
@@ -292,7 +292,7 @@ export const ConvenioDetail = () => {
               <div>
                 <p className="text-sm text-gray-500">Lote</p>
                 <p className="text-lg font-semibold text-gray-900">
-                  {lote ? `Mza ${lote.manzana ?? '-'} / ${lote.nolote ?? '-'}` : '—'}
+                  {lote ? getEspacioLabel(lote) ?? `Mza ${lote.manzana ?? '-'} / ${lote.nolote ?? '-'}` : '—'}
                 </p>
               </div>
             </div>

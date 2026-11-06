@@ -15,7 +15,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import type { CargoExtra, Desarrollo, Lote } from '@/types/database'
-import { formatDate, formatCurrency } from '@/utils/helpers'
+import { formatDate, formatCurrency, getEspacioLabel } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { TableSkeleton, Skeleton } from '@/components/ui/Skeleton'
 
@@ -101,7 +101,7 @@ export const CargosExtra = () => {
     lotesSeleccionados: [],
   })
   const [conceptosPendientes, setConceptosPendientes] = useState<string[]>([])
-  const [lotesCancelables, setLotesCancelables] = useState<{ cargoid: number; loteid: number; manzana: string | null; nolote: string | null }[]>([])
+  const [lotesCancelables, setLotesCancelables] = useState<{ cargoid: number; loteid: number; clavelote: string | null; manzana: string | null; nolote: string | null }[]>([])
   const [loadingCancelables, setLoadingCancelables] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
 
@@ -218,7 +218,7 @@ export const CargosExtra = () => {
     setLoadingCancelables(true)
     supabase
       .from('cargos_extra')
-      .select('cargoid, loteid, lote:lote(manzana, nolote)')
+      .select('cargoid, loteid, lote:lote(manzana, nolote, clavelote)')
       .eq('desarrolloid', desarrolloid)
       .eq('concepto', cancelForm.concepto)
       .eq('estatus', 'P')
@@ -226,6 +226,7 @@ export const CargosExtra = () => {
         const rows = (data || []).map((r: any) => ({
           cargoid: r.cargoid,
           loteid: r.loteid,
+          clavelote: r.lote?.clavelote ?? null,
           manzana: r.lote?.manzana ?? null,
           nolote: r.lote?.nolote ?? null,
         }))
@@ -441,7 +442,7 @@ export const CargosExtra = () => {
                         </span>
                         {cargo.lote && (
                           <span className="text-gray-400 ml-1">
-                            · Mza {cargo.lote.manzana} L{cargo.lote.nolote}
+                            · {getEspacioLabel(cargo.lote) ?? `Mza ${cargo.lote.manzana} L${cargo.lote.nolote}`}
                           </span>
                         )}
                       </td>
@@ -627,7 +628,7 @@ export const CargosExtra = () => {
                                   : f.lotesSeleccionados.filter((id) => id !== l.loteid),
                               }))}
                             />
-                            Mza {l.manzana} · Lote {l.nolote}
+                            {getEspacioLabel(l) ?? `Mza ${l.manzana} · Lote ${l.nolote}`}
                           </label>
                         ))}
                       </div>
@@ -869,7 +870,7 @@ export const CargosExtra = () => {
                                 : f.lotesSeleccionados.filter((id) => id !== r.cargoid),
                             }))}
                           />
-                          Mza {r.manzana} · Lote {r.nolote}
+                          {getEspacioLabel(r) ?? `Mza ${r.manzana} · Lote ${r.nolote}`}
                         </label>
                       ))}
                     </div>

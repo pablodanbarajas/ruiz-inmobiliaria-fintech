@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/Input'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import type { Lote, Desarrollo } from '@/types/database'
-import { formatCurrency } from '@/utils/helpers'
+import { fetchAllByKey } from '@/lib/fetchAllByKey'
+import { formatCurrency, getEspacioLabel } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 export interface ApartadoExternoFormData {
@@ -61,17 +62,20 @@ export const ApartadoExternoForm = ({
   useEffect(() => {
     const load = async () => {
       // Available lots
-      const { data: lotesData } = await supabase
-        .from('lote')
-        .select('loteid, desarrolloid, manzana, nolote, clavelote, superficie, preciolote, estatus, desarrollo:desarrollo(*)')
-        .eq('estatus', 'D')
-        .order('desarrolloid')
-
-      let filtered = (lotesData || []) as unknown as LoteWithDesarrollo[]
-      if (DEMO_DESARROLLOIDS.length > 0) {
-        filtered = filtered.filter((l) => DEMO_DESARROLLOIDS.includes(l.desarrolloid ?? 0))
-      }
-      setLotes(filtered)
+      // Filtered on the server and paged: the API returns at most 1000 rows per request.
+      const lotesData = await fetchAllByKey<LoteWithDesarrollo>(
+        (afterKey, pageSize) =>
+          supabase
+            .from('lote')
+            .select('loteid, desarrolloid, zona, tipolote, manzana, nolote, clavelote, superficie, preciolote, estatus, desarrollo:desarrollo(*)')
+            .eq('estatus', 'D')
+            .in('desarrolloid', DEMO_DESARROLLOIDS)
+            .gt('loteid', afterKey)
+            .order('loteid', { ascending: true })
+            .limit(pageSize),
+        (lote) => lote.loteid,
+      )
+      setLotes([...lotesData].sort((a, b) => (a.desarrolloid ?? 0) - (b.desarrolloid ?? 0)))
 
       // Existing clients for "usar existente"
       let allClientes: typeof clientesExistentes = []
@@ -97,7 +101,9 @@ export const ApartadoExternoForm = ({
 
   const loteOptions: ComboOption[] = lotes.map((l) => ({
     value: l.loteid.toString(),
-    label: `${l.desarrollo?.nombre ?? '?'} · Mza ${l.manzana} Lote ${l.nolote}`,
+    label: getEspacioLabel(l)
+      ? `${l.desarrollo?.nombre ?? '?'} · ${[l.tipolote, l.zona, getEspacioLabel(l)].filter(Boolean).join(' · ')}`
+      : `${l.desarrollo?.nombre ?? '?'} · Mza ${l.manzana} Lote ${l.nolote}`,
     sublabel: [
       l.superficie ? `${l.superficie} m²` : '',
       l.preciolote ? formatCurrency(l.preciolote) : '',

@@ -477,6 +477,7 @@ export const PagoDetail = () => {
           clienteNombre: cliente?.nombre,
           clienteEmail: cliente?.email,
           clienteTelefono: (cliente as any)?.telefonocelular ?? (cliente as any)?.telefono,
+          clavelote: lote?.clavelote,
           manzana: lote?.manzana,
           nolote: lote?.nolote,
           desarrollo: (lote as any)?.desarrollo?.nombre,

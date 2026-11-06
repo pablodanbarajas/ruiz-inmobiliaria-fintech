@@ -449,7 +449,7 @@ export const GenerarContrato = () => {
         // 3. Cargar lote con desarrollo
         const { data: loteData, error: loteErr } = await supabase
           .from('lote')
-          .select('*, desarrollo:desarrollo(*)')
+          .select('*, desarrollo:desarrollo(*, tipodesarrollo:tipodesarrollo(descripcion))')
           .eq('loteid', ventaData.loteid)
           .single()
         if (loteErr || !loteData) throw new Error('No se encontró el lote.')
@@ -463,6 +463,13 @@ export const GenerarContrato = () => {
           .limit(1)
           .maybeSingle()
         if (templateErr) throw templateErr
+
+        const isPanteones = loteData.desarrollo?.tipodesarrollo?.descripcion?.toLowerCase().includes('panteon')
+        if (isPanteones && !templateData) {
+          throw new Error(
+            `${loteData.desarrollo?.nombre || 'Este desarrollo'} todavía no tiene una plantilla de contrato activa. No se puede generar el contrato hasta registrarla.`
+          )
+        }
 
         // 4. Calcular variables
         const saldoFinanciado = (ventaData.preciolote || 0) - (ventaData.enganche || 0)

@@ -6,7 +6,7 @@ import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import type { Convenio } from '@/types/database'
-import { MOTIVOS_CONVENIO, calcularRecargo, formatCurrency } from '@/utils/helpers'
+import { MOTIVOS_CONVENIO, calcularRecargo, formatCurrency, getEspacioLabel } from '@/utils/helpers'
 
 export interface ConvenioFormData {
   ventaid: number
@@ -47,6 +47,7 @@ interface VentaOption {
   label: string
   clienteid: number | null
   mensualidad: number | null
+  espacio: string | null
   manzana: string | null
   nolote: string | null
 }
@@ -99,7 +100,7 @@ export const ConvenioForm = ({
     setVentaLoading(true)
     supabase
       .from('venta')
-      .select('ventaid, clienteid, estatus, mensualidad, cliente:cliente(nombre), lote:lote(manzana, nolote)')
+      .select('ventaid, clienteid, estatus, mensualidad, cliente:cliente(nombre), lote:lote(manzana, nolote, clavelote)')
       .neq('estatus', 'C')
       .order('ventaid', { ascending: false })
       .then(({ data }) => {
@@ -108,6 +109,7 @@ export const ConvenioForm = ({
             ventaid: v.ventaid,
             clienteid: v.clienteid,
             mensualidad: v.mensualidad,
+            espacio: getEspacioLabel(v.lote),
             manzana: v.lote?.manzana ?? null,
             nolote: v.lote?.nolote ?? null,
             label: `#${v.ventaid} — ${v.cliente?.nombre ?? 'Sin cliente'}`,
@@ -296,9 +298,9 @@ export const ConvenioForm = ({
               options={ventaOptions.map((o): ComboOption => ({
                 value: String(o.ventaid),
                 label: o.label,
-                sublabel: o.manzana && o.nolote
+                sublabel: o.espacio ?? (o.manzana && o.nolote
                   ? `Manzana ${o.manzana} · Lote ${o.nolote}`
-                  : undefined,
+                  : undefined),
               }))}
               value={selectedVentaId != null ? String(selectedVentaId) : ''}
               onChange={(val) => {
