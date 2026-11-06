@@ -354,6 +354,7 @@ export const DesarrolloDetail = () => {
         size="xl"
       >
         <DesarrolloForm
+          key={desarrollo.desarrolloid}
           desarrollo={desarrollo}
           onSubmit={handleFormSubmit}
           isLoading={formLoading}

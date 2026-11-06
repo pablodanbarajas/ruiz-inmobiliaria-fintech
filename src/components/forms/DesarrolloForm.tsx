@@ -10,6 +10,12 @@ interface DesarrolloFormProps {
   isLoading?: boolean
 }
 
+const normalizeNumericInput = (value: number | string | null | undefined) => {
+  if (value == null || value === '') return ''
+  const normalized = String(value).replace(/[$,\s]/g, '')
+  return Number.isFinite(Number(normalized)) ? normalized : ''
+}
+
 export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: DesarrolloFormProps) => {
   const [formData, setFormData] = useState({
     clavedesarrollo: '',
@@ -27,8 +33,6 @@ export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: Desa
   useEffect(() => {
     // Load existing data if editing
     if (desarrollo) {
-      const montoMinimo = desarrollo.montominimoapartado
-      const enganche = desarrollo.enganche
       setFormData({
         clavedesarrollo: desarrollo.clavedesarrollo || '',
         nombre: desarrollo.nombre || '',
@@ -36,8 +40,8 @@ export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: Desa
         descripciondetallada: desarrollo.descripciondetallada || '',
         tipodesarrolloid: desarrollo.tipodesarrolloid?.toString() || '',
         estatus: desarrollo.estatus || 'A',
-        montominimoapartado: montoMinimo == null ? '' : String(montoMinimo),
-        enganche: enganche == null ? '' : String(enganche),
+        montominimoapartado: normalizeNumericInput(desarrollo.montominimoapartado),
+        enganche: normalizeNumericInput(desarrollo.enganche),
       })
     }
   }, [

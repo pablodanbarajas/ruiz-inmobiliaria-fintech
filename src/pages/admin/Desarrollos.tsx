@@ -339,6 +339,7 @@ export const Desarrollos = () => {
         onClose={handleCloseModal}
       >
         <DesarrolloForm
+          key={editingDesarrollo?.desarrolloid ?? 'new-development'}
           desarrollo={editingDesarrollo}
           onSubmit={handleFormSubmit}
           isLoading={formLoading}
