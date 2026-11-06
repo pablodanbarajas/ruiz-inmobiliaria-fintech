@@ -31,6 +31,12 @@ interface Stats {
   ventasActivas: number
 }
 
+interface PanteonesStats {
+  ventasUltimoMes: number
+  totalCobradoMes: number
+  clientes: number
+}
+
 interface PagoReciente {
   pagoid: number
   montopagado: number
@@ -85,6 +91,12 @@ export const Dashboard = () => {
   const [pagosRecientes, setPagosRecientes] = useState<PagoReciente[]>([])
   const [ventasRecientes, setVentasRecientes] = useState<VentaReciente[]>([])
   const [loadingRecent, setLoadingRecent] = useState(true)
+  const [panteonesStats, setPanteonesStats] = useState<PanteonesStats>({
+    ventasUltimoMes: 0,
+    totalCobradoMes: 0,
+    clientes: 0,
+  })
+  const [loadingPanteonesStats, setLoadingPanteonesStats] = useState(true)
 
   const [ventasPendientesFormalizacion, setVentasPendientesFormalizacion] = useState<
     { ventaid: number; clienteNombre: string; loteLabel: string; fechaEnganche: string | null }[]
@@ -300,6 +312,132 @@ export const Dashboard = () => {
 
     fetchStats()
     return onFocusRefetch(() => { invalidateCache('dashboard:'); fetchStats() }, 'dashboard:stats', 10 * 60 * 1000)
+  }, [])
+
+  useEffect(() => {
+    const fetchPanteonesStats = async () => {
+      const cacheKey = 'dashboard:panteones'
+      const cached = getCached<PanteonesStats>(cacheKey)
+      if (cached) {
+        setPanteonesStats(cached)
+        setLoadingPanteonesStats(false)
+      }
+
+      try {
+        const now = new Date()
+        const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+        const firstOfNextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+        const firstOfNextMonth = `${firstOfNextMonthDate.getFullYear()}-${String(firstOfNextMonthDate.getMonth() + 1).padStart(2, '0')}-01`
+
+        const { data: panteonesTypes, error: typesError } = await supabase
+          .from('tipodesarrollo')
+          .select('tipodesarrolloid')
+          .ilike('descripcion', '%panteon%')
+        if (typesError) throw typesError
+
+        const typeIds = (panteonesTypes || []).map((type) => type.tipodesarrolloid)
+        let developmentsQuery = supabase
+          .from('desarrollo')
+          .select('desarrolloid')
+          .or(
+            typeIds.length
+              ? `tipodesarrolloid.in.(${typeIds.join(',')}),nombre.ilike.*valle*flores*`
+              : 'nombre.ilike.*valle*flores*'
+          )
+        if (DEMO_DESARROLLOIDS.length > 0) {
+          developmentsQuery = developmentsQuery.in('desarrolloid', DEMO_DESARROLLOIDS)
+        }
+
+        const { data: panteonesDevelopments, error: developmentsError } = await developmentsQuery
+        if (developmentsError) throw developmentsError
+
+        const developmentIds = (panteonesDevelopments || []).map((development) => development.desarrolloid)
+        if (developmentIds.length === 0) {
+          const emptyStats = { ventasUltimoMes: 0, totalCobradoMes: 0, clientes: 0 }
+          setPanteonesStats(emptyStats)
+          setCached(cacheKey, emptyStats)
+          return
+        }
+
+        const { data: panteonesLots, error: lotsError } = await supabase
+          .from('lote')
+          .select('loteid')
+          .in('desarrolloid', developmentIds)
+        if (lotsError) throw lotsError
+
+        const lotIds = (panteonesLots || []).map((lot) => lot.loteid)
+        if (lotIds.length === 0) {
+          const emptyStats = { ventasUltimoMes: 0, totalCobradoMes: 0, clientes: 0 }
+          setPanteonesStats(emptyStats)
+          setCached(cacheKey, emptyStats)
+          return
+        }
+
+        const { data: panteonesSales, error: salesError } = await supabase
+          .from('venta')
+          .select('ventaid, clienteid, estatus, fecha')
+          .in('loteid', lotIds)
+        if (salesError) throw salesError
+
+        const confirmedSales = (panteonesSales || []).filter(
+          (sale) => sale.estatus !== 'C' && sale.estatus !== 'P'
+        )
+        const salesThisMonth = confirmedSales.filter((sale) =>
+          isWithinMonth(sale.fecha, firstOfMonth, firstOfNextMonth)
+        ).length
+        const clientIds = new Set(
+          confirmedSales.map((sale) => sale.clienteid).filter((clientId): clientId is number => Boolean(clientId))
+        )
+        const saleIds = confirmedSales.map((sale) => sale.ventaid)
+
+        const { data: schedules, error: schedulesError } = saleIds.length
+          ? await supabase
+            .from('corridafinanciera')
+            .select('corridafinancieraid')
+            .in('ventaid', saleIds)
+          : { data: [], error: null }
+        if (schedulesError) throw schedulesError
+
+        const scheduleIds = (schedules || []).map((schedule) => schedule.corridafinancieraid)
+        const { data: payments, error: paymentsError } = scheduleIds.length
+          ? await supabase
+            .from('pagos')
+            .select('montopagado, servicios_extra, fechapago, estatus')
+            .in('corridafinancieraid', scheduleIds)
+            .gte('fechapago', firstOfMonth)
+            .lt('fechapago', firstOfNextMonth)
+          : { data: [], error: null }
+        if (paymentsError) throw paymentsError
+
+        const totalCobradoMes = (payments || [])
+          .filter((payment) => payment.estatus !== 'C')
+          .reduce(
+            (total, payment) => total + (payment.montopagado || 0) + (payment.servicios_extra || 0),
+            0
+          )
+        const nextStats = {
+          ventasUltimoMes: salesThisMonth,
+          totalCobradoMes,
+          clientes: clientIds.size,
+        }
+        setPanteonesStats(nextStats)
+        setCached(cacheKey, nextStats)
+      } catch (error) {
+        console.error('Error fetching Valle de Flores dashboard stats:', error)
+      } finally {
+        setLoadingPanteonesStats(false)
+      }
+    }
+
+    fetchPanteonesStats()
+    return onFocusRefetch(
+      () => {
+        invalidateCache('dashboard:panteones')
+        fetchPanteonesStats()
+      },
+      'dashboard:panteones',
+      10 * 60 * 1000
+    )
   }, [])
 
   // ── Ventas en riesgo de cancelación ────────────────────────────
@@ -801,6 +939,37 @@ export const Dashboard = () => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {canViewVentas && (
+          <div className="mt-5 rounded-[20px] border border-[#e0e5e7] bg-white p-5">
+            <h2 className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#142127] px-5 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-white">
+              Valle de Flores
+            </h2>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <MiniStat
+                title="Ventas del último mes"
+                value={loadingPanteonesStats ? '…' : panteonesStats.ventasUltimoMes}
+                icon={<ShoppingCart className="h-5 w-5 text-white" />}
+                color="#9e9f92"
+                onClick={() => navigate('/admin/ventas')}
+              />
+              <MiniStat
+                title="Total cobrado del mes"
+                value={loadingPanteonesStats ? '…' : formatCurrency(panteonesStats.totalCobradoMes)}
+                icon={<DollarSign className="h-5 w-5 text-white" />}
+                color="#504840"
+                onClick={() => navigate('/admin/pagos')}
+              />
+              <MiniStat
+                title="Clientes"
+                value={loadingPanteonesStats ? '…' : panteonesStats.clientes}
+                icon={<Users className="h-5 w-5 text-white" />}
+                color="#9e9f92"
+                onClick={() => navigate('/admin/clientes')}
+              />
+            </div>
           </div>
         )}
 
