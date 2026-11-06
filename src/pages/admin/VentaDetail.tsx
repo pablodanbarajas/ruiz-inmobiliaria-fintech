@@ -47,6 +47,10 @@ const getPagoAplicado = (pago: Pago) => {
   return monto + extra
 }
 
+// Paid toward services in the "Servicios / Extra" field. A negative value is credit spent, not a payment.
+const getAbonoServicios = (pago: Pago) =>
+  pago.estatus !== 'C' ? Math.max(0, pago.servicios_extra || 0) : 0
+
 export const VentaDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -777,6 +781,11 @@ export const VentaDetail = () => {
     return sum + cargosAplicables.reduce((s, c) => s + (c.monto || 0), 0)
   }, 0)
   
+  const totalAbonosServicios = corridas.reduce(
+    (sum, corrida) => sum + (corrida.pagos || []).reduce((s, p) => s + getAbonoServicios(p), 0),
+    0
+  )
+
   // Calcular recargos totales
   const totalRecargos = corridas.reduce((sum, corrida) => {
     const totalPagadoCorrida = corrida.pagos
@@ -1139,6 +1148,9 @@ export const VentaDetail = () => {
             <p className={`text-xl md:text-2xl font-bold ${totalCargosExtras > 0 ? 'text-purple-600' : 'text-gray-400'}`}>
               {formatCurrency(totalCargosExtras)}
             </p>
+            {totalAbonosServicios > 0 && (
+              <p className="text-xs text-green-700 mt-1">Abonado: {formatCurrency(totalAbonosServicios)}</p>
+            )}
           </div>
           <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Recargos</p>
@@ -1348,6 +1360,7 @@ export const VentaDetail = () => {
                         )
                       : []
                     const totalCargosExtras = cargosAplicables.reduce((s, c) => s + (c.monto || 0), 0)
+                    const abonoServicios = (corrida.pagos || []).reduce((s, p) => s + getAbonoServicios(p), 0)
 
                     // Recargo requerido: si ya hubo pagos, usar el máximo recargo registrado en ellos
                     // (el recargo crece hasta que se liquida todo, incluyendo el mismo recargo).
@@ -1376,7 +1389,7 @@ export const VentaDetail = () => {
                         </td>
                         {/* Cargos Extra */}
                         <td className="px-6 py-4 text-sm">
-                          {cargosAplicables.length > 0 ? (
+                          {cargosAplicables.length > 0 || abonoServicios > 0 ? (
                             <div className="space-y-0.5">
                               {cargosAplicables.map((c) => (
                                 <div key={c.cargoid} className="text-purple-700 font-medium">
@@ -1384,6 +1397,12 @@ export const VentaDetail = () => {
                                   <span className="text-xs text-gray-400 ml-1">({c.concepto})</span>
                                 </div>
                               ))}
+                              {abonoServicios > 0 && (
+                                <div className="text-green-700 font-medium">
+                                  {formatCurrency(abonoServicios)}
+                                  <span className="text-xs text-gray-400 ml-1">(abonado)</span>
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <span className="text-gray-400">—</span>
