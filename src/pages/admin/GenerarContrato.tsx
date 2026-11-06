@@ -3,9 +3,17 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
-import { ChevronLeft, Printer } from 'lucide-react'
+import { ChevronLeft, Download } from 'lucide-react'
 import { numeroALetras } from '@/utils/helpers'
 import { Skeleton } from '@/components/ui/Skeleton'
+
+// Fixed template text such as (NOMBRE DEL NOTARIO) that staff must fill in by hand.
+// Amounts in words contain digits, and acronyms have no space, so neither matches.
+const findCamposPorCompletar = (html: string): string[] => {
+  const text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ')
+  const matches = text.matchAll(/\(([A-ZÁÉÍÓÚÑ.]+(?: [A-ZÁÉÍÓÚÑ.]+)+)\)/g)
+  return [...new Set([...matches].map((match) => match[1]))]
+}
 
 // ── Meses en español ──────────────────────────────────────────────────────
 const MESES_ES = [
@@ -421,6 +429,9 @@ export const GenerarContrato = () => {
   const [error, setError] = useState<string | null>(null)
   const [htmlContrato, setHtmlContrato] = useState<string>('')
   const [variablesFaltantes, setVariablesFaltantes] = useState<string[]>([])
+  const [camposPorCompletar, setCamposPorCompletar] = useState<string[]>([])
+  const [descargando, setDescargando] = useState(false)
+  const [errorDescarga, setErrorDescarga] = useState(false)
   const previewRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -553,6 +564,7 @@ export const GenerarContrato = () => {
         // 6. Detectar variables sin reemplazar
         const faltantes = [...html.matchAll(/\{\{([^}]+)\}\}/g)].map(m => m[1])
         setVariablesFaltantes([...new Set(faltantes)])
+        setCamposPorCompletar(findCamposPorCompletar(html))
         setHtmlContrato(html)
       } catch (err: any) {
         setError(err.message || 'Error al cargar el contrato.')
@@ -564,28 +576,26 @@ export const GenerarContrato = () => {
     cargarDatos()
   }, [id])
 
-  const handleImprimir = () => {
-    const ventana = window.open('', '_blank', 'width=900,height=700')
-    if (!ventana) return
-    ventana.document.write(`<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <title>Contrato de Promesa de Compraventa - Venta #${id}</title>
-  <style>
-    body { font-family: Courier, monospace; font-size: 12pt; margin: 2cm; line-height: 1.4; }
-    @page { margin: 2cm; }
-    table { width: 100%; border-collapse: collapse; }
-    td, th { border: 1px solid #000; padding: 4px 8px; }
-    p { margin-bottom: 6pt; }
-    ol { margin-left: 20px; }
-  </style>
-</head>
-<body>${htmlContrato}</body>
-</html>`)
-    ventana.document.close()
-    ventana.focus()
-    ventana.print()
+  const handleDescargarWord = async () => {
+    setDescargando(true)
+    setErrorDescarga(false)
+    try {
+      // Loaded on demand: the Word library is large and only this button needs it.
+      const { buildContratoDocx } = await import('@/lib/contratoDocx')
+      const url = URL.createObjectURL(await buildContratoDocx(htmlContrato))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Contrato_Venta_${id}.docx`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Error generating contract:', err)
+      setErrorDescarga(true)
+    } finally {
+      setDescargando(false)
+    }
   }
 
   return (
@@ -603,11 +613,12 @@ export const GenerarContrato = () => {
           </Button>
           {!loading && !error && (
             <Button
-              onClick={handleImprimir}
+              onClick={handleDescargarWord}
+              disabled={descargando}
               className="inline-flex items-center gap-2"
             >
-              <Printer size={16} />
-              Imprimir / Guardar PDF
+              <Download size={16} />
+              {descargando ? 'Generando…' : 'Descargar Word'}
             </Button>
           )}
         </div>
@@ -615,6 +626,23 @@ export const GenerarContrato = () => {
         <h1 className="text-2xl font-bold text-gray-900 mb-6">
           Contrato de Promesa de Compraventa — Venta #{id}
         </h1>
+
+        {errorDescarga && (
+          <div role="alert" className="mb-4 bg-red-50 border border-red-300 text-red-700 rounded-lg p-4 text-sm">
+            No se pudo generar el archivo de Word. Inténtalo de nuevo.
+          </div>
+        )}
+
+        {/* Alerta de datos que la plantilla no puede llenar */}
+        {!loading && !error && camposPorCompletar.length > 0 && (
+          <div role="alert" className="mb-4 bg-amber-50 border border-amber-300 rounded-lg p-4 text-sm text-amber-800">
+            <p className="font-semibold mb-1">Este contrato tiene datos por completar:</p>
+            <ul className="list-disc list-inside">
+              {camposPorCompletar.map((campo) => <li key={campo}>{campo}</li>)}
+            </ul>
+            <p className="mt-2 text-xs">Descarga el contrato en Word y complétalos antes de imprimirlo o firmarlo.</p>
+          </div>
+        )}
 
         {/* Alerta de variables faltantes */}
         {variablesFaltantes.length > 0 && (

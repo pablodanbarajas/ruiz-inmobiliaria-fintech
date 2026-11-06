@@ -330,8 +330,9 @@ export const Dashboard = () => {
           ),
         ])
 
+        // A sale still waiting for its down payment (E) can expire, so it isn't confirmed yet.
         const confirmedSales = panteonesSales.filter(
-          (sale) => sale.estatus !== 'C' && sale.estatus !== 'P'
+          (sale) => sale.estatus === 'A' || sale.estatus === 'V'
         )
         const salesThisMonth = confirmedSales.filter((sale) =>
           isWithinMonth(sale.fecha, firstOfMonth, firstOfNextMonth)
@@ -884,32 +885,32 @@ export const Dashboard = () => {
               )}
             </div>
 
-            {/* ── Valle de Flores: brand yellow and its own column, apart from the Ruiz figures ── */}
+            {/* ── Valle de Flores: its own column, apart from the Ruiz figures ── */}
             {canViewVentas && (
-              <div className="flex flex-col rounded-[20px] border border-[#e0e5e7] bg-[#fffde1] p-5">
-                <h2 className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#fffa77] px-5 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-[#142127]">
+              <div className="flex flex-col rounded-[20px] border border-[#e0e5e7] bg-white p-5">
+                <h2 className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#142127] px-5 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-white">
                   Valle de Flores · Panteones
                 </h2>
                 <div className="grid flex-1 grid-cols-1 gap-2 min-[1750px]:auto-rows-fr sm:max-[1749px]:grid-cols-3">
                   <MiniStat
                     title="Ventas del último mes"
                     value={loadingPanteonesStats ? '…' : panteonesStats.ventasUltimoMes}
-                    icon={<ShoppingCart className="h-5 w-5 text-[#fffa77]" />}
-                    color="#142127"
+                    icon={<ShoppingCart className="h-5 w-5 text-white" />}
+                    color="#9e9f92"
                     onClick={() => navigate('/admin/ventas')}
                   />
                   <MiniStat
                     title="Total cobrado del mes"
                     value={loadingPanteonesStats ? '…' : formatCurrency(panteonesStats.totalCobradoMes)}
-                    icon={<DollarSign className="h-5 w-5 text-[#fffa77]" />}
-                    color="#142127"
+                    icon={<DollarSign className="h-5 w-5 text-white" />}
+                    color="#504840"
                     onClick={() => navigate('/admin/pagos?unidad=valle')}
                   />
                   <MiniStat
                     title="Clientes"
                     value={loadingPanteonesStats ? '…' : panteonesStats.clientes}
-                    icon={<Users className="h-5 w-5 text-[#fffa77]" />}
-                    color="#142127"
+                    icon={<Users className="h-5 w-5 text-white" />}
+                    color="#9e9f92"
                     onClick={() => navigate('/admin/clientes')}
                   />
                 </div>

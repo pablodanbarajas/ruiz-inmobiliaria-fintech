@@ -799,8 +799,8 @@ export const Pagos = () => {
 
           <div role="group" aria-label="Unidad de negocio" className="mb-6 inline-flex rounded-full border border-[#e0e5e7] bg-white p-1">
             {[
-              { value: 'ruiz', label: 'Inmobiliaria Ruiz', activeClass: 'bg-[#142127] text-white' },
-              { value: 'valle', label: 'Valle de Flores', activeClass: 'bg-[#fffa77] text-[#142127]' },
+              { value: 'ruiz', label: 'Inmobiliaria Ruiz' },
+              { value: 'valle', label: 'Valle de Flores' },
             ].map((option) => (
               <button
                 key={option.value}
@@ -808,7 +808,7 @@ export const Pagos = () => {
                 aria-pressed={filters.unidad === option.value}
                 onClick={() => setFilters({ ...filters, unidad: option.value, desarrolloId: '' })}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                  filters.unidad === option.value ? option.activeClass : 'text-gray-600 hover:bg-gray-100'
+                  filters.unidad === option.value ? 'bg-[#142127] text-white' : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 {option.label}
