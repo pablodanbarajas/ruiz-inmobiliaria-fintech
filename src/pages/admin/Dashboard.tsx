@@ -884,33 +884,32 @@ export const Dashboard = () => {
               )}
             </div>
 
-            {/* ── Valle de Flores: its own color and column, apart from the general figures ── */}
+            {/* ── Valle de Flores: brand yellow and its own column, apart from the Ruiz figures ── */}
             {canViewVentas && (
-              <div className="flex flex-col rounded-[20px] border border-[#ddd5e8] bg-[#fbf9fd] p-5">
-                <div className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#4c3a63] px-5 py-4 text-white">
-                  <h2 className="text-sm font-semibold uppercase tracking-[0.12em]">Valle de Flores</h2>
-                  <p className="mt-0.5 text-xs text-[#ddd5e8]">Panteones</p>
-                </div>
-                <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-3 min-[1750px]:auto-rows-fr min-[1750px]:grid-cols-1">
+              <div className="flex flex-col rounded-[20px] border border-[#e0e5e7] bg-[#fffde1] p-5">
+                <h2 className="-mx-5 -mt-5 mb-4 rounded-t-[20px] bg-[#fffa77] px-5 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-[#142127]">
+                  Valle de Flores · Panteones
+                </h2>
+                <div className="grid flex-1 grid-cols-1 gap-2 min-[1750px]:auto-rows-fr sm:max-[1749px]:grid-cols-3">
                   <MiniStat
                     title="Ventas del último mes"
                     value={loadingPanteonesStats ? '…' : panteonesStats.ventasUltimoMes}
-                    icon={<ShoppingCart className="h-5 w-5 text-white" />}
-                    color="#6b5488"
+                    icon={<ShoppingCart className="h-5 w-5 text-[#fffa77]" />}
+                    color="#142127"
                     onClick={() => navigate('/admin/ventas')}
                   />
                   <MiniStat
                     title="Total cobrado del mes"
                     value={loadingPanteonesStats ? '…' : formatCurrency(panteonesStats.totalCobradoMes)}
-                    icon={<DollarSign className="h-5 w-5 text-white" />}
-                    color="#6b5488"
+                    icon={<DollarSign className="h-5 w-5 text-[#fffa77]" />}
+                    color="#142127"
                     onClick={() => navigate('/admin/pagos?unidad=valle')}
                   />
                   <MiniStat
                     title="Clientes"
                     value={loadingPanteonesStats ? '…' : panteonesStats.clientes}
-                    icon={<Users className="h-5 w-5 text-white" />}
-                    color="#6b5488"
+                    icon={<Users className="h-5 w-5 text-[#fffa77]" />}
+                    color="#142127"
                     onClick={() => navigate('/admin/clientes')}
                   />
                 </div>

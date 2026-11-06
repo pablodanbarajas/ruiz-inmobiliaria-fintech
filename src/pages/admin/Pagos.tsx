@@ -800,7 +800,7 @@ export const Pagos = () => {
           <div role="group" aria-label="Unidad de negocio" className="mb-6 inline-flex rounded-full border border-[#e0e5e7] bg-white p-1">
             {[
               { value: 'ruiz', label: 'Inmobiliaria Ruiz', activeClass: 'bg-[#142127] text-white' },
-              { value: 'valle', label: 'Valle de Flores', activeClass: 'bg-[#4c3a63] text-white' },
+              { value: 'valle', label: 'Valle de Flores', activeClass: 'bg-[#fffa77] text-[#142127]' },
             ].map((option) => (
               <button
                 key={option.value}
