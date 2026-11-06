@@ -80,12 +80,26 @@ export const Desarrollos = () => {
     fetchDesarrollos()
   }, [searchTerm, statusFilter])
 
-  const handleOpenModal = (desarrollo?: Desarrollo) => {
+  const handleOpenModal = async (desarrollo?: Desarrollo) => {
     if (!canEditDesarrollos) {
       alert('Tu rol solo puede consultar desarrollos.')
       return
     }
-    setEditingDesarrollo(desarrollo || null)
+    if (desarrollo) {
+      const { data, error } = await supabase
+        .from('desarrollo')
+        .select('*')
+        .eq('desarrolloid', desarrollo.desarrolloid)
+        .single()
+      if (error) {
+        console.error('Error loading desarrollo for editing:', error)
+        alert('No se pudieron cargar los datos actuales del desarrollo.')
+        return
+      }
+      setEditingDesarrollo(data)
+    } else {
+      setEditingDesarrollo(null)
+    }
     setIsModalOpen(true)
   }
 
