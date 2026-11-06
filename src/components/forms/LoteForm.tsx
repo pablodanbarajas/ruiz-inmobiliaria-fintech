@@ -255,6 +255,9 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             <option value="Habitacional">Habitacional</option>
             <option value="Comercial">Comercial</option>
             <option value="Rústico">Rústico</option>
+            <option value="Gaveta">Gaveta</option>
+            <option value="Cripta">Cripta</option>
+            <option value="Nicho">Nicho</option>
           </select>
         </div>
       </div>
