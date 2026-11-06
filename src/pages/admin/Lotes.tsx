@@ -332,8 +332,24 @@ export const Lotes = () => {
             {
               key: 'clavelote',
               label: 'Clave',
-              width: 'w-64',
-              render: (row) => <span className="whitespace-nowrap">{row.clavelote || '—'}</span>,
+              width: 'w-40',
+              render: (row) => (
+                <span className="whitespace-nowrap">
+                  {row.clavelote || row.clavedesarrollo || row.desarrollo?.clavedesarrollo || '—'}
+                </span>
+              ),
+            },
+            {
+              key: 'manzana',
+              label: 'Manzana',
+              width: 'w-20',
+              render: (row) => row.manzana || '—',
+            },
+            {
+              key: 'nolote',
+              label: 'Lote',
+              width: 'w-20',
+              render: (row) => row.nolote || '—',
             },
             {
               key: 'preciolote',

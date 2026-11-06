@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { DataTable } from '@/components/DataTable'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllByKey } from '@/lib/fetchAllByKey'
 import { formatCurrency, formatDate, getPagoFormaLabel, FORMAS_PAGO } from '@/utils/helpers'
 import type { Cliente, Desarrollo, Lote, Pago, Venta } from '@/types/database'
 import { Download, RefreshCw, FileText } from 'lucide-react'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+
+const TABLE_PAGE_SIZE = 25
+
+const toDateOnly = (value: string | null | undefined) => (value || '').slice(0, 10)
 
 type PagoRow = Pago & {
   corridafinanciera?: {
@@ -60,10 +65,29 @@ const getPagoAplicado = (pago: Pago) => {
   return monto + extra
 }
 
+const TablePager = ({ page, total, onChange }: { page: number; total: number; onChange: (page: number) => void }) => {
+  const lastPage = Math.max(1, Math.ceil(total / TABLE_PAGE_SIZE))
+  if (total <= TABLE_PAGE_SIZE) return null
+  return (
+    <div className="mt-3 flex items-center justify-between gap-4">
+      <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onChange(page - 1)}>Anterior</Button>
+      <span className="text-sm text-gray-600">
+        Página {page} de {lastPage} ({total.toLocaleString('es-MX')} registros)
+      </span>
+      <Button variant="outline" size="sm" disabled={page >= lastPage} onClick={() => onChange(page + 1)}>Siguiente</Button>
+    </div>
+  )
+}
+
 export const ReportesPagos = () => {
-  const [loading, setLoading] = useState(true)
+  const [loadingPagos, setLoadingPagos] = useState(true)
+  const [loadingPendientes, setLoadingPendientes] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [pagos, setPagos] = useState<PagoRow[]>([])
   const [pendientes, setPendientes] = useState<PendingRow[]>([])
+  const [pagosPage, setPagosPage] = useState(1)
+  const [pendientesPage, setPendientesPage] = useState(1)
+  const latestRequest = useRef(0)
 
   const [desarrollos, setDesarrollos] = useState<Desarrollo[]>([])
   const [desarrolloId, setDesarrolloId] = useState('')
@@ -83,26 +107,50 @@ export const ReportesPagos = () => {
   }, [])
 
   const fetchReportData = async () => {
-    setLoading(true)
+    const requestId = ++latestRequest.current
+    const isStale = () => requestId !== latestRequest.current
+    setLoadingPagos(true)
+    setLoadingPendientes(true)
+    setLoadError('')
     try {
-      const [pagosRes, corridasRes] = await Promise.all([
-        supabase
-          .from('pagos')
-          .select('*, corridafinanciera:corridafinanciera(*, venta:venta(ventaid, estatus, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre))))')
-          .neq('estatus', 'C')
-          .order('fechapago', { ascending: false }),
-        supabase
-          .from('corridafinanciera')
-          .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))')
-          .gt('nopago', 0)
-          .eq('venta.estatus', 'A'),
-      ])
+      const pagosRows = await fetchAllByKey<PagoRow>(
+        (afterKey, pageSize) => {
+          let query = supabase
+            .from('pagos')
+            .select('pagoid, corridafinancieraid, fechapago, montopagado, servicios_extra, formapago, cobrador, estatus, corridafinanciera:corridafinanciera!inner(corridafinancieraid, venta:venta!inner(ventaid, estatus, cliente:cliente(clienteid, nombre), lote:lote!inner(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre))))')
+            .neq('estatus', 'C')
+            .gt('pagoid', afterKey)
+          if (DEMO_DESARROLLOIDS.length > 0) {
+            query = query.in('corridafinanciera.venta.lote.desarrolloid', DEMO_DESARROLLOIDS)
+          }
+          return query.order('pagoid', { ascending: true }).limit(pageSize) as unknown as PromiseLike<{ data: PagoRow[] | null; error: unknown }>
+        },
+        (pago) => pago.pagoid,
+      )
+      if (isStale()) return
 
-      if (pagosRes.error) throw pagosRes.error
-      if (corridasRes.error) throw corridasRes.error
-
-      const pagosRows = (pagosRes.data || []) as PagoRow[]
+      pagosRows.sort((a, b) =>
+        (b.fechapago || '').localeCompare(a.fechapago || '') || b.pagoid - a.pagoid
+      )
       setPagos(pagosRows)
+      setLoadingPagos(false)
+
+      const corridas = await fetchAllByKey<any>(
+        (afterKey, pageSize) => {
+          let query = supabase
+            .from('corridafinanciera')
+            .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, cliente:cliente(clienteid, nombre), lote:lote!inner(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre)))')
+            .gt('nopago', 0)
+            .eq('venta.estatus', 'A')
+            .gt('corridafinancieraid', afterKey)
+          if (DEMO_DESARROLLOIDS.length > 0) {
+            query = query.in('venta.lote.desarrolloid', DEMO_DESARROLLOIDS)
+          }
+          return query.order('corridafinancieraid', { ascending: true }).limit(pageSize)
+        },
+        (corrida) => corrida.corridafinancieraid,
+      )
+      if (isStale()) return
 
       const pagosPorCorrida = new Map<number, Pago[]>()
       for (const p of pagosRows) {
@@ -115,7 +163,7 @@ export const ReportesPagos = () => {
       const today = new Date().toISOString().split('T')[0]
       const pendingRows: PendingRow[] = []
 
-      for (const c of (corridasRes.data || []) as any[]) {
+      for (const c of corridas) {
         const corridaId = c.corridafinancieraid as number
         const pagosCorrida = pagosPorCorrida.get(corridaId) || []
         const totalPagado = pagosCorrida.reduce((sum, p) => sum + getPagoAplicado(p), 0)
@@ -141,11 +189,16 @@ export const ReportesPagos = () => {
 
       setPendientes(pendingRows)
     } catch (error) {
+      if (isStale()) return
       console.error('Error loading payment reports:', error)
+      setLoadError('No se pudo cargar el reporte completo. Las cifras no están disponibles; intenta recargar.')
       setPagos([])
       setPendientes([])
     } finally {
-      setLoading(false)
+      if (!isStale()) {
+        setLoadingPagos(false)
+        setLoadingPendientes(false)
+      }
     }
   }
 
@@ -160,8 +213,8 @@ export const ReportesPagos = () => {
       const desarrollo = Array.isArray(lote?.desarrollo) ? lote.desarrollo[0] : lote?.desarrollo
 
       if (desarrolloId && String(desarrollo?.desarrolloid || '') !== desarrolloId) return false
-      if (fechaDesde && (p.fechapago || '') < fechaDesde) return false
-      if (fechaHasta && (p.fechapago || '') > fechaHasta) return false
+      if (fechaDesde && toDateOnly(p.fechapago) < fechaDesde) return false
+      if (fechaHasta && toDateOnly(p.fechapago) > fechaHasta) return false
       if (formaPago && String(p.formapago || '') !== formaPago) return false
       if (cobrador && !(p.cobrador || '').toLowerCase().includes(cobrador.toLowerCase())) return false
       return true
@@ -174,13 +227,16 @@ export const ReportesPagos = () => {
         const dev = desarrollos.find((d) => String(d.desarrolloid) === desarrolloId)
         if (!dev || p.desarrolloNombre !== dev.nombre) return false
       }
-      if (fechaDesde && (p.fecha || '') < fechaDesde) return false
-      if (fechaHasta && (p.fecha || '') > fechaHasta) return false
+      if (fechaDesde && toDateOnly(p.fecha) < fechaDesde) return false
+      if (fechaHasta && toDateOnly(p.fecha) > fechaHasta) return false
       return true
     })
   }, [pendientes, desarrolloId, fechaDesde, fechaHasta, desarrollos])
 
-  const totalCobrado = pagosFiltrados.reduce((sum, p) => sum + Number(p.montopagado || 0), 0)
+  useEffect(() => setPagosPage(1), [pagosFiltrados])
+  useEffect(() => setPendientesPage(1), [pendientesFiltrados])
+
+  const totalCobrado = pagosFiltrados.reduce((sum, p) => sum + getPagoAplicado(p), 0)
   const totalPendiente = pendientesFiltrados.reduce((sum, p) => sum + p.montoPendiente, 0)
   const clientesPendientes = new Set(pendientesFiltrados.map((p) => p.clienteid)).size
   const pagosPorDesarrollo = useMemo(() => {
@@ -210,7 +266,9 @@ export const ReportesPagos = () => {
       <div className="rounded-[16px] border border-[#e0e5e7] bg-white p-4">
         <h3 className="mb-4 text-sm font-semibold text-[#142127]">{title}</h3>
         <div className="space-y-3">
-          {values.length === 0 ? (
+          {loadingPagos ? (
+            <p className="text-sm text-gray-500">Cargando pagos…</p>
+          ) : values.length === 0 ? (
             <p className="text-sm text-gray-500">Sin pagos para mostrar.</p>
           ) : values.map(([label, value]) => (
             <div key={label}>
@@ -292,6 +350,12 @@ export const ReportesPagos = () => {
           </div>
         </div>
 
+        {loadError && (
+          <div role="alert" className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {loadError}
+          </div>
+        )}
+
         <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
@@ -338,15 +402,15 @@ export const ReportesPagos = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-[16px] border border-[#e0e5e7] border-l-4 border-l-[#fffa56] p-4">
             <p className="text-sm text-gray-500">Total cobrado</p>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalCobrado)}</p>
+            <p className="text-2xl font-bold text-gray-900">{loadingPagos ? '…' : formatCurrency(totalCobrado)}</p>
           </div>
           <div className="bg-white rounded-[16px] border border-[#e0e5e7] border-l-4 border-l-[#142127] p-4">
             <p className="text-sm text-gray-500">Total pendiente</p>
-            <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalPendiente)}</p>
+            <p className="text-2xl font-bold text-orange-600">{loadingPendientes ? '…' : formatCurrency(totalPendiente)}</p>
           </div>
           <div className="bg-white rounded-[16px] border border-[#e0e5e7] border-l-4 border-l-[#63696c] p-4">
             <p className="text-sm text-gray-500">Clientes con adeudo</p>
-            <p className="text-2xl font-bold text-gray-900">{clientesPendientes}</p>
+            <p className="text-2xl font-bold text-gray-900">{loadingPendientes ? '…' : clientesPendientes}</p>
           </div>
         </div>
 
@@ -358,8 +422,8 @@ export const ReportesPagos = () => {
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-3">Pagos registrados</h2>
           <DataTable<PagoRow>
-            data={pagosFiltrados}
-            loading={loading}
+            data={pagosFiltrados.slice((pagosPage - 1) * TABLE_PAGE_SIZE, pagosPage * TABLE_PAGE_SIZE)}
+            loading={loadingPagos}
             emptyMessage="No hay pagos con los filtros seleccionados"
             columns={[
               { key: 'pagoid', label: 'Pago ID' },
@@ -388,13 +452,14 @@ export const ReportesPagos = () => {
               { key: 'montopagado', label: 'Monto', render: (r) => formatCurrency(r.montopagado) },
             ]}
           />
+          {!loadingPagos && <TablePager page={pagosPage} total={pagosFiltrados.length} onChange={setPagosPage} />}
         </div>
 
         <div>
           <h2 className="text-xl font-semibold text-gray-900 mb-3">Pendientes de cobro (quien debe y cuanto)</h2>
           <DataTable<PendingRow>
-            data={pendientesFiltrados}
-            loading={loading}
+            data={pendientesFiltrados.slice((pendientesPage - 1) * TABLE_PAGE_SIZE, pendientesPage * TABLE_PAGE_SIZE)}
+            loading={loadingPendientes}
             emptyMessage="No hay pendientes con los filtros seleccionados"
             columns={[
               { key: 'clienteNombre', label: 'Cliente' },
@@ -414,6 +479,7 @@ export const ReportesPagos = () => {
               },
             ]}
           />
+          {!loadingPendientes && <TablePager page={pendientesPage} total={pendientesFiltrados.length} onChange={setPendientesPage} />}
         </div>
       </div>
     </AdminLayout>
