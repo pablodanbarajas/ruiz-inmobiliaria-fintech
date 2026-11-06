@@ -85,11 +85,19 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
   useEffect(() => {
     const fetchCatalogos = async () => {
       try {
-        const [{ data: desData }, { data: tipoData }, { data: duenData }] = await Promise.all([
+        const [
+          { data: desData, error: desError },
+          { data: tipoData, error: tipoError },
+          { data: duenData, error: duenError },
+        ] = await Promise.all([
           supabase.from('desarrollo').select('desarrolloid, nombre, clavedesarrollo, estatus, tipodesarrolloid').order('nombre'),
           supabase.from('tipodesarrollo').select('tipodesarrolloid').ilike('descripcion', '%panteon%'),
-          supabase.from('duenio').select('duenioid, nombre, contacto').order('nombre'),
+          supabase.from('duenio').select('duenioid, nombre').order('nombre'),
         ])
+
+        if (desError) throw desError
+        if (tipoError) throw tipoError
+        if (duenError) throw duenError
 
         const allDesarrollos = (desData || []) as Desarrollo[]
         setTipoPanteonesIds((tipoData || []).map((tipo) => tipo.tipodesarrolloid))
