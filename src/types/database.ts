@@ -65,6 +65,8 @@ export type Lote = {
   nolote: string | null
   clavelote: string | null
   tipolote: string | null
+  zona: string | null
+  cantidad_disponible: number | null
   linderonte: number | null
   colindanciante: string | null
   linderosur: number | null

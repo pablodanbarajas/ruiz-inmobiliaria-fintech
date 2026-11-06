@@ -15,6 +15,8 @@ interface LoteFormProps {
 export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) => {
   const [formData, setFormData] = useState({
     desarrolloid: '',
+    zona: '',
+    cantidad_disponible: '1',
     duenioid: '',
     clavelote: '',
     coto: '',
@@ -36,6 +38,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     comentarios: '',
   })
   const [desarrollos, setDesarrollos] = useState<Desarrollo[]>([])
+  const [tipoPanteonesIds, setTipoPanteonesIds] = useState<number[]>([])
   const [duenios, setDuenios] = useState<Duenio[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [autoClaveKey, setAutoClaveKey] = useState(!lote)
@@ -54,6 +57,8 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     if (lote) {
       setFormData({
         desarrolloid: lote.desarrolloid?.toString() || '',
+        zona: lote.zona || '',
+        cantidad_disponible: lote.cantidad_disponible?.toString() || '1',
         duenioid: lote.duenioid?.toString() || '',
         clavelote: lote.clavelote || '',
         coto: lote.coto || '',
@@ -80,12 +85,14 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
   useEffect(() => {
     const fetchCatalogos = async () => {
       try {
-        const [{ data: desData }, { data: duenData }] = await Promise.all([
+        const [{ data: desData }, { data: tipoData }, { data: duenData }] = await Promise.all([
           supabase.from('desarrollo').select('desarrolloid, nombre, clavedesarrollo, estatus, tipodesarrolloid').order('nombre'),
+          supabase.from('tipodesarrollo').select('tipodesarrolloid').ilike('descripcion', '%panteon%'),
           supabase.from('duenio').select('duenioid, nombre, contacto').order('nombre'),
         ])
 
         const allDesarrollos = (desData || []) as Desarrollo[]
+        setTipoPanteonesIds((tipoData || []).map((tipo) => tipo.tipodesarrolloid))
         setDesarrollos(
           DEMO_DESARROLLOIDS.length > 0
             ? allDesarrollos.filter((d) => DEMO_DESARROLLOIDS.includes(d.desarrolloid))
@@ -99,14 +106,25 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     fetchCatalogos()
   }, [])
 
+  const selectedDevelopment = desarrollos.find(
+    (desarrollo) => desarrollo.desarrolloid.toString() === formData.desarrolloid
+  )
+  const isPanteones = Boolean(
+    selectedDevelopment && tipoPanteonesIds.includes(selectedDevelopment.tipodesarrolloid || 0)
+  )
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
     if (!formData.desarrolloid) newErrors.desarrolloid = 'Desarrollo requerido'
-    if (!formData.manzana.trim()) newErrors.manzana = 'Manzana requerida'
+    if (isPanteones && !formData.zona.trim()) newErrors.zona = 'Zona o sección requerida'
+    if (!isPanteones && !formData.manzana.trim()) newErrors.manzana = 'Manzana requerida'
     if (formData.manzana.length > 2) newErrors.manzana = 'La manzana debe tener máximo 2 caracteres'
     if (formData.coto.length > 2) newErrors.coto = 'El coto debe tener máximo 2 caracteres'
-    if (!formData.nolote.trim()) newErrors.nolote = 'No. Lote requerido'
+    if (!isPanteones && !formData.nolote.trim()) newErrors.nolote = 'No. Lote requerido'
+    if (isPanteones && (!formData.cantidad_disponible || Number(formData.cantidad_disponible) < 1)) {
+      newErrors.cantidad_disponible = 'La disponibilidad debe ser mayor a cero'
+    }
     if (!formData.superficie) newErrors.superficie = 'Superficie requerida'
     if (formData.superficie && isNaN(parseFloat(formData.superficie))) {
       newErrors.superficie = 'Debe ser un número'
@@ -161,10 +179,12 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
 
     const submitData = {
       desarrolloid: formData.desarrolloid ? parseInt(formData.desarrolloid) : null,
+      zona: formData.zona || null,
+      cantidad_disponible: isPanteones ? parseInt(formData.cantidad_disponible, 10) : null,
       duenioid: formData.duenioid ? parseInt(formData.duenioid) : null,
-      coto: formData.coto || null,
-      manzana: formData.manzana || null,
-      nolote: formData.nolote || null,
+      coto: isPanteones ? null : (formData.coto || null),
+      manzana: isPanteones ? formData.zona || null : (formData.manzana || null),
+      nolote: isPanteones ? formData.tipolote || null : (formData.nolote || null),
       clavelote: formData.clavelote || null,
       tipolote: formData.tipolote || null,
       linderonte: formData.linderonte ? parseFloat(formData.linderonte) : null,
@@ -199,6 +219,21 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     <form onSubmit={handleSubmit} className="admin-form space-y-6">
       {/* Row 1: Desarrollo, Dueño, Tipo Lote */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {isPanteones && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Zona o sección *
+          </label>
+          <Input
+            type="text"
+            value={formData.zona}
+            onChange={(e) => setFormData({ ...formData, zona: e.target.value })}
+            placeholder="Ej: Sección Jardines"
+            disabled={isLoading}
+          />
+          {errors.zona && <p className="text-red-500 text-sm mt-1">{errors.zona}</p>}
+        </div>
+        )}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Desarrollo *
@@ -223,6 +258,22 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
           {errors.desarrolloid && <p className="text-red-500 text-sm mt-1">{errors.desarrolloid}</p>}
         </div>
 
+        {isPanteones && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Disponibilidad *
+          </label>
+          <Input
+            type="number"
+            min="1"
+            step="1"
+            value={formData.cantidad_disponible}
+            onChange={(e) => setFormData({ ...formData, cantidad_disponible: e.target.value })}
+            disabled={isLoading}
+          />
+          {errors.cantidad_disponible && <p className="text-red-500 text-sm mt-1">{errors.cantidad_disponible}</p>}
+        </div>
+        )}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Dueño
