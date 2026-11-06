@@ -139,7 +139,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
   )
   const tipoLoteOptions = isPanteones
     ? ['Gaveta', 'Cripta', 'Nicho']
-    : ['Habitacional', 'Comercial', 'Rústico', 'Gaveta', 'Cripta', 'Nicho']
+    : ['Habitacional', 'Comercial', 'Rústico']
 
   useEffect(() => {
     if (!isPanteones || lote || !formData.zona.trim() || !formData.desarrolloid || !formData.tipolote || !autoClaveKey) {
