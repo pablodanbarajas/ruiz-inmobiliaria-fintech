@@ -27,6 +27,8 @@ export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: Desa
   useEffect(() => {
     // Load existing data if editing
     if (desarrollo) {
+      const montoMinimo = desarrollo.montominimoapartado
+      const enganche = desarrollo.enganche
       setFormData({
         clavedesarrollo: desarrollo.clavedesarrollo || '',
         nombre: desarrollo.nombre || '',
@@ -34,11 +36,16 @@ export const DesarrolloForm = ({ desarrollo, onSubmit, isLoading = false }: Desa
         descripciondetallada: desarrollo.descripciondetallada || '',
         tipodesarrolloid: desarrollo.tipodesarrolloid?.toString() || '',
         estatus: desarrollo.estatus || 'A',
-        montominimoapartado: desarrollo.montominimoapartado?.toString() || '',
-        enganche: desarrollo.enganche?.toString() || '',
+        montominimoapartado: montoMinimo == null ? '' : String(montoMinimo),
+        enganche: enganche == null ? '' : String(enganche),
       })
     }
-  }, [desarrollo])
+  }, [
+    desarrollo,
+    desarrollo?.desarrolloid,
+    desarrollo?.montominimoapartado,
+    desarrollo?.enganche,
+  ])
 
   useEffect(() => {
     // Load tipos de desarrollo

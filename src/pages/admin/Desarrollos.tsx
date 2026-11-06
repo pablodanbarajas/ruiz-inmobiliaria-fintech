@@ -40,7 +40,10 @@ export const Desarrollos = () => {
     if (!bypass) { const c = getCached<DesarrolloWithTipo[]>(ck); if (c) { setDesarrollos(c); setLoading(false); return } }
     try {
       setLoading(true)
-      let query = supabase.from('desarrollo').select('*').order('nombre', { ascending: true })
+      let query = supabase
+        .from('desarrollo')
+        .select('*, tipodesarrollo:tipodesarrollo(tipodesarrolloid, descripcion)')
+        .order('nombre', { ascending: true })
 
       if (statusFilter) {
         query = query.eq('estatus', statusFilter)
@@ -64,7 +67,7 @@ export const Desarrollos = () => {
         )
       }
 
-      setCached(ck, filteredData)
+      setCached(`v2:${ck}`, filteredData)
       setDesarrollos(filteredData)
     } catch (error) {
       console.error('Error fetching desarrollos:', error)
@@ -253,11 +256,7 @@ export const Desarrollos = () => {
               key: 'tipodesarrolloid',
               label: 'Tipo',
               render: (row: DesarrolloWithTipo) => {
-                const tipos: { [key: number]: string } = {
-                  4: 'Ejidal',
-                  5: 'Propiedad',
-                }
-                return tipos[row.tipodesarrolloid || 0] || '-'
+                return row.tipodesarrollo?.descripcion || '-'
               },
             },
             {

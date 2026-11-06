@@ -42,7 +42,7 @@ export const DesarrolloDetail = () => {
       // Fetch desarrollo
       const { data: desarrolloData, error: desarrolloError } = await supabase
         .from('desarrollo')
-        .select('*')
+        .select('*, tipodesarrollo:tipodesarrollo(tipodesarrolloid, descripcion)')
         .eq('desarrolloid', id)
         .single()
 
@@ -215,7 +215,7 @@ export const DesarrolloDetail = () => {
               <div className="bg-white rounded p-2">
                 <p className="text-xs text-gray-600">Tipo</p>
                 <p className="text-sm font-bold text-gray-900">
-                  {desarrollo.tipodesarrolloid === 4 ? 'Ejidal' : desarrollo.tipodesarrolloid === 5 ? 'Propiedad' : '-'}
+                  {desarrollo.tipodesarrollo?.descripcion || '-'}
                 </p>
               </div>
               <div className="bg-white rounded p-2">
