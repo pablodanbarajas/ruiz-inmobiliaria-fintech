@@ -1,5 +1,3 @@
-type Page<T> = { data: T[] | null; error: unknown }
-
 /**
  * Loads every row of a query in pages, past the API's per-request row limit.
  * `fetchPage` must filter by `key > afterKey`, order by that key ascending and
@@ -7,7 +5,7 @@ type Page<T> = { data: T[] | null; error: unknown }
  * cannot silently cut the results short. Throws if any page fails.
  */
 export const fetchAllByKey = async <T>(
-  fetchPage: (afterKey: number, pageSize: number) => PromiseLike<Page<T>>,
+  fetchPage: (afterKey: number, pageSize: number) => PromiseLike<{ data: unknown; error: unknown }>,
   getKey: (row: T) => number,
   pageSize = 1000,
 ): Promise<T[]> => {
@@ -17,8 +15,9 @@ export const fetchAllByKey = async <T>(
   while (true) {
     const { data, error } = await fetchPage(afterKey, pageSize)
     if (error) throw error
-    if (!data || data.length === 0) return rows
-    rows.push(...data)
-    afterKey = getKey(data[data.length - 1])
+    const page = data as T[] | null
+    if (!page || page.length === 0) return rows
+    rows.push(...page)
+    afterKey = getKey(page[page.length - 1])
   }
 }

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { getCached, setCached, invalidateCache, onFocusRefetch } from '@/lib/queryCache'
+import { fetchAllByKey } from '@/lib/fetchAllByKey'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { formatCurrency, formatDate, getVentaStatusLabel, getVentaStatusColor, calcularRecargo } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
@@ -140,100 +141,58 @@ export const Dashboard = () => {
         const firstOfNextMonth = `${firstOfNextMonthDate.getFullYear()}-${String(firstOfNextMonthDate.getMonth() + 1).padStart(2, '0')}-01`
 
         if (DEMO_DESARROLLOIDS.length > 0) {
-          const { data: lotesDemo, error: lotesDemoErr } = await supabase
-            .from('lote')
-            .select('loteid, estatus')
-            .in('desarrolloid', DEMO_DESARROLLOIDS)
-          if (lotesDemoErr) throw lotesDemoErr
-          const loteIds = (lotesDemo || []).map((l: any) => l.loteid)
-          const lotesDisponibles = (lotesDemo || []).filter((l: any) => l.estatus === 'D').length
+          // Filtered on the server and paged: the API returns at most 1000 rows per request.
+          const [lotesDemo, ventasDemo, pagosDemo] = await Promise.all([
+            fetchAllByKey<{ loteid: number; estatus: string | null }>(
+              (afterKey, pageSize) =>
+                supabase
+                  .from('lote')
+                  .select('loteid, estatus')
+                  .in('desarrolloid', DEMO_DESARROLLOIDS)
+                  .gt('loteid', afterKey)
+                  .order('loteid', { ascending: true })
+                  .limit(pageSize),
+              (lote) => lote.loteid,
+            ),
+            fetchAllByKey<{ ventaid: number; clienteid: number | null; estatus: string | null; fecha: string | null }>(
+              (afterKey, pageSize) =>
+                supabase
+                  .from('venta')
+                  .select('ventaid, clienteid, estatus, fecha, lote:lote!inner(desarrolloid)')
+                  .in('lote.desarrolloid', DEMO_DESARROLLOIDS)
+                  .gt('ventaid', afterKey)
+                  .order('ventaid', { ascending: true })
+                  .limit(pageSize),
+              (venta) => venta.ventaid,
+            ),
+            fetchAllByKey<{ pagoid: number; montopagado: number | null; servicios_extra: number | null; fechapago: string | null }>(
+              (afterKey, pageSize) =>
+                supabase
+                  .from('pagos')
+                  .select('pagoid, montopagado, servicios_extra, fechapago, corridafinanciera:corridafinanciera!inner(venta:venta!inner(lote:lote!inner(desarrolloid)))')
+                  .in('corridafinanciera.venta.lote.desarrolloid', DEMO_DESARROLLOIDS)
+                  .or('estatus.neq.C,estatus.is.null')
+                  .gt('pagoid', afterKey)
+                  .order('pagoid', { ascending: true })
+                  .limit(pageSize),
+              (pago) => pago.pagoid,
+            ),
+          ])
 
-          const { data: ventasDemo, error: ventasDemoErr } = await supabase
-            .from('venta')
-            .select('ventaid, clienteid, estatus, fecha')
-            .in('loteid', loteIds.length ? loteIds : [-1])
-          if (ventasDemoErr) throw ventasDemoErr
-          const ventaIds = (ventasDemo || []).map((v: any) => v.ventaid)
-          const clienteIds = [...new Set((ventasDemo || []).map((v: any) => v.clienteid).filter(Boolean))]
-          const ventasActivas = (ventasDemo || []).filter((v: any) => v.estatus === 'A').length
-
-          const { data: corridasDemo, error: corridasDemoErr } = await supabase
-            .from('corridafinanciera')
-            .select('corridafinancieraid')
-            .in('ventaid', ventaIds.length ? ventaIds : [-1])
-          if (corridasDemoErr) throw corridasDemoErr
-          const corridaIds = (corridasDemo || []).map((c: any) => c.corridafinancieraid)
-
-          const { data: pagosDemo, error: pagosDemoErr } = corridaIds.length
-            ? await supabase
-              .from('pagos')
-              .select('montopagado, servicios_extra, fechapago, estatus')
-              .in('corridafinancieraid', corridaIds)
-            : { data: [], error: null }
-          if (pagosDemoErr) throw pagosDemoErr
-
-          const { data: pagosMesRaw, error: pagosMesErr } = await supabase
-            .from('pagos')
-            .select('montopagado, servicios_extra, fechapago, corridafinancieraid')
-            .gte('fechapago', firstOfMonth)
-            .lt('fechapago', firstOfNextMonth)
-            .limit(10000)
-          if (pagosMesErr) throw pagosMesErr
-
-          const corridaIdsMes = [...new Set((pagosMesRaw || []).map((p: any) => p.corridafinancieraid).filter(Boolean))]
-          const { data: corridasMesData, error: corridasMesErr } = corridaIdsMes.length > 0
-            ? await supabase
-              .from('corridafinanciera')
-              .select('corridafinancieraid, ventaid')
-              .in('corridafinancieraid', corridaIdsMes)
-            : { data: [], error: null }
-          if (corridasMesErr) throw corridasMesErr
-
-          const corridaVentaMap = new Map<number, number>((corridasMesData || []).map((c: any) => [c.corridafinancieraid, c.ventaid]))
-          const ventaIdsMes = [...new Set((corridasMesData || []).map((c: any) => c.ventaid).filter(Boolean))]
-
-          const { data: ventasMesData, error: ventasMesErr } = ventaIdsMes.length > 0
-            ? await supabase
-              .from('venta')
-              .select('ventaid, loteid')
-              .in('ventaid', ventaIdsMes)
-            : { data: [], error: null }
-          if (ventasMesErr) throw ventasMesErr
-
-          const ventaLoteMap = new Map<number, number>((ventasMesData || []).map((v: any) => [v.ventaid, v.loteid]))
-          const loteIdsMes = [...new Set((ventasMesData || []).map((v: any) => v.loteid).filter(Boolean))]
-
-          const { data: lotesMesData, error: lotesMesErr } = loteIdsMes.length > 0
-            ? await supabase
-              .from('lote')
-              .select('loteid, desarrolloid')
-              .in('loteid', loteIdsMes)
-            : { data: [], error: null }
-          if (lotesMesErr) throw lotesMesErr
-
-          const loteDesarrolloMap = new Map<number, number>((lotesMesData || []).map((l: any) => [l.loteid, l.desarrolloid]))
-
-          const pagosDelMesData = (pagosMesRaw || []).filter((p: any) => {
-            const ventaid = corridaVentaMap.get(p.corridafinancieraid)
-            if (!ventaid) return false
-            const loteid = ventaLoteMap.get(ventaid)
-            if (!loteid) return false
-            const desarrolloid = loteDesarrolloMap.get(loteid)
-            if (!desarrolloid) return false
-            return DEMO_DESARROLLOIDS.includes(desarrolloid)
-          })
-          const ventasEsteMes = (ventasDemo || []).filter((v: any) => {
+          const lotesDisponibles = lotesDemo.filter((l) => l.estatus === 'D').length
+          const ventaIds = ventasDemo.map((v) => v.ventaid)
+          const clienteIds = [...new Set(ventasDemo.map((v) => v.clienteid).filter(Boolean))]
+          const ventasActivas = ventasDemo.filter((v) => v.estatus === 'A').length
+          const ventasEsteMes = ventasDemo.filter((v) => {
             return v.estatus !== 'C' && isWithinMonth(v.fecha, firstOfMonth, firstOfNextMonth)
           }).length
 
-          const totalPagado = (pagosDemo || []).reduce((sum: number, p: any) => {
-            const extra = Number(p.servicios_extra || 0)
-            return sum + Number(p.montopagado || 0) + Math.max(0, extra)
-          }, 0)
-          const pagosDelMes = (pagosDelMesData || []).reduce((sum: number, p: any) => {
-            const extra = Number(p.servicios_extra || 0)
-            return sum + Number(p.montopagado || 0) + Math.max(0, extra)
-          }, 0)
+          const getMontoCobrado = (p: { montopagado: number | null; servicios_extra: number | null }) =>
+            Number(p.montopagado || 0) + Math.max(0, Number(p.servicios_extra || 0))
+          const totalPagado = pagosDemo.reduce((sum, p) => sum + getMontoCobrado(p), 0)
+          const pagosDelMes = pagosDemo
+            .filter((p) => isWithinMonth(p.fechapago, firstOfMonth, firstOfNextMonth))
+            .reduce((sum, p) => sum + getMontoCobrado(p), 0)
 
           setStats({
             totalClientes: clienteIds.length,
@@ -359,27 +318,36 @@ export const Dashboard = () => {
           return
         }
 
-        const { data: panteonesLots, error: lotsError } = await supabase
-          .from('lote')
-          .select('loteid')
-          .in('desarrolloid', developmentIds)
-        if (lotsError) throw lotsError
+        const [panteonesSales, payments] = await Promise.all([
+          fetchAllByKey<{ ventaid: number; clienteid: number | null; estatus: string | null; fecha: string | null }>(
+            (afterKey, pageSize) =>
+              supabase
+                .from('venta')
+                .select('ventaid, clienteid, estatus, fecha, lote:lote!inner(desarrolloid)')
+                .in('lote.desarrolloid', developmentIds)
+                .gt('ventaid', afterKey)
+                .order('ventaid', { ascending: true })
+                .limit(pageSize),
+            (sale) => sale.ventaid,
+          ),
+          fetchAllByKey<{ pagoid: number; montopagado: number | null; servicios_extra: number | null }>(
+            (afterKey, pageSize) =>
+              supabase
+                .from('pagos')
+                .select('pagoid, montopagado, servicios_extra, corridafinanciera:corridafinanciera!inner(venta:venta!inner(estatus, lote:lote!inner(desarrolloid)))')
+                .in('corridafinanciera.venta.lote.desarrolloid', developmentIds)
+                .not('corridafinanciera.venta.estatus', 'in', '(C,P)')
+                .or('estatus.neq.C,estatus.is.null')
+                .gte('fechapago', firstOfMonth)
+                .lt('fechapago', firstOfNextMonth)
+                .gt('pagoid', afterKey)
+                .order('pagoid', { ascending: true })
+                .limit(pageSize),
+            (payment) => payment.pagoid,
+          ),
+        ])
 
-        const lotIds = (panteonesLots || []).map((lot) => lot.loteid)
-        if (lotIds.length === 0) {
-          const emptyStats = { ventasUltimoMes: 0, totalCobradoMes: 0, clientes: 0 }
-          setPanteonesStats(emptyStats)
-          setCached(cacheKey, emptyStats)
-          return
-        }
-
-        const { data: panteonesSales, error: salesError } = await supabase
-          .from('venta')
-          .select('ventaid, clienteid, estatus, fecha')
-          .in('loteid', lotIds)
-        if (salesError) throw salesError
-
-        const confirmedSales = (panteonesSales || []).filter(
+        const confirmedSales = panteonesSales.filter(
           (sale) => sale.estatus !== 'C' && sale.estatus !== 'P'
         )
         const salesThisMonth = confirmedSales.filter((sale) =>
@@ -388,33 +356,11 @@ export const Dashboard = () => {
         const clientIds = new Set(
           confirmedSales.map((sale) => sale.clienteid).filter((clientId): clientId is number => Boolean(clientId))
         )
-        const saleIds = confirmedSales.map((sale) => sale.ventaid)
 
-        const { data: schedules, error: schedulesError } = saleIds.length
-          ? await supabase
-            .from('corridafinanciera')
-            .select('corridafinancieraid')
-            .in('ventaid', saleIds)
-          : { data: [], error: null }
-        if (schedulesError) throw schedulesError
-
-        const scheduleIds = (schedules || []).map((schedule) => schedule.corridafinancieraid)
-        const { data: payments, error: paymentsError } = scheduleIds.length
-          ? await supabase
-            .from('pagos')
-            .select('montopagado, servicios_extra, fechapago, estatus')
-            .in('corridafinancieraid', scheduleIds)
-            .gte('fechapago', firstOfMonth)
-            .lt('fechapago', firstOfNextMonth)
-          : { data: [], error: null }
-        if (paymentsError) throw paymentsError
-
-        const totalCobradoMes = (payments || [])
-          .filter((payment) => payment.estatus !== 'C')
-          .reduce(
-            (total, payment) => total + (payment.montopagado || 0) + (payment.servicios_extra || 0),
-            0
-          )
+        const totalCobradoMes = payments.reduce(
+          (total, payment) => total + (payment.montopagado || 0) + (payment.servicios_extra || 0),
+          0
+        )
         const nextStats = {
           ventasUltimoMes: salesThisMonth,
           totalCobradoMes,

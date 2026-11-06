@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getCached, setCached } from '@/lib/queryCache'
+import { fetchAllByKey } from '@/lib/fetchAllByKey'
 import { usePersistedFilters } from '@/hooks/usePersistedFilters'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
@@ -124,13 +125,21 @@ export const Clientes = () => {
           }
         }
 
-        const [{ data: developmentRows, error: developmentsError }, { data: salesRows, error: salesError }] =
+        const [{ data: developmentRows, error: developmentsError }, salesRows] =
           await Promise.all([
             supabase.from('desarrollo').select('*').order('nombre', { ascending: true }),
-            supabase.from('venta').select('clienteid, lote:lote(desarrolloid)'),
+            fetchAllByKey<{ ventaid: number; clienteid: number | null; lote: { desarrolloid: number | null } | null }>(
+              (afterKey, pageSize) =>
+                supabase
+                  .from('venta')
+                  .select('ventaid, clienteid, lote:lote(desarrolloid)')
+                  .gt('ventaid', afterKey)
+                  .order('ventaid', { ascending: true })
+                  .limit(pageSize),
+              (sale) => sale.ventaid,
+            ),
           ])
         if (developmentsError) throw developmentsError
-        if (salesError) throw salesError
 
         const developmentData = (developmentRows || [])
           .filter((development) =>
@@ -138,7 +147,7 @@ export const Clientes = () => {
             DEMO_DESARROLLOIDS.includes(development.desarrolloid)
           ) as Desarrollo[]
         const developmentIdsByClient: Record<number, number[]> = {}
-        ;(salesRows || []).forEach((sale: any) => {
+        salesRows.forEach((sale) => {
           const desarrolloId = sale.lote?.desarrolloid
           if (!sale.clienteid || !desarrolloId) return
           const current = developmentIdsByClient[sale.clienteid] || []
@@ -152,36 +161,18 @@ export const Clientes = () => {
         // In demo mode, restrict to clients that have ventas in the demo desarrollo
         if (DEMO_DESARROLLOIDS.length > 0 && clientData.length > 0) {
           // Clientes con al menos una venta (en cualquier desarrollo)
-          const { data: ventasAll } = await supabase
-            .from('venta')
-            .select('clienteid')
-          const clientesConAlgunaVenta = new Set(
-            (ventasAll || []).map((v: any) => v.clienteid).filter(Boolean)
+          const clientesConAlgunaVenta = new Set(salesRows.map((sale) => sale.clienteid))
+          const demoClienteIds = new Set(
+            salesRows
+              .filter((sale) => DEMO_DESARROLLOIDS.includes(sale.lote?.desarrolloid as number))
+              .map((sale) => sale.clienteid)
           )
-
-          const { data: lotesDemo } = await supabase
-            .from('lote')
-            .select('loteid')
-            .in('desarrolloid', DEMO_DESARROLLOIDS)
-          const loteIds = (lotesDemo || []).map((l: any) => l.loteid)
-          if (loteIds.length > 0) {
-            const { data: ventasDemo } = await supabase
-              .from('venta')
-              .select('clienteid')
-              .in('loteid', loteIds)
-            const demoClienteIds = new Set(
-              (ventasDemo || []).map((v: any) => v.clienteid).filter(Boolean)
-            )
-            // Mostrar:
-            // 1) clientes con ventas en desarrollos demo
-            // 2) clientes sin ninguna venta (recién creados, por ejemplo)
-            finalCache = clientData.filter(
-              (c) => demoClienteIds.has(c.clienteid) || !clientesConAlgunaVenta.has(c.clienteid)
-            )
-          } else {
-            // Si no hay lotes demo configurados, mostrar solo clientes sin ventas
-            finalCache = clientData.filter((c) => !clientesConAlgunaVenta.has(c.clienteid))
-          }
+          // Mostrar:
+          // 1) clientes con ventas en desarrollos demo
+          // 2) clientes sin ninguna venta (recién creados, por ejemplo)
+          finalCache = clientData.filter(
+            (c) => demoClienteIds.has(c.clienteid) || !clientesConAlgunaVenta.has(c.clienteid)
+          )
         }
 
         setAllClientsCache(finalCache)

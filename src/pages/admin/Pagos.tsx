@@ -269,7 +269,7 @@ export const Pagos = () => {
               .in('corridafinanciera.venta.lote.desarrolloid', DEMO_DESARROLLOIDS)
               .gt('pagoid', afterKey)
               .order('pagoid', { ascending: true })
-              .limit(pageSize) as unknown as PromiseLike<{ data: PagoWithDetails[] | null; error: unknown }>,
+              .limit(pageSize),
           (pago) => pago.pagoid,
         ),
         supabase
