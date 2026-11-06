@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getCached, setCached, invalidateCache, onFocusRefetch } from '@/lib/queryCache'
+import { fetchAllByKey } from '@/lib/fetchAllByKey'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
 import { Input } from '@/components/ui/Input'
@@ -139,6 +140,7 @@ export const Pagos = () => {
   const [allPagos, setAllPagos] = useState<PagoWithDetails[]>([])
   const [pendientes, setPendientes] = useState<PendingRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   const [filters, setFilters] = usePersistedFilters('pagosFilters', {
     clienteId: '',
@@ -218,6 +220,7 @@ export const Pagos = () => {
     }
     try {
       setLoading(true)
+      setLoadError(false)
 
       const todayStr = new Date().toISOString().split('T')[0]
 
@@ -255,12 +258,20 @@ export const Pagos = () => {
           : corridasQuery.eq('ventaid', -1) // no results if no matching ventas
       }
 
-      const [pagosRes, desarrollosRes] = await Promise.all([
-        supabase
-          .from('pagos')
-          .select('pagoid, fechapago, montopagado, servicios_extra, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera(corridafinancieraid, nopago, mensualidad, saldo, fecha, venta:venta(ventaid, clienteid, preciolote, plazo, cliente:cliente(clienteid, nombre, email, telefonocelular), lote:lote(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
-          .order('fechapago', { ascending: false })
-          .limit(10000),
+      const [pagosData, desarrollosRes] = await Promise.all([
+        // Filtered on the server and paged: the API returns at most 1000 rows per request,
+        // so filtering afterwards would drop whole developments from the totals.
+        fetchAllByKey<PagoWithDetails>(
+          (afterKey, pageSize) =>
+            supabase
+              .from('pagos')
+              .select('pagoid, fechapago, montopagado, servicios_extra, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera!inner(corridafinancieraid, nopago, mensualidad, saldo, fecha, venta:venta!inner(ventaid, clienteid, preciolote, plazo, cliente:cliente(clienteid, nombre, email, telefonocelular), lote:lote!inner(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
+              .in('corridafinanciera.venta.lote.desarrolloid', DEMO_DESARROLLOIDS)
+              .gt('pagoid', afterKey)
+              .order('pagoid', { ascending: true })
+              .limit(pageSize) as unknown as PromiseLike<{ data: PagoWithDetails[] | null; error: unknown }>,
+          (pago) => pago.pagoid,
+        ),
         supabase
           .from('desarrollo')
           .select('desarrolloid, nombre')
@@ -268,7 +279,6 @@ export const Pagos = () => {
           .order('nombre', { ascending: true }),
       ])
 
-      if (pagosRes.error) throw pagosRes.error
       if (desarrollosRes.error) throw desarrollosRes.error
 
       // Paginate corridafinanciera: a single .limit(5000) can silently truncate
@@ -293,7 +303,9 @@ export const Pagos = () => {
         from += PAGE_SIZE
       }
 
-      const pagosRows = ((pagosRes.data || []) as unknown) as PagoWithDetails[]
+      const pagosRows = pagosData.sort((a, b) =>
+        (b.fechapago || '').localeCompare(a.fechapago || '') || b.pagoid - a.pagoid
+      )
       setAllPagos(pagosRows)
       setDesarrollos((desarrollosRes.data || []) as Desarrollo[])
 
@@ -349,6 +361,7 @@ export const Pagos = () => {
       setCached('pagos:all', { pagos: pagosRows, pendientes: pendingRows, desarrollos: desarrollosRes.data as Desarrollo[] })
     } catch (error) {
       console.error('Error fetching pagos:', error)
+      setLoadError(true)
       setAllPagos([])
       setPendientes([])
     } finally {
@@ -428,13 +441,15 @@ export const Pagos = () => {
   // totalCobrado = efectivo realmente recibido (mensualidad + servicios extras cobrados en positivo)
   // totalAplicado = total aplicado a la cuenta del cliente (incluyendo saldos a favor negativos)
   // Diferencia = saldos a favor aplicados (solo aparece cuando servicios_extra < 0)
-  const totalCobrado = filteredPagos.reduce((sum, p) => {
+  // Canceled payments stay listed but never count toward money totals.
+  const pagosVigentes = useMemo(() => filteredPagos.filter((p) => p.estatus !== 'C'), [filteredPagos])
+  const totalCobrado = pagosVigentes.reduce((sum, p) => {
     const extra = Number(p.servicios_extra || 0)
     return sum + Number(p.montopagado || 0) + Math.max(0, extra)
   }, 0)
-  const totalAplicado = filteredPagos.reduce((sum, p) => sum + getPagoAplicado(p), 0)
-  const totalRecargos = filteredPagos.reduce((sum, p) => sum + Number(p.recargo || 0), 0)
-  const totalServicios = filteredPagos.reduce((sum, p) => sum + Math.max(0, Number(p.servicios_extra || 0)), 0)
+  const totalAplicado = pagosVigentes.reduce((sum, p) => sum + getPagoAplicado(p), 0)
+  const totalRecargos = pagosVigentes.reduce((sum, p) => sum + Number(p.recargo || 0), 0)
+  const totalServicios = pagosVigentes.reduce((sum, p) => sum + Math.max(0, Number(p.servicios_extra || 0)), 0)
 
   // Paginated data for current page
   const filteredPagosForPagination = pagos
@@ -477,7 +492,7 @@ export const Pagos = () => {
   const cortePorCobrador = useMemo<CorteCobradorRow[]>(() => {
     const map = new Map<string, CorteCobradorRow>()
 
-    for (const pago of filteredPagos) {
+    for (const pago of pagosVigentes) {
       const key = (pago.cobrador || 'Sin cobrador').trim() || 'Sin cobrador'
       const current = map.get(key)
       const monto = Number(pago.montopagado || 0)
@@ -498,12 +513,12 @@ export const Pagos = () => {
     }
 
     return Array.from(map.values()).sort((a, b) => b.aplicado - a.aplicado)
-  }, [filteredPagos])
+  }, [pagosVigentes])
 
   const conciliacionDiaria = useMemo<ConciliacionDiariaRow[]>(() => {
     const map = new Map<string, ConciliacionDiariaRow>()
 
-    for (const pago of filteredPagos) {
+    for (const pago of pagosVigentes) {
       const fecha = pago.fechapago || 'Sin fecha'
       const current = map.get(fecha)
       const monto = Number(pago.montopagado || 0)
@@ -530,7 +545,7 @@ export const Pagos = () => {
       if (b.fecha === 'Sin fecha') return -1
       return a.fecha < b.fecha ? 1 : -1
     })
-  }, [filteredPagos])
+  }, [pagosVigentes])
 
   const corteCtaBancaria = useMemo<CorteCtaBancariaRow[]>(() => {
     const map = new Map<string, CorteCtaBancariaRow>()
@@ -716,6 +731,12 @@ export const Pagos = () => {
               )}
             </div>
           </div>
+
+          {loadError && (
+            <div role="alert" className="mb-6 rounded-[16px] border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              No se pudieron cargar los pagos, así que los totales no son válidos. Usa Recargar para intentarlo de nuevo.
+            </div>
+          )}
 
           {/* KPIs Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
@@ -1300,7 +1321,7 @@ export const Pagos = () => {
             <p className="mt-1"><strong>Diferencia</strong> = Cobrado − Aplicado. Solo es negativa cuando hay <strong>saldos a favor</strong> aplicados (servicios_extra negativo) — indica créditos usados sin cobro en efectivo.</p>
           </div>
           {(() => {
-            const conAjuste = filteredPagos.filter(p => p.servicios_extra && p.servicios_extra !== 0)
+            const conAjuste = pagosVigentes.filter(p => p.servicios_extra && p.servicios_extra !== 0)
             if (conAjuste.length === 0) return <p className="text-gray-400 text-center py-4">No hay ajustes en los pagos del filtro actual.</p>
             const cargos = conAjuste.filter(p => (p.servicios_extra || 0) > 0)
             const creditos = conAjuste.filter(p => (p.servicios_extra || 0) < 0)
