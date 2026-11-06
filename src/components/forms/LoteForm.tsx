@@ -51,13 +51,12 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     coto: string,
     manzana: string,
     nolote: string,
-    zona = formData.zona,
     tipolote = formData.tipolote,
   ) => {
     const des = desarrollos.find(d => d.desarrolloid?.toString() === desarrolloid)
     if (!des?.clavedesarrollo) return ''
     if (tipoPanteonesIds.includes(des.tipodesarrolloid || 0)) {
-      const parts = [des.clavedesarrollo, normalizeClavePart(zona), normalizeClavePart(tipolote)]
+      const parts = [des.clavedesarrollo, normalizeClavePart(tipolote)]
       return parts.filter(Boolean).join('-')
     }
     const parts = [des.clavedesarrollo]
@@ -146,7 +145,6 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
         formData.coto,
         formData.manzana,
         formData.nolote,
-        formData.zona,
         formData.tipolote,
       )
       const { data, error } = await supabase
@@ -185,6 +183,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     if (!isPanteones && formData.manzana.length > 2) newErrors.manzana = 'La manzana debe tener máximo 2 caracteres'
     if (!isPanteones && formData.coto.length > 2) newErrors.coto = 'El coto debe tener máximo 2 caracteres'
     if (!isPanteones && !formData.nolote.trim()) newErrors.nolote = 'No. Lote requerido'
+    if (formData.clavelote.length > 15) newErrors.clavelote = 'La clave no puede superar 15 caracteres'
     if (!formData.superficie) newErrors.superficie = 'Superficie requerida'
     if (formData.superficie && isNaN(parseFloat(formData.superficie))) {
       newErrors.superficie = 'Debe ser un número'
@@ -252,7 +251,6 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
         formData.coto,
         formData.manzana,
         formData.nolote,
-        formData.zona,
         formData.tipolote,
       )
       let existingLotsQuery = supabase
@@ -341,7 +339,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
               setFormData(prev => ({
                 ...prev,
                 zona,
-                ...(autoClaveKey ? { clavelote: buildClave(prev.desarrolloid, prev.coto, prev.manzana, prev.nolote, zona) } : {}),
+                ...(autoClaveKey ? { clavelote: buildClave(prev.desarrolloid, prev.coto, prev.manzana, prev.nolote) } : {}),
               }))
             }}
             placeholder="Ej: Sección Jardines"
@@ -406,7 +404,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
               setFormData(prev => ({
                 ...prev,
                 tipolote,
-                ...(autoClaveKey ? { clavelote: buildClave(prev.desarrolloid, prev.coto, prev.manzana, prev.nolote, prev.zona, tipolote) } : {}),
+                ...(autoClaveKey ? { clavelote: buildClave(prev.desarrolloid, prev.coto, prev.manzana, prev.nolote, tipolote) } : {}),
               }))
             }}
             disabled={isLoading}
@@ -509,6 +507,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
         </label>
         <div className="flex items-center gap-2">
           <Input
+            name="clavelote"
             type="text"
             value={formData.clavelote}
             onChange={(e) => {
@@ -516,6 +515,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
               setFormData(prev => ({ ...prev, clavelote: e.target.value }))
             }}
             placeholder="Ej: PUB-01-03-009"
+            maxLength={15}
             disabled={isLoading}
             className="font-mono"
           />
@@ -531,6 +531,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             Auto
           </button>
         </div>
+        {errors.clavelote && <p className="mt-1 text-sm text-red-500">{errors.clavelote}</p>}
         <p className="text-xs text-gray-400 mt-1">Se genera automáticamente. Puedes editar manualmente o pulsar Auto para regenerar.</p>
       </div>
 
