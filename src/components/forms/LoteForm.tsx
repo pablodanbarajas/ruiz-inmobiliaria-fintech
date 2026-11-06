@@ -208,6 +208,36 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
 
     if (!validateForm()) return
 
+    if (isPanteones) {
+      const { data: existingLots, error: existingLotsError } = await supabase
+        .from('lote')
+        .select('loteid, zona')
+        .eq('desarrolloid', Number(formData.desarrolloid))
+        .eq('tipolote', formData.tipolote)
+
+      if (existingLotsError) {
+        setErrors((current) => ({ ...current, _form: existingLotsError.message }))
+        return
+      }
+
+      const normalizedZone = formData.zona.trim().toLocaleLowerCase()
+      const duplicate = existingLots?.some((existingLot) =>
+        existingLot.loteid !== lote?.loteid &&
+        existingLot.zona?.trim().toLocaleLowerCase() === normalizedZone
+      )
+
+      if (duplicate) {
+        const duplicateMessage = `Ya existe un producto ${formData.tipolote} para la zona "${formData.zona.trim()}". Actualiza la disponibilidad de ese registro en lugar de crear otro.`
+        setErrors((current) => ({ ...current, zona: duplicateMessage }))
+        window.setTimeout(() => {
+          const field = formRef.current?.querySelector<HTMLElement>('[name="zona"]')
+          field?.focus()
+          field?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 0)
+        return
+      }
+    }
+
     const submitData = {
       desarrolloid: formData.desarrolloid ? parseInt(formData.desarrolloid) : null,
       zona: formData.zona || null,
