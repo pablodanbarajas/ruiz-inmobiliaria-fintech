@@ -137,6 +137,9 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
   const isPanteones = Boolean(
     selectedDevelopment && tipoPanteonesIds.includes(selectedDevelopment.tipodesarrolloid || 0)
   )
+  const tipoLoteOptions = isPanteones
+    ? ['Gaveta', 'Cripta', 'Nicho']
+    : ['Habitacional', 'Comercial', 'Rústico', 'Gaveta', 'Cripta', 'Nicho']
 
   useEffect(() => {
     if (!isPanteones || lote || !formData.zona.trim() || !formData.desarrolloid || !formData.tipolote || !autoClaveKey) {
@@ -417,12 +420,9 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             disabled={isLoading}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
           >
-            <option value="Habitacional">Habitacional</option>
-            <option value="Comercial">Comercial</option>
-            <option value="Rústico">Rústico</option>
-            <option value="Gaveta">Gaveta</option>
-            <option value="Cripta">Cripta</option>
-            <option value="Nicho">Nicho</option>
+            {tipoLoteOptions.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
           </select>
         </div>
       </div>
