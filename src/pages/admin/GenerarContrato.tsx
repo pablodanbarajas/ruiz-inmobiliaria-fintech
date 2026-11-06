@@ -454,6 +454,16 @@ export const GenerarContrato = () => {
           .single()
         if (loteErr || !loteData) throw new Error('No se encontró el lote.')
 
+        const { data: templateData, error: templateErr } = await supabase
+          .from('contrato_template')
+          .select('contenido_html')
+          .eq('desarrolloid', loteData.desarrolloid)
+          .eq('es_activa', true)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (templateErr) throw templateErr
+
         // 4. Calcular variables
         const saldoFinanciado = (ventaData.preciolote || 0) - (ventaData.enganche || 0)
         const hoy = new Date()
@@ -502,6 +512,8 @@ export const GenerarContrato = () => {
           desarrollo_nombre: loteData.desarrollo?.nombre || '',
           lote_manzana: loteData.manzana || '',
           lote_numero: loteData.nolote || '',
+          lote_zona: loteData.zona || '',
+          lote_tipo_producto: loteData.tipolote || '',
           lote_superficie: loteData.superficie != null ? String(loteData.superficie) : '',
           lote_precio_m2: loteData.preciopormt2 != null ? formatearMonto(loteData.preciopormt2) : '',
           lote_lindero_norte: loteData.linderonte != null ? String(loteData.linderonte) : '',
@@ -529,7 +541,7 @@ export const GenerarContrato = () => {
         }
 
         // 5. Reemplazar variables
-        const html = reemplazarVariables(TEMPLATE_HTML, vars)
+        const html = reemplazarVariables(templateData?.contenido_html || TEMPLATE_HTML, vars)
 
         // 6. Detectar variables sin reemplazar
         const faltantes = [...html.matchAll(/\{\{([^}]+)\}\}/g)].map(m => m[1])

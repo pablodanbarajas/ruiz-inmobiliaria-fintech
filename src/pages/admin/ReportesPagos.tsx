@@ -183,6 +183,50 @@ export const ReportesPagos = () => {
   const totalCobrado = pagosFiltrados.reduce((sum, p) => sum + Number(p.montopagado || 0), 0)
   const totalPendiente = pendientesFiltrados.reduce((sum, p) => sum + p.montoPendiente, 0)
   const clientesPendientes = new Set(pendientesFiltrados.map((p) => p.clienteid)).size
+  const pagosPorDesarrollo = useMemo(() => {
+    const totals = new Map<string, number>()
+    for (const pago of pagosFiltrados) {
+      const venta = pago.corridafinanciera?.venta
+      const lote = Array.isArray((venta as any)?.lote) ? (venta as any).lote[0] : (venta as any)?.lote
+      const desarrollo = Array.isArray(lote?.desarrollo) ? lote.desarrollo[0] : lote?.desarrollo
+      const nombre = desarrollo?.nombre || 'Sin desarrollo'
+      totals.set(nombre, (totals.get(nombre) || 0) + getPagoAplicado(pago))
+    }
+    return [...totals.entries()].sort((a, b) => b[1] - a[1])
+  }, [pagosFiltrados])
+
+  const pagosPorMetodo = useMemo(() => {
+    const totals = new Map<string, number>()
+    for (const pago of pagosFiltrados) {
+      const metodo = getPagoFormaLabel(pago.formapago)
+      totals.set(metodo, (totals.get(metodo) || 0) + getPagoAplicado(pago))
+    }
+    return [...totals.entries()].sort((a, b) => b[1] - a[1])
+  }, [pagosFiltrados])
+
+  const renderPaymentChart = (title: string, values: [string, number][]) => {
+    const max = Math.max(...values.map(([, value]) => value), 1)
+    return (
+      <div className="rounded-[16px] border border-[#e0e5e7] bg-white p-4">
+        <h3 className="mb-4 text-sm font-semibold text-[#142127]">{title}</h3>
+        <div className="space-y-3">
+          {values.length === 0 ? (
+            <p className="text-sm text-gray-500">Sin pagos para mostrar.</p>
+          ) : values.map(([label, value]) => (
+            <div key={label}>
+              <div className="mb-1 flex justify-between gap-3 text-xs text-gray-600">
+                <span className="truncate">{label}</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(value)}</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                <div className="h-full rounded-full bg-[#142127]" style={{ width: `${(value / max) * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   const exportPagosCsv = () => {
     const csv = toCsv(
@@ -304,6 +348,11 @@ export const ReportesPagos = () => {
             <p className="text-sm text-gray-500">Clientes con adeudo</p>
             <p className="text-2xl font-bold text-gray-900">{clientesPendientes}</p>
           </div>
+        </div>
+
+        <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {renderPaymentChart('Pagos por desarrollo', pagosPorDesarrollo)}
+          {renderPaymentChart('Pagos por método de pago', pagosPorMetodo)}
         </div>
 
         <div className="mb-8">
