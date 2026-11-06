@@ -332,8 +332,8 @@ export const Lotes = () => {
             {
               key: 'clavelote',
               label: 'Clave',
-              width: 'w-40',
-              render: (row) => row.clavelote || '—',
+              width: 'w-64',
+              render: (row) => <span className="whitespace-nowrap">{row.clavelote || '—'}</span>,
             },
             {
               key: 'preciolote',
