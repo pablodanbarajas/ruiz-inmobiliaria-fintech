@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -42,6 +42,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
   const [duenios, setDuenios] = useState<Duenio[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [autoClaveKey, setAutoClaveKey] = useState(!lote)
+  const formRef = useRef<HTMLFormElement>(null)
 
   const buildClave = (desarrolloid: string, coto: string, manzana: string, nolote: string) => {
     const des = desarrollos.find(d => d.desarrolloid?.toString() === desarrolloid)
@@ -127,8 +128,8 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     if (!formData.desarrolloid) newErrors.desarrolloid = 'Desarrollo requerido'
     if (isPanteones && !formData.zona.trim()) newErrors.zona = 'Zona o sección requerida'
     if (!isPanteones && !formData.manzana.trim()) newErrors.manzana = 'Manzana requerida'
-    if (formData.manzana.length > 2) newErrors.manzana = 'La manzana debe tener máximo 2 caracteres'
-    if (formData.coto.length > 2) newErrors.coto = 'El coto debe tener máximo 2 caracteres'
+    if (!isPanteones && formData.manzana.length > 2) newErrors.manzana = 'La manzana debe tener máximo 2 caracteres'
+    if (!isPanteones && formData.coto.length > 2) newErrors.coto = 'El coto debe tener máximo 2 caracteres'
     if (!isPanteones && !formData.nolote.trim()) newErrors.nolote = 'No. Lote requerido'
     if (isPanteones && (!formData.cantidad_disponible || Number(formData.cantidad_disponible) < 1)) {
       newErrors.cantidad_disponible = 'La disponibilidad debe ser mayor a cero'
@@ -143,6 +144,14 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     }
 
     setErrors(newErrors)
+    const firstError = Object.keys(newErrors)[0]
+    if (firstError) {
+      window.setTimeout(() => {
+        const field = formRef.current?.querySelector<HTMLElement>(`[name="${firstError}"]`)
+        field?.focus()
+        field?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 0)
+    }
     return Object.keys(newErrors).length === 0
   }
 
@@ -191,8 +200,8 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
       cantidad_disponible: isPanteones ? parseInt(formData.cantidad_disponible, 10) : null,
       duenioid: formData.duenioid ? parseInt(formData.duenioid) : null,
       coto: isPanteones ? null : (formData.coto || null),
-      manzana: isPanteones ? formData.zona || null : (formData.manzana || null),
-      nolote: isPanteones ? formData.tipolote || null : (formData.nolote || null),
+      manzana: isPanteones ? null : (formData.manzana || null),
+      nolote: isPanteones ? null : (formData.nolote || null),
       clavelote: formData.clavelote || null,
       tipolote: formData.tipolote || null,
       linderonte: formData.linderonte ? parseFloat(formData.linderonte) : null,
@@ -216,15 +225,18 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
       const message = err instanceof Error ? err.message : 'No se pudo guardar el lote.'
       setErrors((current) => ({
         ...current,
-        _form: message.includes('character varying(2)')
-          ? 'Uno de los campos permite máximo 2 caracteres. Revisa la manzana o el coto.'
-          : message,
+        _form: message,
       }))
+      window.setTimeout(() => {
+        const field = formRef.current?.querySelector<HTMLElement>('[name="coto"], [name="manzana"], [name="nolote"]')
+        field?.focus()
+        field?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 0)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="admin-form space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="admin-form space-y-6">
       {/* Row 1: Desarrollo, Dueño, Tipo Lote */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {isPanteones && (
@@ -233,6 +245,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             Zona o sección *
           </label>
           <Input
+            name="zona"
             type="text"
             value={formData.zona}
             onChange={(e) => setFormData({ ...formData, zona: e.target.value })}
@@ -247,6 +260,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             Desarrollo *
           </label>
           <select
+            name="desarrolloid"
             value={formData.desarrolloid}
             onChange={(e) => {
               const id = e.target.value
@@ -272,6 +286,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             Disponibilidad *
           </label>
           <Input
+            name="cantidad_disponible"
             type="number"
             min="1"
             step="1"
@@ -287,6 +302,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             Dueño
           </label>
           <select
+            name="duenioid"
             value={formData.duenioid}
             onChange={(e) => setFormData({ ...formData, duenioid: e.target.value })}
             disabled={isLoading}
@@ -322,12 +338,13 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
       </div>
 
       {/* Row 2: Coto, Manzana, No. Lote, Estado */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {!isPanteones && <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Coto
           </label>
           <Input
+            name="coto"
             type="text"
             value={formData.coto}
             onChange={(e) => {
@@ -347,6 +364,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             Manzana *
           </label>
           <Input
+            name="manzana"
             type="text"
             value={formData.manzana}
             onChange={(e) => {
@@ -366,6 +384,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             No. Lote *
           </label>
           <Input
+            name="nolote"
             type="text"
             value={formData.nolote}
             onChange={(e) => {
@@ -396,7 +415,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             <option value="N">No disponible</option>
           </select>
         </div>
-      </div>
+      </div>}
 
       {/* Clave del lote */}
       <div>
