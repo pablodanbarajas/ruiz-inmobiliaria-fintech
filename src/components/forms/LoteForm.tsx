@@ -134,9 +134,9 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
   const selectedDevelopment = desarrollos.find(
     (desarrollo) => desarrollo.desarrolloid.toString() === formData.desarrolloid
   )
-  const isPanteones = Boolean(
-    selectedDevelopment && tipoPanteonesIds.includes(selectedDevelopment.tipodesarrolloid || 0)
-  )
+  const isPanteonesDevelopment = (desarrollo?: Desarrollo) =>
+    Boolean(desarrollo && tipoPanteonesIds.includes(desarrollo.tipodesarrolloid || 0))
+  const isPanteones = isPanteonesDevelopment(selectedDevelopment)
   const tipoLoteOptions = isPanteones
     ? ['Gaveta', 'Cripta', 'Nicho']
     : ['Habitacional', 'Comercial', 'Rústico']
@@ -146,6 +146,16 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
       setFormData((current) => ({ ...current, tipolote: 'Gaveta' }))
     }
   }, [isPanteones, formData.tipolote, tipoLoteOptions])
+
+  useEffect(() => {
+    if (isPanteones && !lote && autoClaveKey && formData.desarrolloid) {
+      setFormData((current) => ({
+        ...current,
+        tipolote: 'Gaveta',
+        clavelote: buildClave(current.desarrolloid, current.coto, current.manzana, current.nolote, current.zona, 'Gaveta'),
+      }))
+    }
+  }, [isPanteones, lote, autoClaveKey, formData.desarrolloid])
 
   useEffect(() => {
     if (!isPanteones || lote || !formData.zona.trim() || !formData.desarrolloid || !formData.tipolote || !autoClaveKey) {
@@ -373,8 +383,15 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
             value={formData.desarrolloid}
             onChange={(e) => {
               const id = e.target.value
-              const clave = buildClave(id, formData.coto, formData.manzana, formData.nolote)
-              setFormData(prev => ({ ...prev, desarrolloid: id, ...(autoClaveKey ? { clavelote: clave } : {}) }))
+              const development = desarrollos.find((item) => item.desarrolloid.toString() === id)
+              const nextType = isPanteonesDevelopment(development) ? 'Gaveta' : 'Habitacional'
+              const clave = buildClave(id, formData.coto, formData.manzana, formData.nolote, formData.zona, nextType)
+              setFormData(prev => ({
+                ...prev,
+                desarrolloid: id,
+                tipolote: nextType,
+                ...(autoClaveKey ? { clavelote: clave } : {}),
+              }))
             }}
             disabled={isLoading}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
