@@ -134,6 +134,48 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     selectedDevelopment && tipoPanteonesIds.includes(selectedDevelopment.tipodesarrolloid || 0)
   )
 
+  useEffect(() => {
+    if (!isPanteones || lote || !formData.zona.trim() || !formData.desarrolloid || !formData.tipolote || !autoClaveKey) {
+      return
+    }
+
+    let cancelled = false
+    const updatePanteonesClave = async () => {
+      const baseClave = buildClave(
+        formData.desarrolloid,
+        formData.coto,
+        formData.manzana,
+        formData.nolote,
+        formData.zona,
+        formData.tipolote,
+      )
+      const { data, error } = await supabase
+        .from('lote')
+        .select('clavelote')
+        .eq('desarrolloid', Number(formData.desarrolloid))
+        .eq('tipolote', formData.tipolote)
+
+      if (error || cancelled) return
+
+      const usedNumbers = (data || []).map((existingLot) => {
+        const suffix = existingLot.clavelote?.startsWith(`${baseClave}-`)
+          ? existingLot.clavelote.slice(baseClave.length + 1)
+          : ''
+        return /^\d+$/.test(suffix) ? Number(suffix) : 0
+      })
+      const nextNumber = Math.max(0, ...usedNumbers) + 1
+      setFormData((current) => ({
+        ...current,
+        clavelote: `${baseClave}-${String(nextNumber).padStart(3, '0')}`,
+      }))
+    }
+
+    updatePanteonesClave()
+    return () => {
+      cancelled = true
+    }
+  }, [isPanteones, lote, formData.zona, formData.desarrolloid, formData.tipolote, autoClaveKey])
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
