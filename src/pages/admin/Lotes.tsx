@@ -330,20 +330,10 @@ export const Lotes = () => {
           emptyMessage="No se encontraron lotes con los filtros aplicados"
           columns={[
             {
-              key: 'clavedesarrollo',
+              key: 'clavelote',
               label: 'Clave',
-              width: 'w-20',
-              render: (row) => (row as any).clavedesarrollo || (row as any).desarrollo?.clavedesarrollo || '—',
-            },
-            {
-              key: 'manzana',
-              label: 'Manzana',
-              width: 'w-20',
-            },
-            {
-              key: 'nolote',
-              label: 'Lote',
-              width: 'w-20',
+              width: 'w-40',
+              render: (row) => row.clavelote || '—',
             },
             {
               key: 'preciolote',
