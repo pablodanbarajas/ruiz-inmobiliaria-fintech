@@ -51,12 +51,17 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
     coto: string,
     manzana: string,
     nolote: string,
+    zona = formData.zona,
     tipolote = formData.tipolote,
   ) => {
     const des = desarrollos.find(d => d.desarrolloid?.toString() === desarrolloid)
     if (!des?.clavedesarrollo) return ''
     if (tipoPanteonesIds.includes(des.tipodesarrolloid || 0)) {
-      const parts = [des.clavedesarrollo, normalizeClavePart(tipolote)]
+      const parts = [
+        normalizeClavePart(des.clavedesarrollo).slice(0, 3),
+        normalizeClavePart(zona).slice(0, 3),
+        normalizeClavePart(tipolote).slice(0, 3),
+      ]
       return parts.filter(Boolean).join('-')
     }
     const parts = [des.clavedesarrollo]
@@ -145,6 +150,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
         formData.coto,
         formData.manzana,
         formData.nolote,
+        formData.zona,
         formData.tipolote,
       )
       const { data, error } = await supabase
@@ -251,6 +257,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
         formData.coto,
         formData.manzana,
         formData.nolote,
+        formData.zona,
         formData.tipolote,
       )
       let existingLotsQuery = supabase
@@ -339,7 +346,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
               setFormData(prev => ({
                 ...prev,
                 zona,
-                ...(autoClaveKey ? { clavelote: buildClave(prev.desarrolloid, prev.coto, prev.manzana, prev.nolote) } : {}),
+                ...(autoClaveKey ? { clavelote: buildClave(prev.desarrolloid, prev.coto, prev.manzana, prev.nolote, zona) } : {}),
               }))
             }}
             placeholder="Ej: Sección Jardines"
@@ -404,7 +411,7 @@ export const LoteForm = ({ lote, onSubmit, isLoading = false }: LoteFormProps) =
               setFormData(prev => ({
                 ...prev,
                 tipolote,
-                ...(autoClaveKey ? { clavelote: buildClave(prev.desarrolloid, prev.coto, prev.manzana, prev.nolote, tipolote) } : {}),
+                ...(autoClaveKey ? { clavelote: buildClave(prev.desarrolloid, prev.coto, prev.manzana, prev.nolote, prev.zona, tipolote) } : {}),
               }))
             }}
             disabled={isLoading}
