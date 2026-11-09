@@ -191,6 +191,7 @@ class ContratoConverter {
     return [new Paragraph({
       children: toRuns(items),
       alignment: alignmentOf(element),
+      pageBreakBefore: /always|page/i.test(cssValue(element, 'page-break-before') || cssValue(element, 'break-before') || ''),
       numbering: list && { reference: list.reference, instance: list.instance, level: 0 },
     })]
   }

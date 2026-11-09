@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { ChevronLeft, Download } from 'lucide-react'
 import { numeroALetras } from '@/utils/helpers'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { buildContratoValleFloresHtml } from '@/lib/contratoValleFlores'
 
 // Fixed template text such as (NOMBRE DEL NOTARIO) that staff must fill in by hand.
 // Amounts in words contain digits, and acronyms have no space, so neither matches.
@@ -430,6 +431,7 @@ export const GenerarContrato = () => {
   const [htmlContrato, setHtmlContrato] = useState<string>('')
   const [variablesFaltantes, setVariablesFaltantes] = useState<string[]>([])
   const [camposPorCompletar, setCamposPorCompletar] = useState<string[]>([])
+  const [esPanteones, setEsPanteones] = useState(false)
   const [descargando, setDescargando] = useState(false)
   const [errorDescarga, setErrorDescarga] = useState(false)
   const previewRef = useRef<HTMLDivElement>(null)
@@ -440,6 +442,7 @@ export const GenerarContrato = () => {
     const cargarDatos = async () => {
       setLoading(true)
       setError(null)
+      setEsPanteones(false)
       try {
         // 1. Cargar venta
         const { data: ventaData, error: ventaErr } = await supabase
@@ -475,13 +478,6 @@ export const GenerarContrato = () => {
           .maybeSingle()
         if (templateErr) throw templateErr
 
-        const isPanteones = loteData.desarrollo?.tipodesarrollo?.descripcion?.toLowerCase().includes('panteon')
-        if (isPanteones && !templateData) {
-          throw new Error(
-            `${loteData.desarrollo?.nombre || 'Este desarrollo'} todavía no tiene una plantilla de contrato activa. No se puede generar el contrato hasta registrarla.`
-          )
-        }
-
         // 4. Calcular variables
         const saldoFinanciado = (ventaData.preciolote || 0) - (ventaData.enganche || 0)
         const hoy = new Date()
@@ -516,6 +512,57 @@ export const GenerarContrato = () => {
         const domicilioCliente = domicilioParts.length > 0
           ? domicilioParts.join(', ')
           : (clienteData.domiciliocobro || '')
+
+        // Cemetery developments without their own template use the Valle de Flores V7 contract.
+        const isPanteones = loteData.desarrollo?.tipodesarrollo?.descripcion?.toLowerCase().includes('panteon')
+        if (isPanteones && !templateData) {
+          const [{ data: corridaData, error: corridaErr }, { data: designadosData, error: designadosErr }] = await Promise.all([
+            supabase
+              .from('corridafinanciera')
+              .select('nopago, fecha, mensualidad, saldo')
+              .eq('ventaid', ventaData.ventaid)
+              .order('nopago', { ascending: true }),
+            supabase
+              .from('venta_designado')
+              .select('rol, orden, nombre, domicilio, telefono, email, parentesco')
+              .eq('ventaid', ventaData.ventaid),
+          ])
+          if (corridaErr) throw corridaErr
+          // Before the venta_designado migration runs, the Carátula leaves those blocks blank.
+          if (designadosErr) console.warn('No se pudieron cargar sustituto y beneficiarios:', designadosErr.message)
+
+          const html = buildContratoValleFloresHtml({
+            ventaid: ventaData.ventaid,
+            fechaCelebracion: fechaFirmaDate,
+            cliente: {
+              nombre: clienteData.nombre,
+              domicilio: domicilioCliente,
+              rfc: clienteData.rfc,
+              telefono: clienteData.telefonocelular,
+              emails: [clienteData.email, clienteData.email2, clienteData.email3],
+            },
+            espacio: { tipolote: loteData.tipolote, zona: loteData.zona },
+            venta: {
+              precio: ventaData.preciolote,
+              enganche: ventaData.enganche,
+              plazo: ventaData.plazo,
+              mensualidad: ventaData.mensualidad,
+              fechaPrimeraMensualidad: ventaData.fechaprimeramensualidad,
+            },
+            corrida: (corridaData || []).map((pago) => ({
+              nopago: pago.nopago,
+              fecha: pago.fecha,
+              mensualidad: pago.mensualidad == null ? null : Number(pago.mensualidad),
+              saldo: pago.saldo == null ? null : Number(pago.saldo),
+            })),
+            designados: designadosErr ? [] : (designadosData || []),
+          })
+          setEsPanteones(true)
+          setVariablesFaltantes([])
+          setCamposPorCompletar(findCamposPorCompletar(html))
+          setHtmlContrato(html)
+          return
+        }
 
         const vars: Record<string, string> = {
           fecha_firma: fechaFirma,
@@ -624,7 +671,7 @@ export const GenerarContrato = () => {
         </div>
 
         <h1 className="text-2xl font-bold text-gray-900 mb-6">
-          Contrato de Promesa de Compraventa — Venta #{id}
+          {esPanteones ? 'Contrato de Derecho de Uso' : 'Contrato de Promesa de Compraventa'} — Venta #{id}
         </h1>
 
         {errorDescarga && (

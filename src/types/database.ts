@@ -12,6 +12,8 @@ export type Cliente = {
   nombre: string | null
   sexo: string | null
   email: string | null
+  email2?: string | null
+  email3?: string | null
   claveelector: string | null
   calle: string | null
   numeroext: string | null

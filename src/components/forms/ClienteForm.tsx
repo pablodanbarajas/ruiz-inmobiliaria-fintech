@@ -16,6 +16,8 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
     nombre: '',
     sexo: '',
     email: '',
+    email2: '',
+    email3: '',
     claveelector: '',
     calle: '',
     numeroext: '',
@@ -49,6 +51,8 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
         nombre: cliente.nombre || '',
         sexo: cliente.sexo || '',
         email: cliente.email || '',
+        email2: cliente.email2 || '',
+        email3: cliente.email3 || '',
         claveelector: cliente.claveelector || '',
         calle: cliente.calle || '',
         numeroext: cliente.numeroext || '',
@@ -89,6 +93,9 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
     // Validación de email
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Email inválido'
+    }
+    for (const campo of ['email2', 'email3'] as const) {
+      if (formData[campo] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData[campo])) newErrors[campo] = 'Email inválido'
     }
 
     // Validación de RFC (12–13 caracteres alfanuméricos)
@@ -206,6 +213,9 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
       if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
         stepErrors.email = 'Email inválido'
       }
+      for (const campo of ['email2', 'email3'] as const) {
+        if (formData[campo] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData[campo])) stepErrors[campo] = 'Email inválido'
+      }
 
       if (!stepErrors.email && formData.email.trim()) {
         const { data: existingEmail } = await supabase
@@ -229,9 +239,9 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
     e.preventDefault()
     const validationErrors = await validateForm()
     if (Object.keys(validationErrors).length > 0) {
-      const firstInvalidField = ['nombre', 'rfc', 'curp', 'email', 'telefonocelular']
+      const firstInvalidField = ['nombre', 'rfc', 'curp', 'email', 'telefonocelular', 'email2', 'email3']
         .find((field) => validationErrors[field])
-      const invalidStep = firstInvalidField === 'email' || firstInvalidField === 'telefonocelular' ? 1 : 0
+      const invalidStep = ['email', 'telefonocelular', 'email2', 'email3'].includes(firstInvalidField || '') ? 1 : 0
       setCurrentStep(invalidStep)
       window.setTimeout(() => {
         if (firstInvalidField) {
@@ -246,6 +256,9 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
         nombre: formData.nombre.trim(),
         sexo: formData.sexo.trim(),
         email: formData.email.toLowerCase().trim(),
+        // The Valle de Flores contract lists up to three notification emails.
+        email2: formData.email2.toLowerCase().trim() || null,
+        email3: formData.email3.toLowerCase().trim() || null,
         claveelector: formData.claveelector.trim(),
         calle: formData.calle.trim(),
         numeroext: formData.numeroext.trim(),
@@ -420,6 +433,20 @@ export const ClienteForm = ({ cliente, onSubmit, isLoading = false }: ClienteFor
               onChange={(e) => handleChange('telefono2', e.target.value)}
             />
           </div>
+          {(['email2', 'email3'] as const).map((campo, index) => (
+            <div key={campo}>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email {index + 2}</label>
+              <Input
+                name={campo}
+                type="email"
+                placeholder="Opcional"
+                value={formData[campo]}
+                onChange={(e) => handleChange(campo, e.target.value)}
+                className={errors[campo] ? 'border-red-500' : ''}
+              />
+              {errors[campo] && <p className="text-red-500 text-sm mt-1">{errors[campo]}</p>}
+            </div>
+          ))}
         </div>
       </div>
 

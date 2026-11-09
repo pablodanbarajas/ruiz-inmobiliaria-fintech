@@ -12,6 +12,7 @@ import type { PagoFormData } from '@/components/forms/PagoForm'
 import { ConvenioForm } from '@/components/forms/ConvenioForm'
 import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
 import { ContratoFirmado } from '@/components/ContratoFirmado'
+import { DesignadosContrato } from '@/components/DesignadosContrato'
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, ArrowLeftRight } from 'lucide-react'
 import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Convenio, Devolucion, DevolucionParcialidad, CargoExtra, Traspaso } from '@/types/database'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
@@ -1217,6 +1218,9 @@ export const VentaDetail = () => {
             </div>
           </div>
         </Modal>
+
+        {/* Cemetery spaces: people named in the contract's Carátula */}
+        {getEspacioLabel(venta.lote) != null && <DesignadosContrato ventaid={venta.ventaid} />}
 
         <div className="grid grid-cols-1 gap-4 mb-8 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.6fr)]">
           {/* Contrato Firmado */}
