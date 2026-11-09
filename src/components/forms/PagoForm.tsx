@@ -507,18 +507,34 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
     })
   }
 
-  const handleAplicarSaldoFavor = () => {
-    if (!selectedCorrida || saldoFavorDisponible <= 0) return
-    const pendienteBase = Math.max(0, (selectedCorrida.mensualidad || 0) + totalCargosExtraCorrida - (selectedCorrida.totalPagado || 0))
-    const totalObjetivo = Math.max(0, pendienteBase + recargo)
-    const aplicado = Math.min(saldoFavorDisponible, totalObjetivo)
+  
+const handleAplicarSaldoFavor = () => {
+  if (!selectedCorrida || saldoFavorDisponible <= 0) return
 
-    setServiciosExtra((aplicado * -1).toFixed(2))
-    const nuevoMonto = Math.max(0, totalObjetivo - aplicado)
-    autoFilledMonto.current = true
-    setMontopagado(nuevoMonto.toFixed(2))
-    setErrors((prev) => ({ ...prev, servicios_extra: '' }))
-  }
+  const montoActual = Number(montopagado) || 0
+
+  const totalObjetivo = Math.max(
+    0,
+    Number(selectedCorrida.mensualidad || 0) +
+      totalCargosExtraCorrida +
+      recargo -
+      Number(selectedCorrida.totalPagado || 0)
+  )
+
+  // Solo completar lo que falta después del pago recibido
+  const faltante = Math.max(0, totalObjetivo - montoActual)
+
+  // No utilizar más crédito del disponible
+  const aplicado = Math.min(saldoFavorDisponible, faltante)
+
+  // Conservar el monto que el usuario ingresó
+  setServiciosExtra((-aplicado).toFixed(2))
+
+  setErrors((prev) => ({
+    ...prev,
+    servicios_extra: ''
+  }))
+}
 
   return (
     <form onSubmit={handleSubmit} className="admin-form space-y-6">
