@@ -460,6 +460,7 @@ export const PagoDetail = () => {
           pagoid: pago.pagoid,
           montopagado: pago.montopagado,
           servicios_extra: pago.servicios_extra,
+          saldo_favor_aplicado: (pago as any).saldo_favor_aplicado ?? 0,
           recargo: pago.recargo,
           fechapago: pago.fechapago,
           formapago: pago.formapago,

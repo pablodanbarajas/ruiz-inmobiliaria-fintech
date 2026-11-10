@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { PagoForm } from '@/components/forms/PagoForm'
 import type { PagoFormData } from '@/components/forms/PagoForm'
+import { getPagoAplicado } from '@/utils/pagos'
 import { Eye, ChevronLeft, ChevronRight, Plus, Download, RefreshCw, ChevronDown, Receipt, Clock, BarChart3, Users, Calendar, Building2, Printer } from 'lucide-react'
 import { ReciboPago } from '@/components/ReciboPago'
 import type { ReciboPagoData } from '@/components/ReciboPago'
@@ -111,11 +112,7 @@ const downloadCsv = (filename: string, csvContent: string) => {
   URL.revokeObjectURL(url)
 }
 
-const getPagoAplicado = (pago: Pago) => {
-  const monto = pago.montopagado || 0
-  const extra = pago.servicios_extra || 0
-  return monto + extra
-}
+
 
 const pickFirst = <T,>(value: T | T[] | null | undefined): T | undefined => {
   if (!value) return undefined
@@ -246,7 +243,7 @@ export const Pagos = () => {
       }
       let corridasQuery = supabase
         .from('corridafinanciera')
-        .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, dias_tolerancia, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre))), pagos:pagos(pagoid, montopagado, servicios_extra, estatus, recargo)')
+        .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, dias_tolerancia, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre))), pagos:pagos(pagoid, montopagado, servicios_extra, saldo_favor_aplicado, estatus, recargo)')
         .lt('fecha', todayStr)
 
       if (demoVentaIds !== null) {
@@ -258,7 +255,7 @@ export const Pagos = () => {
       const [pagosRes, desarrollosRes] = await Promise.all([
         supabase
           .from('pagos')
-          .select('pagoid, fechapago, montopagado, servicios_extra, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera(corridafinancieraid, nopago, mensualidad, saldo, fecha, venta:venta(ventaid, clienteid, preciolote, plazo, cliente:cliente(clienteid, nombre, email, telefonocelular), lote:lote(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
+          .select('pagoid, fechapago, montopagado, servicios_extra, saldo_favor_aplicado, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera(corridafinancieraid, nopago, mensualidad, saldo, fecha, venta:venta(ventaid, clienteid, preciolote, plazo, cliente:cliente(clienteid, nombre, email, telefonocelular), lote:lote(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
           .order('fechapago', { ascending: false })
           .limit(10000),
         supabase
@@ -599,11 +596,74 @@ export const Pagos = () => {
 
     try {
       setIsSubmitting(true)
+      
+      const saldoSolicitado = Number(data.saldo_favor_aplicado ?? 0)
+
+      if (!Number.isFinite(saldoSolicitado) || saldoSolicitado < 0) {
+        throw new Error('El saldo a favor aplicado no es válido.')
+      }
+
+      if (saldoSolicitado > 0) {
+        if (!data.corridafinancieraid) {
+          throw new Error('Selecciona una mensualidad para aplicar saldo a favor.')
+        }
+
+        // Identificar la venta de la mensualidad
+        const { data: corrida, error: corridaError } = await supabase
+          .from('corridafinanciera')
+          .select('ventaid')
+          .eq('corridafinancieraid', data.corridafinancieraid)
+          .single()
+
+        if (corridaError || !corrida) {
+          throw new Error('No se pudo identificar la venta.')
+        }
+
+        // Consultar todas las mensualidades de la venta
+        const { data: corridas, error: corridasError } = await supabase
+          .from('corridafinanciera')
+          .select('corridafinancieraid')
+          .eq('ventaid', corrida.ventaid)
+
+        if (corridasError) throw corridasError
+
+        const ids = (corridas || []).map(c => c.corridafinancieraid)
+
+        if (ids.length === 0) {
+          throw new Error('No se encontraron mensualidades de esta venta.')
+        }
+
+        // Consultar el saldo a favor registrado
+        const { data: pagosVenta, error: pagosError } = await supabase
+          .from('pagos')
+          .select('servicios_extra, saldo_favor_aplicado')
+          .in('corridafinancieraid', ids)
+          .neq('estatus', 'C')
+
+        if (pagosError) throw pagosError
+
+        const disponible = (pagosVenta || []).reduce<number>((total, pago) => {
+          return total
+            + Number(pago.servicios_extra ?? 0)
+            - Number(pago.saldo_favor_aplicado ?? 0)
+        }, 0)
+
+        const saldoDisponible = Math.max(0, Math.round(disponible * 100) / 100)
+
+        if (Math.round(saldoSolicitado * 100) > Math.round(saldoDisponible * 100)) {
+          throw new Error(
+            `Saldo a favor insuficiente. Disponible: $${saldoDisponible.toFixed(2)}`
+          )
+        }
+      }
+
+
       const payload = {
         corridafinancieraid: data.corridafinancieraid,
         fechapago: data.fechapago,
         montopagado: data.montopagado,
         servicios_extra: data.servicios_extra,
+        saldo_favor_aplicado: data.saldo_favor_aplicado,
         formapago: data.formapago,
         cuenta_bancaria_id: data.cuenta_bancaria_id,
         estatus: data.estatus,
@@ -615,7 +675,13 @@ export const Pagos = () => {
 
       let insertResult = await supabase.from('pagos').insert(payload).select().single()
 
-      if (insertResult.error && /servicios_extra|cuenta_bancaria_id/i.test(insertResult.error.message || '')) {
+      if (
+            insertResult.error &&
+            data.saldo_favor_aplicado === 0 &&
+            /servicios_extra|cuenta_bancaria_id/i.test(
+              insertResult.error.message || ''
+            )
+          ) {
         const fallbackComentario = [
           data.comentario,
           data.servicios_extra > 0 ? `[Servicios/Extra: ${data.servicios_extra}]` : null,
@@ -937,6 +1003,7 @@ export const Pagos = () => {
                                 pagoid: row.pagoid,
                                 montopagado: row.montopagado,
                                 servicios_extra: row.servicios_extra,
+                                saldo_favor_aplicado: (row as any).saldo_favor_aplicado ?? 0,
                                 recargo: row.recargo,
                                 fechapago: row.fechapago,
                                 formapago: row.formapago,

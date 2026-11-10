@@ -6,6 +6,7 @@ export interface ReciboPagoData {
   pagoid: number
   montopagado: number | null
   servicios_extra?: number | null
+  saldo_favor_aplicado?: number | null
   recargo?: number | null
   fechapago: string | null
   formapago: number | null
@@ -44,10 +45,18 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
 
   if (!isOpen) return null
 
-  // recargo ya viene incluido en montopagado — no sumar dos veces
+  // Reconocer saldo a favor nuevo e histórico
+  const saldoFavorAplicado =
+    Math.max(0, Number(data.saldo_favor_aplicado ?? 0)) +
+    Math.max(0, -Number(data.servicios_extra ?? 0))
+
+  // Mantener el cálculo anterior para servicios positivos
+  // y sumar el crédito utilizado sin duplicar recargos
   const totalPagado =
-    (data.montopagado ?? 0) +
-    (data.servicios_extra || 0)
+    Number(data.montopagado ?? 0) +
+    Math.max(0, Number(data.servicios_extra ?? 0)) +
+    saldoFavorAplicado
+
 
   const handlePrint = () => {
     const printContent = printRef.current?.innerHTML
@@ -438,9 +447,10 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
                   + Servicios/Extra: <strong>{formatCurrency(data.servicios_extra)}</strong>
                 </div>
               )}
-              {data.servicios_extra != null && data.servicios_extra < 0 && (
-                <div style={{ fontSize: 12, color: '#5b21b6', marginTop: 2 }}>
-                  – Saldo a favor aplicado: <strong>{formatCurrency(Math.abs(data.servicios_extra))}</strong>
+              {saldoFavorAplicado > 0 && (
+                <div style={{ fontSize: 12, color: '#16a34a', marginTop: 2 }}>
+                  + Saldo a favor aplicado:{' '}
+                  <strong>{formatCurrency(saldoFavorAplicado)}</strong>
                 </div>
               )}
               {data.recargo != null && data.recargo > 0 && (
