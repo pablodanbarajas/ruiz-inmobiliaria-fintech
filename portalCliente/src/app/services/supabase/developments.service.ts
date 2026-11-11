@@ -15,7 +15,8 @@ type SupabaseDevelopmentRow = {
 };
 
 const FALLBACK_DEVELOPMENT_IMAGES: Record<number, string> = {
-  11: '/images/Pueblos-de-la-barranca.jpeg',
+  // Under the portal's base path; a bare "/images/..." only worked in Prod because admin has the same file.
+  11: `${import.meta.env.BASE_URL}images/Pueblos-de-la-barranca.jpeg`,
 };
 
 export const supabaseDevelopmentsService: IDevelopmentsService = {

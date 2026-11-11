@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { User, Mail, Lock, Phone, Building2 } from 'lucide-react';
+import { User, Mail, Phone } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { Marca } from '../../components/common/Marca';
+import { PasswordInput } from '../../components/shared/PasswordInput';
 import { ConsentimientoPrivacidad } from '../../components/shared/ConsentimientoPrivacidad';
 
 /**
@@ -65,8 +67,8 @@ export function RegistroCliente() {
     <div className="flex items-center justify-center min-h-[calc(100vh-160px)] md:min-h-[80vh] py-6 md:py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-8">
         <div className="text-center mb-6 md:mb-8">
-          <div className="mx-auto h-12 w-12 bg-teal-700 rounded-xl flex items-center justify-center text-white mb-4">
-            <Building2 className="w-8 h-8" />
+          <div className="flex justify-center mb-4">
+            <Marca fondo="claro" size="md" conTexto={false} />
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Crear cuenta</h2>
           <p className="text-sm text-gray-600 mt-2">
@@ -159,22 +161,15 @@ export function RegistroCliente() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Contraseña
             </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="password"
-                name="password"
-                required
-                minLength={8}
-                autoComplete="new-password"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                placeholder="Mínimo 8 caracteres"
-                value={formData.password}
-                onChange={handleChange}
-              />
-            </div>
+            <PasswordInput
+              name="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              placeholder="Mínimo 8 caracteres"
+              value={formData.password}
+              onChange={handleChange}
+            />
           </div>
 
           <ConsentimientoPrivacidad

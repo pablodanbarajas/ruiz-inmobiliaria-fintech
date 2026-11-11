@@ -59,7 +59,7 @@ function mapProgressStage(portalStatus: string | null): number {
 
 // Mirrors the fallback images used in developments.service.ts
 const DEVELOPMENT_IMAGES: Record<number, string> = {
-  11: '/images/Pueblos-de-la-barranca.jpeg',
+  11: `${import.meta.env.BASE_URL}images/Pueblos-de-la-barranca.jpeg`,
 };
 
 export const supabaseLotsService: ILotsService = {
