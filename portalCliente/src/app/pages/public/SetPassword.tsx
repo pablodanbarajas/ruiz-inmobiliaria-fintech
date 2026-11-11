@@ -82,12 +82,19 @@ export function SetPassword() {
             Enlace inválido o expirado
           </h2>
           <p className="text-gray-500 text-sm mb-6">
-            El enlace de invitación ha expirado o ya fue utilizado.
-            Solicita una nueva invitación a tu asesor.
+            El enlace ya caducó o ya fue utilizado. Pide uno nuevo con tu correo
+            y te llegará en unos minutos para crear tu contraseña.
           </p>
+          {/* Works for invited clients too: their account exists, only the password is missing. */}
+          <button
+            onClick={() => navigate('/forgot-password')}
+            className="w-full py-2 px-4 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800"
+          >
+            Enviarme un enlace nuevo
+          </button>
           <button
             onClick={() => navigate('/login')}
-            className="text-teal-600 hover:underline text-sm font-medium"
+            className="mt-4 text-teal-600 hover:underline text-sm font-medium"
           >
             Ir al inicio de sesión
           </button>

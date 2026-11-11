@@ -39,10 +39,12 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
                 {development.availableLots} disponibles
               </span>
             </div>
-            <div className="flex items-center gap-1.5 text-gray-500">
-              <MapPin className="w-3.5 h-3.5 text-teal-500" />
-              <span className="text-sm">{development.location}</span>
-            </div>
+            {development.location && (
+              <div className="flex items-center gap-1.5 text-gray-500">
+                <MapPin className="w-3.5 h-3.5 text-teal-500" />
+                <span className="text-sm">{development.location}</span>
+              </div>
+            )}
           </div>
 
           {/* Datos promocionales */}
@@ -80,12 +82,7 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
                 <MapPin className="w-4 h-4" />
                 Ver ubicación
               </a>
-            ) : (
-              <span className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed">
-                <MapPin className="w-4 h-4" />
-                Ubicación no disponible
-              </span>
-            )}
+            ) : null}
             <Link
               to={`/desarrollos/${development.id}/mapa`}
               className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors text-sm font-medium"

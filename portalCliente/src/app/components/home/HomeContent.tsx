@@ -139,7 +139,7 @@ export function HomeContent({
           <p className="text-xs text-gray-500">Encuentra tu lote ideal</p>
         </div>
 
-        <form onSubmit={(e) => e.preventDefault()} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_128px_128px_auto] gap-2 flex-1">
+        <form onSubmit={(e) => e.preventDefault()} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_150px_150px_auto] gap-2 flex-1">
           {/* Ubicación */}
           <div className="relative min-w-0 sm:col-span-2 lg:col-span-1" ref={locationRef}>
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
@@ -180,7 +180,8 @@ export function HomeContent({
             <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="number"
-              placeholder="Mín."
+              placeholder="Apartado mín."
+              aria-label="Monto de apartado mínimo"
               value={minPrice}
               onChange={(e) => handleMinChange(e.target.value)}
               className="w-full pl-8 pr-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
@@ -192,7 +193,8 @@ export function HomeContent({
             <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="number"
-              placeholder="Máx."
+              placeholder="Apartado máx."
+              aria-label="Monto de apartado máximo"
               value={maxPrice}
               onChange={(e) => handleMaxChange(e.target.value)}
               className="w-full pl-8 pr-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"

@@ -1,6 +1,7 @@
 import { supabase } from './client';
 import type { IAuthService } from '../interfaces';
 import type { AuthSession, LoginCredentials, RegisterCredentials } from '../../types/auth.types';
+import { formatPersonName } from '../../utils/text';
 
 interface ClientRecord {
   clienteid: number;
@@ -36,18 +37,16 @@ async function mapSupabaseSessionWithClientData(session: any): Promise<AuthSessi
     user: {
       id: clientData?.clienteid?.toString() || session.user.id,
       name:
-        clientData?.nombre?.trim().split(/\s+/)[0] ||
+        formatPersonName(clientData?.nombre?.trim().split(/\s+/)[0]) ||
         session.user.user_metadata?.name ||
         session.user.user_metadata?.full_name ||
         session.user.email?.split('@')[0] ||
         'Cliente',
       email: session.user.email || '',
       phone: clientData?.telefonocelular || session.user.user_metadata?.phone || '',
-      avatarUrl:
-        session.user.user_metadata?.avatar_url ||
-        `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-          session.user.email || 'Cliente'
-        )}`,
+      // No third-party avatar service: it received the client's email. The
+      // header shows the name's initial when there's no photo.
+      avatarUrl: session.user.user_metadata?.avatar_url || null,
       role: 'client'
     }
   };

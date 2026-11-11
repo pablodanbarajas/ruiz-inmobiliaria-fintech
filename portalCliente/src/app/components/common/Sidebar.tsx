@@ -3,12 +3,12 @@ import { Link, useLocation } from 'react-router';
 import { useAuth } from '../../hooks/useAuth';
 
 const publicItems = [
-  { label: 'Home', to: '/', icon: Home },
+  { label: 'Inicio', to: '/', icon: Home },
   { label: 'Soporte', to: '/soporte', icon: MessageCircle }
 ];
 
 const privateItems = [
-  { label: 'Hogar', to: '/home', icon: Home },
+  { label: 'Inicio', to: '/home', icon: Home },
   { label: 'Mis lotes', to: '/mis-lotes', icon: MapPin },
   { label: 'Mis pagos', to: '/mis-pagos', icon: CreditCard },
   { label: 'Soporte', to: '/portal-soporte', icon: MessageCircle }
