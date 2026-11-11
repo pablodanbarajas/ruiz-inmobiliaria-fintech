@@ -10,6 +10,7 @@ import { ForgotPassword } from './pages/public/ForgotPassword';
 import { RegistroCliente } from './pages/public/RegistroCliente';
 import { MapaDesarrollo } from './pages/public/MapaDesarrollo';
 import { SetPassword } from './pages/public/SetPassword';
+import { AvisoPrivacidad } from './pages/public/AvisoPrivacidad';
 
 import { PortalHome } from './pages/client/PortalHome';
 import { PortalSoporte } from './pages/client/PortalSoporte';
@@ -28,7 +29,8 @@ export const router = createBrowserRouter(
         { path: 'forgot-password', Component: ForgotPassword },
         { path: 'registro', Component: RegistroCliente },
         { path: 'desarrollos/:id/mapa', Component: MapaDesarrollo },
-        { path: 'set-password', Component: SetPassword }
+        { path: 'set-password', Component: SetPassword },
+        { path: 'aviso-de-privacidad', Component: AvisoPrivacidad }
       ]
     },
     {

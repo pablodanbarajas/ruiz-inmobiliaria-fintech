@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { supabase } from '../../services/supabase/client';
+import { ConsentimientoPrivacidad } from '../../components/shared/ConsentimientoPrivacidad';
+import { privacyConsent } from '../../config/privacidad';
 
 export function SetPassword() {
   const navigate = useNavigate();
@@ -10,6 +12,8 @@ export function SetPassword() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aceptaAviso, setAceptaAviso] = useState(false);
+  const [rechazaSecundarias, setRechazaSecundarias] = useState(false);
   const passwordRules = [
     { label: 'Al menos 8 caracteres', test: password.length >= 8 },
     { label: 'Una letra mayúscula', test: /[A-ZÁÉÍÓÚÜÑ]/.test(password) },
@@ -53,10 +57,18 @@ export function SetPassword() {
       setError('Las contraseñas no coinciden.');
       return;
     }
+    if (!aceptaAviso) {
+      setError('Para continuar necesitas aceptar el Aviso de Privacidad.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      const { error: updateError } = await supabase.auth.updateUser({ password });
+      // Invited clients never see the sign-up form, so they accept the notice here.
+      const { error: updateError } = await supabase.auth.updateUser({
+        password,
+        data: privacyConsent(rechazaSecundarias),
+      });
       if (updateError) throw updateError;
       navigate('/home', { replace: true });
     } catch (err: any) {
@@ -157,6 +169,13 @@ export function SetPassword() {
             )}
           </div>
 
+          <ConsentimientoPrivacidad
+            aceptaAviso={aceptaAviso}
+            onAceptaAviso={setAceptaAviso}
+            rechazaSecundarias={rechazaSecundarias}
+            onRechazaSecundarias={setRechazaSecundarias}
+          />
+
           {error && (
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
               {error}
@@ -165,7 +184,7 @@ export function SetPassword() {
 
           <button
             type="submit"
-            disabled={isSubmitting || !isPasswordStrong || password !== confirmPassword}
+            disabled={isSubmitting || !isPasswordStrong || password !== confirmPassword || !aceptaAviso}
             className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
           >
             {isSubmitting ? 'Guardando...' : 'Guardar contraseña y entrar'}

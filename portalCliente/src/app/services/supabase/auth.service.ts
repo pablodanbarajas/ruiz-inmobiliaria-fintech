@@ -2,6 +2,7 @@ import { supabase } from './client';
 import type { IAuthService } from '../interfaces';
 import type { AuthSession, LoginCredentials, RegisterCredentials } from '../../types/auth.types';
 import { formatPersonName } from '../../utils/text';
+import { privacyConsent } from '../../config/privacidad';
 
 interface ClientRecord {
   clienteid: number;
@@ -89,7 +90,9 @@ export const supabaseAuthService: IAuthService = {
         emailRedirectTo: `${window.location.origin}/portal/login`,
         data: {
           full_name: credentials.name,
-          phone: credentials.phone
+          phone: credentials.phone,
+          // Sign-up requires accepting the privacy notice; record which one and when.
+          ...privacyConsent(credentials.rechazaFinalidadesSecundarias)
         }
       }
     });

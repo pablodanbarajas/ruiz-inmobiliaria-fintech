@@ -2,6 +2,7 @@ import { MapPin, Phone, Mail, Building2, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router';
 import { CONTACTO, whatsappHref } from '../../config/contacto';
 import { useAuth } from '../../hooks/useAuth';
+import { AVISO_PRIVACIDAD } from '../../config/privacidad';
 
 export function Footer() {
   const { session } = useAuth();
@@ -85,8 +86,13 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
+        <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400 space-y-2">
           <p>&copy; {new Date().getFullYear()} Ruiz Inmobiliaria. Todos los derechos reservados.</p>
+          <p>
+            <Link to={AVISO_PRIVACIDAD.ruta} className="hover:text-amber-500 transition-colors underline">
+              Aviso de privacidad
+            </Link>
+          </p>
         </div>
       </div>
     </footer>
