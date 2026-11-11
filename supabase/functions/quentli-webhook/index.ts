@@ -1,286 +1,179 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 /**
- * Webhook para recibir eventos de Quentli (INVOICE_PAID, INVOICE_PAID_OTHER)
- * y registrar automáticamente pagos en la tabla `pago` de Supabase.
- * 
- * SEGURIDAD: Valida firma HMAC-SHA256 de Quentli en cada solicitud
- * Header esperado: X-Quentli-Signature (HMAC-SHA256 del body)
+ * Receives Quentli payment events (INVOICE_PAID, INVOICE_PAID_OTHER) and
+ * records the payment in `pagos`.
+ *
+ * Quentli calls this without a Supabase JWT, so the gateway check is off
+ * (config.toml: verify_jwt = false). The demo environment has no signing
+ * secret either, so the event body is never trusted: the invoice is read back
+ * from the Quentli API with our key, and only an invoice Quentli reports as
+ * paid is recorded, with the amount Quentli reports. A forged event can't
+ * create a payment. When QUENTLI_WEBHOOK_SECRET is set, the HMAC signature is
+ * required as well.
  */
 
-/**
- * Verifica la firma HMAC-SHA256 del webhook de Quentli
- */
-async function verifyQuentliSignature(
-  bodyText: string,
-  receivedSignature: string,
-  secret: string
-): Promise<boolean> {
+const QUENTLI_API = Deno.env.get('QUENTLI_API_URL') ?? 'https://api.demo.quentli.com'
+const UNIQUE_VIOLATION = '23505'
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+
+async function verifyQuentliSignature(bodyText: string, receivedSignature: string, secret: string): Promise<boolean> {
   try {
-    // Crear HMAC-SHA256
     const key = await crypto.subtle.importKey(
       'raw',
       new TextEncoder().encode(secret),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
-      ['verify']
+      ['verify'],
     )
-
-    // Decodificar firma (esperada en hexadecimal)
     const signatureBytes = new Uint8Array(
-      receivedSignature.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) ?? []
+      receivedSignature.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) ?? [],
     )
-
-    const bodyBytes = new TextEncoder().encode(bodyText)
-
-    // Verificar firma
-    const isValid = await crypto.subtle.verify('HMAC', key, signatureBytes, bodyBytes)
-
-    return isValid
+    return await crypto.subtle.verify('HMAC', key, signatureBytes, new TextEncoder().encode(bodyText))
   } catch (error) {
     console.error('Error verifying signature:', error)
     return false
   }
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    })
+/** Quentli returns metadata as a list of {key, value} or as a plain map. */
+const readMetadata = (source: unknown): Record<string, string> => {
+  if (Array.isArray(source)) {
+    return Object.fromEntries(source.map((entry: { key: string; value: string }) => [entry.key, entry.value]))
   }
+  return source && typeof source === 'object' ? (source as Record<string, string>) : {}
+}
 
-  // 1. Leer el body como texto (necesario antes de cualquier validación de firma)
+const toPositiveInt = (value: unknown): number | null => {
+  const parsed = parseInt(String(value ?? ''), 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
+
   let bodyText: string
   try {
     bodyText = await req.text()
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid request body' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return json({ error: 'Invalid request body' }, 400)
   }
 
-  // 2. VALIDACIÓN DE SEGURIDAD: Verificar firma HMAC si el secreto está configurado
-  // Sin secreto → modo demo (Quentli demo no expone signing secret)
-  // Con secreto → producción, la firma es obligatoria
-  const quentliSecret = Deno.env.get('QUENTLI_WEBHOOK_SECRET') ?? ''
-
-  if (quentliSecret) {
-    const receivedSignature = req.headers.get('X-Quentli-Signature') ?? ''
-    if (!receivedSignature) {
-      return new Response(JSON.stringify({ error: 'Missing signature header' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      })
+  const signingSecret = Deno.env.get('QUENTLI_WEBHOOK_SECRET') ?? ''
+  if (signingSecret) {
+    const signature = req.headers.get('X-Quentli-Signature') ?? ''
+    if (!signature || !(await verifyQuentliSignature(bodyText, signature, signingSecret))) {
+      return json({ error: 'Invalid signature' }, 401)
     }
-    const isSignatureValid = await verifyQuentliSignature(bodyText, receivedSignature, quentliSecret)
-    if (!isSignatureValid) {
-      console.error('Invalid webhook signature', { signature: receivedSignature.substring(0, 10) + '...' })
-      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-  } else {
-    console.warn('QUENTLI_WEBHOOK_SECRET not set — running without signature validation (demo mode)')
   }
 
-  // 3. Parsear el JSON
   let body: any
   try {
     body = JSON.parse(bodyText)
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return json({ error: 'Invalid JSON body' }, 400)
   }
 
-  const { eventType, data } = body
-
-  // Solo procesar eventos de pago
+  const { eventType, data } = body ?? {}
   if (eventType !== 'INVOICE_PAID' && eventType !== 'INVOICE_PAID_OTHER') {
-    return new Response(JSON.stringify({ ok: true, skipped: true, eventType }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return json({ ok: true, skipped: true, eventType })
   }
 
-  // Extraer datos del evento
-  // Quentli puede enviar el id del cliente en username, externalId o en metadata
-  // Extraer corridafinancieraid del metadata (presente cuando el pago vino de "Pagar ahora")
-  const metadataList: Array<{ key: string; value: string }> = data?.metadata ?? []
-  const metadataMap = Object.fromEntries(metadataList.map((m: { key: string; value: string }) => [m.key, m.value]))
-  const corridaFromMetadata = metadataMap['corridafinancieraid']
-    ? parseInt(metadataMap['corridafinancieraid'], 10)
-    : null
+  const invoiceId: string = String(data?.invoiceId ?? data?.invoice?.id ?? '')
+  if (!invoiceId.startsWith('inv_')) return json({ error: 'invoiceId missing' }, 400)
 
-  const clienteid = parseInt(
-    data?.customer?.username ??
-    data?.customer?.externalId ??
-    metadataMap['clienteid'] ??
-    '',
-    10,
-  )
-  const amountCentavos: number = data?.amount ?? 0
-  const montopagado = amountCentavos / 100
-  const invoiceId: string = data?.invoiceId ?? ''
-  const paymentType: string = data?.payment?.type ?? 'OTHER'
+  // ── Read the invoice from Quentli: the only source we trust ──
+  const qHeaders = {
+    Authorization: `Bearer ${Deno.env.get('QUENTLI_API_KEY') ?? ''}`,
+    'Content-Type': 'application/json',
+  }
+  const invoiceRes = await fetch(`${QUENTLI_API}/v1/invoices/${encodeURIComponent(invoiceId)}`, { headers: qHeaders })
+  if (invoiceRes.status === 404) return json({ error: 'Invoice not found in Quentli' }, 404)
+  if (!invoiceRes.ok) {
+    // 5xx makes Quentli retry the event later.
+    console.error(`Quentli invoice lookup failed (${invoiceRes.status}) for ${invoiceId}`)
+    return json({ error: 'Could not read the invoice from Quentli' }, 502)
+  }
+  const invoiceJson = await invoiceRes.json()
+  const invoice = invoiceJson?.invoice ?? invoiceJson
 
-  // Extraer subscriptionId (presente en pagos de suscripción automática)
-  const subscriptionId: string | null =
-    data?.subscriptionId ?? data?.subscription?.id ?? null
-
-  // Para RUTA 1 (metadata con corridafinancieraid) solo necesitamos el monto.
-  // Para RUTA 2 (suscripción / pago genérico) necesitamos clienteid válido.
-  if (montopagado <= 0) {
-    return new Response(
-      JSON.stringify({ error: 'Datos insuficientes: amount debe ser mayor a 0' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } },
-    )
+  if (!invoice?.isPaid) {
+    console.warn(`Event ${eventType} for ${invoiceId}, but Quentli reports it unpaid; ignored`)
+    return json({ ok: false, error: 'Invoice is not paid in Quentli' }, 409)
   }
 
-  // Si no hay corridaFinancieraid en metadata y tampoco clienteid válido → rechazar
-  if (!corridaFromMetadata && (isNaN(clienteid) || clienteid <= 0)) {
-    return new Response(
-      JSON.stringify({ error: 'Datos insuficientes: se requiere corridafinancieraid en metadata o customer id válido' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } },
-    )
-  }
+  const montopagado = Number(invoice.amountPaid ?? invoice.totalAmount ?? 0) / 100
+  if (!(montopagado > 0)) return json({ error: 'Paid amount missing in Quentli' }, 422)
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   )
 
-  // formapago: 4=Tarjeta, 2=Transferencia, 1=Efectivo
-  const formapago = paymentType === 'CARD' ? 4 : paymentType === 'TRANSFER' ? 2 : 1
-
-  // ── RUTA 1: corridafinancieraid viene en metadata (pago desde "Pagar ahora") ──
-  if (corridaFromMetadata && !isNaN(corridaFromMetadata)) {
-    // Verificar que la corrida no tenga ya un pago registrado (idempotencia)
-    const { data: pagoExistente } = await supabase
-      .from('pagos')
-      .select('pagoid')
-      .eq('corridafinancieraid', corridaFromMetadata)
-      .eq('estatus', 'P')
-      .maybeSingle()
-
-    if (pagoExistente) {
-      return new Response(
-        JSON.stringify({ ok: true, message: 'Pago ya registrado anteriormente', corridaFromMetadata }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      )
-    }
-
-    const { data: corridaData } = await supabase
-      .from('corridafinanciera')
-      .select('corridafinancieraid, nopago, ventaid')
-      .eq('corridafinancieraid', corridaFromMetadata)
-      .single()
-
-    const { data: pago, error: pagoError } = await supabase
-      .from('pagos')
-      .insert({
-        corridafinancieraid: corridaFromMetadata,
-        fechapago: new Date().toISOString().split('T')[0],
-        montopagado,
-        formapago,
-        estatus: 'P',
-        referencia: invoiceId,
-        comentario: `Pago registrado automáticamente desde Quentli (${eventType})`,
-      })
-      .select()
-      .single()
-
-    if (pagoError) {
-      return new Response(
-        JSON.stringify({ error: `Error al insertar pago: ${pagoError.message}` }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } },
-      )
-    }
-
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        pagoid: pago.pagoid,
-        nopago: corridaData?.nopago,
-        ventaid: corridaData?.ventaid,
-        montopagado,
-        source: 'metadata',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    )
+  // ── Already recorded? One payment per invoice (portal or webhook) ──
+  const { data: existing, error: existingError } = await supabase
+    .from('pagos')
+    .select('pagoid')
+    .eq('referencia', invoiceId)
+    .neq('estatus', 'C')
+    .limit(1)
+  if (existingError) return json({ error: existingError.message }, 500)
+  if (existing && existing.length > 0) {
+    return json({ ok: true, alreadyRegistered: true, pagoid: existing[0].pagoid })
   }
 
-  // ── RUTA 1.5: Pago de suscripción — buscar por quentli_subscription_id (más preciso) ──
-  let ventaIdFromSub: number | null = null
-  if (subscriptionId) {
-    const { data: ventaSub } = await supabase
+  // ── Which installment: the one we created this invoice for ──
+  const { data: linkedCorrida } = await supabase
+    .from('corridafinanciera')
+    .select('corridafinancieraid')
+    .eq('quentli_invoice_id', invoiceId)
+    .maybeSingle()
+
+  let corridafinancieraid: number | null = linkedCorrida?.corridafinancieraid ?? null
+  if (!corridafinancieraid) {
+    corridafinancieraid = toPositiveInt(readMetadata(invoice.meta ?? invoice.metadata)['corridafinancieraid'])
+  }
+
+  // Subscription charges carry no installment: use the oldest unpaid one of that sale.
+  let source = 'invoice'
+  if (!corridafinancieraid) {
+    const subscriptionId = invoice.subscriptionId ?? invoice.subscription?.id ?? data?.subscriptionId ?? null
+    if (!subscriptionId) {
+      console.error(`Paid invoice ${invoiceId} has no installment or subscription`)
+      return json({ error: 'Could not identify the installment for this invoice' }, 422)
+    }
+
+    const { data: venta } = await supabase
       .from('venta')
-      .select('ventaid, mensualidad')
+      .select('ventaid')
       .eq('quentli_subscription_id', subscriptionId)
       .maybeSingle()
-    if (ventaSub) {
-      ventaIdFromSub = ventaSub.ventaid
-      console.log('Venta encontrada por subscriptionId:', ventaIdFromSub)
-    }
+    if (!venta) return json({ error: 'subscriptionId not registered', subscriptionId }, 422)
+
+    const { data: corridas, error: corridasError } = await supabase
+      .from('corridafinanciera')
+      .select('corridafinancieraid, pagos:pagos(pagoid, estatus)')
+      .eq('ventaid', venta.ventaid)
+      .gt('nopago', 0)
+      .order('nopago', { ascending: true })
+    if (corridasError || !corridas) return json({ error: 'Could not read the payment schedule' }, 500)
+
+    const unpaid = corridas.find((corrida: any) => !(corrida.pagos ?? []).some((pago: any) => pago.estatus === 'P'))
+    if (!unpaid) return json({ ok: true, message: 'Every installment is already paid', ventaid: venta.ventaid })
+    corridafinancieraid = unpaid.corridafinancieraid
+    source = 'subscription'
   }
 
-  // ── RUTA 2: Pago de suscripción — solo por subscriptionId (nunca por monto) ──
-  if (!ventaIdFromSub) {
-    console.error('subscriptionId no encontrado en DB', { subscriptionId, clienteid })
-    return new Response(
-      JSON.stringify({
-        error: 'No se pudo identificar la venta: subscriptionId no registrado',
-        subscriptionId,
-        hint: 'Asegúrate de que quentli_subscription_id esté guardado en la tabla venta',
-      }),
-      { status: 422, headers: { 'Content-Type': 'application/json' } },
-    )
-  }
-
-  // Obtener corridas financieras pendientes de pago (nopago > 0)
-  const { data: corridas, error: corridaError } = await supabase
-    .from('corridafinanciera')
-    .select('corridafinancieraid, nopago, fecha, mensualidad')
-    .eq('ventaid', ventaIdFromSub)
-    .gt('nopago', 0)
-    .order('nopago', { ascending: true })
-
-  if (corridaError || !corridas) {
-    return new Response(
-      JSON.stringify({ error: 'Error al obtener corrida financiera', ventaid: ventaIdFromSub }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } },
-    )
-  }
-
-  // 3. Obtener IDs de corridas que ya tienen pago registrado
-  const corridaIds = corridas.map((c) => c.corridafinancieraid)
-  const { data: pagosExistentes } = await supabase
-    .from('pagos')
-    .select('corridafinancieraid')
-    .in('corridafinancieraid', corridaIds)
-    .eq('estatus', 'P')
-
-  const corridasConPago = new Set((pagosExistentes ?? []).map((p) => p.corridafinancieraid))
-
-  // 4. Encontrar la primera mensualidad sin pago registrado
-  const unpaid = corridas.find((c) => !corridasConPago.has(c.corridafinancieraid))
-
-  if (!unpaid) {
-    return new Response(
-      JSON.stringify({ ok: true, message: 'Todos los pagos ya están registrados', ventaid: ventaIdFromSub }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    )
-  }
+  const paymentType = String(invoice.payment?.type ?? data?.payment?.type ?? 'CARD')
+  // formapago: 4 = tarjeta, 2 = transferencia, 1 = efectivo
+  const formapago = paymentType === 'TRANSFER' ? 2 : paymentType === 'CASH' ? 1 : 4
 
   const { data: pago, error: pagoError } = await supabase
     .from('pagos')
     .insert({
-      corridafinancieraid: unpaid.corridafinancieraid,
+      corridafinancieraid,
       fechapago: new Date().toISOString().split('T')[0],
       montopagado,
       formapago,
@@ -288,25 +181,14 @@ Deno.serve(async (req: Request) => {
       referencia: invoiceId,
       comentario: `Pago registrado automáticamente desde Quentli (${eventType})`,
     })
-    .select()
+    .select('pagoid')
     .single()
 
   if (pagoError) {
-    return new Response(
-      JSON.stringify({ error: `Error al insertar pago: ${pagoError.message}` }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } },
-    )
+    // The portal recorded the same invoice a moment earlier.
+    if (pagoError.code === UNIQUE_VIOLATION) return json({ ok: true, alreadyRegistered: true })
+    return json({ error: `Error al insertar pago: ${pagoError.message}` }, 500)
   }
 
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      pagoid: pago.pagoid,
-      nopago: unpaid.nopago,
-      ventaid: ventaIdFromSub,
-      montopagado,
-      source: 'subscription',
-    }),
-    { status: 200, headers: { 'Content-Type': 'application/json' } },
-  )
+  return json({ ok: true, pagoid: pago.pagoid, corridafinancieraid, montopagado, source })
 })
