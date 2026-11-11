@@ -3,6 +3,7 @@ import { Sidebar } from '../components/common/Sidebar';
 import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
 import { DataProvider } from '../context/DataContext';
+import { AvisoPrivacidadGate } from '../components/shared/AvisoPrivacidadGate';
 
 export function ClientLayout() {
   return (
@@ -27,6 +28,7 @@ export function ClientLayout() {
         </div>
 
         <Footer />
+        <AvisoPrivacidadGate />
       </div>
     </DataProvider>
   );
