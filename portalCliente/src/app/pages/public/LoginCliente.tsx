@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { Mail, Lock, Building2 } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { Marca, LOGO_COMPLETO } from '../../components/common/Marca';
+import { PasswordInput } from '../../components/shared/PasswordInput';
 
 /**
  * Pantalla de login del portal cliente.
@@ -55,14 +57,20 @@ export function LoginCliente() {
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-160px)] md:min-h-[80vh] py-6 md:py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-8">
+      {/* Same layout as the admin sign-in: the brand on black next to the form. */}
+      <div className="w-full max-w-4xl grid lg:grid-cols-2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="hidden lg:flex bg-marca-negro items-center justify-center p-10">
+          <img src={LOGO_COMPLETO} alt="Ruiz Inmobiliaria" className="w-full max-w-xs object-contain" />
+        </div>
+
+        <div className="p-6 sm:p-10">
         <div className="text-center mb-6 md:mb-8">
-          <div className="mx-auto h-12 w-12 bg-teal-700 rounded-xl flex items-center justify-center text-white mb-4">
-            <Building2 className="w-8 h-8" />
+          <div className="flex justify-center mb-5 lg:hidden">
+            <Marca fondo="claro" size="md" />
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Iniciar sesión</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-marca-negro">Bienvenido</h2>
           <p className="text-sm text-gray-600 mt-2">
-            Ingresa a tu portal de cliente
+            Consulta tus lotes, pagos y comprobantes
           </p>
         </div>
 
@@ -85,7 +93,7 @@ export function LoginCliente() {
                 type="email"
                 required
                 autoComplete="email"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                 placeholder="tu@correo.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -97,32 +105,18 @@ export function LoginCliente() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Contraseña
             </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="password"
-                required
-                autoComplete="current-password"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+            <PasswordInput
+              required
+              autoComplete="current-password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <label className="flex items-center gap-2 text-sm text-gray-900 cursor-pointer">
-              <input
-                type="checkbox"
-                className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
-              />
-              Recordarme
-            </label>
-
-            <Link to="/forgot-password" className="text-sm font-medium text-teal-600 hover:text-teal-500 sm:text-right">
+          {/* "Recordarme" was removed: it wasn't wired to anything, and the session already persists. */}
+          <div className="flex justify-end">
+            <Link to="/forgot-password" className="text-sm font-medium text-teal-700 hover:text-teal-800">
               ¿Olvidaste tu contraseña?
             </Link>
           </div>
@@ -130,7 +124,7 @@ export function LoginCliente() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex justify-center py-3 px-4 rounded-full text-sm font-semibold text-white bg-marca-negro hover:bg-marca-carbon focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-marca-oro disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting ? 'Ingresando...' : 'Ingresar al portal'}
           </button>
@@ -140,10 +134,11 @@ export function LoginCliente() {
           <span className="text-gray-600">¿Aún no tienes cuenta? </span>
           <Link
             to={`/registro${redirectTo !== '/home' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
-            className="font-medium text-teal-600 hover:text-teal-500"
+            className="font-medium text-teal-700 hover:text-teal-800"
           >
             Regístrate aquí
           </Link>
+        </div>
         </div>
       </div>
     </div>

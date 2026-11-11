@@ -51,20 +51,21 @@ export function DevelopmentCard({ development }: DevelopmentCardProps) {
           {(development.minApartado || development.enganche) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {development.minApartado && (
-                <div className="bg-teal-50 border border-teal-100 rounded-lg p-3">
-                  <p className="text-xs text-teal-600 font-medium mb-0.5">Aparta desde</p>
-                  <p className="text-lg font-bold text-teal-700">{fmt(development.minApartado)}</p>
-                  <p className="text-xs text-teal-500">MXN</p>
+                // Dark text on the soft gold tint: gold text on it was unreadable.
+                <div className="bg-teal-50 border border-teal-100 rounded-xl p-3">
+                  <p className="text-xs text-gray-600 font-medium mb-0.5">Aparta desde</p>
+                  <p className="text-lg font-bold text-marca-negro">{fmt(development.minApartado)}</p>
+                  <p className="text-xs text-gray-500">MXN</p>
                 </div>
               )}
               {development.enganche && (
-                <div className="bg-amber-50 border border-amber-100 rounded-lg p-3">
+                <div className="bg-teal-50 border border-teal-100 rounded-xl p-3">
                   <div className="flex items-center gap-1 mb-0.5">
-                    <Banknote className="w-3 h-3 text-amber-500" />
-                    <p className="text-xs text-amber-600 font-medium">Enganche</p>
+                    <Banknote className="w-3 h-3 text-gray-500" />
+                    <p className="text-xs text-gray-600 font-medium">Enganche</p>
                   </div>
-                  <p className="text-lg font-bold text-amber-700">{fmt(development.enganche)}</p>
-                  <p className="text-xs text-amber-500">MXN</p>
+                  <p className="text-lg font-bold text-marca-negro">{fmt(development.enganche)}</p>
+                  <p className="text-xs text-gray-500">MXN</p>
                 </div>
               )}
             </div>

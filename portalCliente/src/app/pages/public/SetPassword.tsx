@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { supabase } from '../../services/supabase/client';
 import { ConsentimientoPrivacidad } from '../../components/shared/ConsentimientoPrivacidad';
+import { PasswordInput } from '../../components/shared/PasswordInput';
 import { privacyConsent } from '../../config/privacidad';
 
 export function SetPassword() {
@@ -130,14 +131,13 @@ export function SetPassword() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Nueva contraseña
             </label>
-            <input
-              type="password"
+            <PasswordInput
+              withIcon={false}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Crea una contraseña segura"
               required
               autoComplete="new-password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
             />
             <ul className="mt-2 grid grid-cols-1 gap-1 text-xs sm:grid-cols-2" aria-label="Requisitos de contraseña">
               {passwordRules.map((rule) => (
@@ -153,14 +153,13 @@ export function SetPassword() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Confirmar contraseña
             </label>
-            <input
-              type="password"
+            <PasswordInput
+              withIcon={false}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Repite la contraseña"
               required
               autoComplete="new-password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
             />
             {confirmPassword && (
               <p className={`mt-1 text-xs ${password === confirmPassword ? 'text-emerald-600' : 'text-red-600'}`}>

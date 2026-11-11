@@ -2,6 +2,7 @@ import { Bell, LogOut, LogIn } from 'lucide-react';
 import { Link } from 'react-router';
 import { useAuth } from '../../hooks/useAuth';
 import { useOptionalData } from '../../context/DataContext';
+import { Marca } from './Marca';
 
 /**
  * Header global de la aplicación.
@@ -31,11 +32,15 @@ export function Header({
   return (
     <header className="bg-white border-b border-gray-200 px-4 md:px-8 py-3 md:py-4 sticky top-0 z-10">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          {/* Brand visible solo en móvil (en desktop lo muestra el Sidebar) */}
-          <p className="text-sm font-bold text-teal-700 md:hidden">Ruiz Inmobiliaria</p>
-          <h2 className="text-base md:text-2xl font-semibold text-gray-800 leading-tight">{title}</h2>
-          <p className="text-xs text-gray-500 hidden md:block">{subtitle}</p>
+        <div className="flex items-center gap-3">
+          {/* Emblem only on mobile; on desktop the sidebar shows the brand. */}
+          <div className="md:hidden">
+            <Marca fondo="claro" size="sm" conTexto={false} />
+          </div>
+          <div>
+            <h2 className="text-base md:text-2xl font-semibold text-marca-negro leading-tight">{title}</h2>
+            <p className="text-xs text-gray-500 hidden md:block">{subtitle}</p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
@@ -71,7 +76,7 @@ export function Header({
                     className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 object-cover"
                   />
                 ) : (
-                  <div className="w-8 h-8 md:w-10 md:h-10 bg-teal-700 rounded-full flex items-center justify-center text-white flex-shrink-0">
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-marca-negro rounded-full flex items-center justify-center text-marca-oro flex-shrink-0">
                     <span className="text-xs font-bold">{user.name?.charAt(0).toUpperCase()}</span>
                   </div>
                 )}
