@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/Input'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import type { Lote, Desarrollo } from '@/types/database'
-import { formatCurrency } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 
 export interface ApartadoExternoFormData {
@@ -51,6 +50,8 @@ export const ApartadoExternoForm = ({
 
   // ── Apartado fields ───────────────────────────────────────
   const [lotes, setLotes] = useState<LoteWithDesarrollo[]>([])
+  const [desarrolloId, setDesarrolloId] = useState('')
+  const [manzanaSeleccionada, setManzanaSeleccionada] = useState('')
   const [loteid, setLoteid] = useState('')
   const [fecha, setFecha] = useState(today)
   const [comentarios, setComentarios] = useState('')
@@ -95,16 +96,44 @@ export const ApartadoExternoForm = ({
     load()
   }, [])
 
-  const loteOptions: ComboOption[] = lotes.map((l) => ({
-    value: l.loteid.toString(),
-    label: `${l.desarrollo?.nombre ?? '?'} · Mza ${l.manzana} Lote ${l.nolote}`,
-    sublabel: [
-      l.superficie ? `${l.superficie} m²` : '',
-      l.preciolote ? formatCurrency(l.preciolote) : '',
-    ]
+
+const desarrollosDisponibles = Array.from(
+  new Map(
+    lotes
+      .filter((l) => l.desarrolloid != null)
+      .map((l) => [
+        String(l.desarrolloid),
+        {
+          id: String(l.desarrolloid),
+          nombre: l.desarrollo?.nombre || `Desarrollo ${l.desarrolloid}`,
+        },
+      ])
+  ).values()
+).sort((a, b) => a.nombre.localeCompare(b.nombre))
+
+const manzanasDisponibles = Array.from(
+  new Set(
+    lotes
+      .filter((l) => String(l.desarrolloid) === desarrolloId)
+      .map((l) => String(l.manzana ?? ''))
       .filter(Boolean)
-      .join(' · '),
-  }))
+  )
+).sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
+
+const lotesDisponibles = lotes
+  .filter(
+    (l) =>
+      String(l.desarrolloid) === desarrolloId &&
+      String(l.manzana ?? '') === manzanaSeleccionada
+  )
+  .sort((a, b) =>
+    String(a.nolote ?? '').localeCompare(
+      String(b.nolote ?? ''),
+      'es',
+      { numeric: true }
+    )
+  )
+
 
   const clienteOptions: ComboOption[] = clientesExistentes.map((c) => ({
     value: c.clienteid.toString(),
@@ -332,18 +361,80 @@ export const ApartadoExternoForm = ({
 
       <div className="bg-gray-50 rounded-lg p-4 space-y-4">
         <p className={sectionClass}>Selección de lote</p>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Lote disponible *
-          </label>
-          <SearchCombobox
-            options={loteOptions}
-            value={loteid}
-            onChange={setLoteid}
-            placeholder="Buscar por desarrollo, manzana, lote…"
-            error={errors.loteid}
-          />
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              1. Desarrollo *
+            </label>
+            <select
+              value={desarrolloId}
+              onChange={(e) => {
+                setDesarrolloId(e.target.value)
+                setManzanaSeleccionada('')
+                setLoteid('')
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+            >
+              <option value="">Seleccione un desarrollo</option>
+              {desarrollosDisponibles.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              2. Manzana *
+            </label>
+            <select
+              value={manzanaSeleccionada}
+              disabled={!desarrolloId}
+              onChange={(e) => {
+                setManzanaSeleccionada(e.target.value)
+                setLoteid('')
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white disabled:bg-gray-100"
+            >
+              <option value="">Seleccione una manzana</option>
+              {manzanasDisponibles.map((m) => (
+                <option key={m} value={m}>
+                  Manzana {m}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              3. Lote disponible *
+            </label>
+            <select
+              value={loteid}
+              disabled={!manzanaSeleccionada}
+              onChange={(e) => {
+                setLoteid(e.target.value)
+                setErrors((prev) => ({ ...prev, loteid: '' }))
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white disabled:bg-gray-100"
+            >
+              <option value="">Seleccione un lote</option>
+              {lotesDisponibles.map((l) => (
+                <option key={l.loteid} value={String(l.loteid)}>
+                  Lote {l.nolote}
+                  {l.clavelote ? ` - ${l.clavelote}` : ''}
+                </option>
+              ))}
+            </select>
+
+            {errors.loteid && (
+              <p className="text-red-500 text-xs mt-1">{errors.loteid}</p>
+            )}
+          </div>
         </div>
+
       </div>
 
       <div className="bg-gray-50 rounded-lg p-4 space-y-4">
