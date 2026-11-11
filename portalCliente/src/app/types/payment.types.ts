@@ -26,9 +26,19 @@ export interface Payment {
     base: number;       // mensualidad base
     cargoExtra: number; // suma de cargos extra activos
     recargo: number;    // recargo por mora
+    /** Paid toward services ("Servicios/Extra"), beyond the installment. Never a surcharge. */
+    servicios?: number;
     /** Monto ya abonado si el pago fue parcial (corrida aún pendiente) */
     pagadoParcial?: number;
   };
+  /** Individual payments that covered this installment, for the receipt. */
+  pagos?: PaymentRecord[];
+}
+
+export interface PaymentRecord {
+  fecha: string | null;
+  monto: number;
+  formaPago: string;
 }
 
 export interface LoteSummary {
@@ -47,6 +57,8 @@ export interface LoteSummary {
 }
 
 export interface PaymentSummary {
+  /** Full name from the client record, for receipts. */
+  clienteNombre?: string;
   pendingPayments: Payment[];
   completedPayments: Payment[];
   /** Saldo total = totalPrecio - totalPagado (sin cargos/recargos) */

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { User, Mail, Lock, Phone, Building2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { ConsentimientoPrivacidad } from '../../components/shared/ConsentimientoPrivacidad';
 
 /**
  * Registro de nuevo cliente.
@@ -25,17 +26,25 @@ export function RegistroCliente() {
     telefono: '',
     password: ''
   });
+  const [aceptaAviso, setAceptaAviso] = useState(false);
+  const [rechazaSecundarias, setRechazaSecundarias] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!aceptaAviso) {
+      setError('Para crear tu cuenta necesitas aceptar el Aviso de Privacidad.');
+      return;
+    }
 
     try {
       await register({
         name: formData.nombre,
         email: formData.email,
         phone: formData.telefono,
-        password: formData.password
+        password: formData.password,
+        rechazaFinalidadesSecundarias: rechazaSecundarias
       });
       navigate(redirectTo, { replace: true });
     } catch (err) {
@@ -168,9 +177,16 @@ export function RegistroCliente() {
             </div>
           </div>
 
+          <ConsentimientoPrivacidad
+            aceptaAviso={aceptaAviso}
+            onAceptaAviso={setAceptaAviso}
+            rechazaSecundarias={rechazaSecundarias}
+            onRechazaSecundarias={setRechazaSecundarias}
+          />
+
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !aceptaAviso}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? 'Registrando...' : 'Registrarse'}

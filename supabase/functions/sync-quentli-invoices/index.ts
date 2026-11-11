@@ -15,15 +15,28 @@ const QUENTLI_API = Deno.env.get('QUENTLI_API_URL') ?? 'https://api.demo.quentli
 
 const DAYS_AHEAD = 7 // crear invoices N días antes del vencimiento
 
+/** Compares without leaking, through timing, how many leading characters match. */
+const timingSafeEqual = (a: string, b: string): boolean => {
+  const left = new TextEncoder().encode(a)
+  const right = new TextEncoder().encode(b)
+  let diff = left.length ^ right.length
+  for (let i = 0; i < Math.max(left.length, right.length); i++) {
+    diff |= (left[i] ?? 0) ^ (right[i] ?? 0)
+  }
+  return diff === 0
+}
+
 Deno.serve(async (req: Request) => {
-  // Permitir llamada con Authorization del cron (service key) o desde admin
+  // pg_cron calls this with CRON_SECRET, which it reads from Vault, so the
+  // service role key never sits in the cron command. The gateway's JWT check is
+  // off for this function (config.toml), so this is the only gate: an empty
+  // secret must never match an empty or missing header.
   const authHeader = req.headers.get('Authorization') ?? ''
   const cronSecret = Deno.env.get('CRON_SECRET') ?? ''
-
-  // Validar: acepta service role key o el cron secret configurado
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  const token = authHeader.replace('Bearer ', '')
-  if (token !== serviceKey && token !== cronSecret) {
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : ''
+  const matches = (secret: string) => secret.length >= 32 && timingSafeEqual(token, secret)
+  if (!token || !(matches(cronSecret) || matches(serviceKey))) {
     return new Response(JSON.stringify({ error: 'No autorizado' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },

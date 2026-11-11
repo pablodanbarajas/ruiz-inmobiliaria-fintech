@@ -39,9 +39,9 @@ export function ForgotPassword() {
           <div className="mx-auto h-12 w-12 bg-teal-700 rounded-xl flex items-center justify-center text-white mb-4">
             <Building2 className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Recuperar contraseña</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Crear o recuperar contraseña</h1>
           <p className="text-sm text-gray-600 mt-2">
-            Te enviaremos un enlace para crear una nueva contraseña.
+            Escribe el correo con el que te invitamos o te registraste. Te enviaremos un enlace para crear tu contraseña.
           </p>
         </div>
 

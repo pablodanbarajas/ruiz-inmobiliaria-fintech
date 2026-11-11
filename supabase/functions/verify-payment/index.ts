@@ -84,17 +84,19 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    // Verificar idempotencia: ¿ya existe un pago para esta corrida?
-    const { data: pagoExistente } = await serviceClient
+    // Already recorded? One payment per Quentli invoice or session, by the
+    // portal or by quentli-webhook. Matching any payment of the installment
+    // would skip an online payment made after a partial payment at the office.
+    const { data: pagosExistentes } = await serviceClient
       .from('pagos')
-      .select('pagoid, montopagado')
-      .eq('corridafinancieraid', corridaId)
-      .eq('estatus', 'P')
-      .maybeSingle()
+      .select('pagoid')
+      .eq('referencia', String(sessionId))
+      .neq('estatus', 'C')
+      .limit(1)
 
-    if (pagoExistente) {
+    if (pagosExistentes && pagosExistentes.length > 0) {
       return new Response(
-        JSON.stringify({ ok: true, alreadyRegistered: true, pagoid: pagoExistente.pagoid }),
+        JSON.stringify({ ok: true, alreadyRegistered: true, pagoid: pagosExistentes[0].pagoid }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
@@ -177,6 +179,13 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (pagoError) {
+      // quentli-webhook recorded the same invoice a moment earlier.
+      if (pagoError.code === '23505') {
+        return new Response(
+          JSON.stringify({ ok: true, alreadyRegistered: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
+      }
       throw new Error(`Error al insertar pago: ${pagoError.message}`)
     }
 

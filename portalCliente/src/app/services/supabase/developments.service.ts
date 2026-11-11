@@ -43,7 +43,8 @@ export const supabaseDevelopmentsService: IDevelopmentsService = {
       .map((row) => ({
       id: String(row.id),
       name: row.name,
-      location: row.location || 'Ubicación pendiente',
+      // The view fills a missing location with this text; the card hides it.
+      location: row.location && row.location !== 'Ubicación pendiente' ? row.location : '',
       availableLots: row.available_lots ?? 0,
       imageUrl: row.image_url || FALLBACK_DEVELOPMENT_IMAGES[row.id] || '',
       mapsUrl: (row.google_maps_url && row.google_maps_url !== '#') ? row.google_maps_url : '',

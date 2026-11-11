@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { supabase } from '../../services/supabase/client';
+import { ConsentimientoPrivacidad } from '../../components/shared/ConsentimientoPrivacidad';
+import { privacyConsent } from '../../config/privacidad';
 
 export function SetPassword() {
   const navigate = useNavigate();
@@ -10,6 +12,8 @@ export function SetPassword() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aceptaAviso, setAceptaAviso] = useState(false);
+  const [rechazaSecundarias, setRechazaSecundarias] = useState(false);
   const passwordRules = [
     { label: 'Al menos 8 caracteres', test: password.length >= 8 },
     { label: 'Una letra mayúscula', test: /[A-ZÁÉÍÓÚÜÑ]/.test(password) },
@@ -53,10 +57,18 @@ export function SetPassword() {
       setError('Las contraseñas no coinciden.');
       return;
     }
+    if (!aceptaAviso) {
+      setError('Para continuar necesitas aceptar el Aviso de Privacidad.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      const { error: updateError } = await supabase.auth.updateUser({ password });
+      // Invited clients never see the sign-up form, so they accept the notice here.
+      const { error: updateError } = await supabase.auth.updateUser({
+        password,
+        data: privacyConsent(rechazaSecundarias),
+      });
       if (updateError) throw updateError;
       navigate('/home', { replace: true });
     } catch (err: any) {
@@ -82,12 +94,19 @@ export function SetPassword() {
             Enlace inválido o expirado
           </h2>
           <p className="text-gray-500 text-sm mb-6">
-            El enlace de invitación ha expirado o ya fue utilizado.
-            Solicita una nueva invitación a tu asesor.
+            El enlace ya caducó o ya fue utilizado. Pide uno nuevo con tu correo
+            y te llegará en unos minutos para crear tu contraseña.
           </p>
+          {/* Works for invited clients too: their account exists, only the password is missing. */}
+          <button
+            onClick={() => navigate('/forgot-password')}
+            className="w-full py-2 px-4 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800"
+          >
+            Enviarme un enlace nuevo
+          </button>
           <button
             onClick={() => navigate('/login')}
-            className="text-teal-600 hover:underline text-sm font-medium"
+            className="mt-4 text-teal-600 hover:underline text-sm font-medium"
           >
             Ir al inicio de sesión
           </button>
@@ -150,6 +169,13 @@ export function SetPassword() {
             )}
           </div>
 
+          <ConsentimientoPrivacidad
+            aceptaAviso={aceptaAviso}
+            onAceptaAviso={setAceptaAviso}
+            rechazaSecundarias={rechazaSecundarias}
+            onRechazaSecundarias={setRechazaSecundarias}
+          />
+
           {error && (
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
               {error}
@@ -158,7 +184,7 @@ export function SetPassword() {
 
           <button
             type="submit"
-            disabled={isSubmitting || !isPasswordStrong || password !== confirmPassword}
+            disabled={isSubmitting || !isPasswordStrong || password !== confirmPassword || !aceptaAviso}
             className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
           >
             {isSubmitting ? 'Guardando...' : 'Guardar contraseña y entrar'}

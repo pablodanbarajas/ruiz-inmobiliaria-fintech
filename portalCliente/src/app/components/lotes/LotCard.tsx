@@ -198,10 +198,12 @@ export function LotCard({ lote }: LotCardProps) {
             </div>
 
             <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3">
-              <div className="flex items-center gap-1 text-gray-500">
-                <MapPin className="w-3.5 h-3.5" />
-                <span className="text-xs">{lote.location}</span>
-              </div>
+              {lote.location && (
+                <div className="flex items-center gap-1 text-gray-500">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span className="text-xs">{lote.location}</span>
+                </div>
+              )}
               <div className="flex items-center gap-1 text-gray-500">
                 <Ruler className="w-3.5 h-3.5" />
                 <span className="text-xs">{lote.surface}</span>

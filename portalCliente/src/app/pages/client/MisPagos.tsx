@@ -65,6 +65,9 @@ import type { Payment, PaymentStatus, PaymentSummary, LoteSummary } from '../../
 import type { ClientLot } from '../../types/lot.types';
 import { SummaryCard } from '../../components/shared/SummaryCard';
 import { supabase } from '../../services/supabase/client';
+import { openComprobante } from '../../utils/comprobante';
+import { whatsappHref } from '../../config/contacto';
+import { formatPersonName } from '../../utils/text';
 
 async function createPaymentLink(corridafinancieraid: string): Promise<{ url: string; sessionId: string }> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -104,6 +107,31 @@ async function verifyPayment(corridafinancieraid: string, sessionId: string): Pr
       apikey: anonKey,
     },
     body: JSON.stringify({ corridafinancieraid: Number(corridafinancieraid), sessionId }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? 'Error al verificar pago');
+  return data;
+}
+
+type InitialPaymentFlow = 'apartado' | 'enganche';
+
+/** Checks with Quentli whether the reservation or down payment was paid, and records it. */
+async function verifyInitialPayment(ventaid: string, flow: InitialPaymentFlow): Promise<{ ok: boolean }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sin sesión activa');
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+  const res = await fetch(`${supabaseUrl}/functions/v1/verify-${flow}-payment`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: anonKey,
+    },
+    body: JSON.stringify({ ventaid: Number(ventaid) }),
   });
 
   const data = await res.json();
@@ -180,7 +208,7 @@ function PaymentRow({
   const config = statusConfig[pago.status];
   const Icon = config.icon;
   const bd = pago.breakdown;
-  const hasExtras = bd && (bd.cargoExtra > 0 || bd.recargo > 0);
+  const hasExtras = bd && (bd.cargoExtra > 0 || bd.recargo > 0 || (bd.servicios ?? 0) > 0);
   const isParcial = bd && (bd.pagadoParcial ?? 0) > 0;
 
   return (
@@ -202,31 +230,36 @@ function PaymentRow({
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm">
         <span className="font-semibold text-gray-800">
-          ${pago.amount.toLocaleString('es-MX')}
+          {fmt(pago.amount)}
         </span>
         {isParcial && bd && (
           <div className="mt-1 space-y-0.5">
             <div className="text-xs text-amber-600 font-medium">
-              Abonado: ${bd.pagadoParcial!.toLocaleString('es-MX')}
+              Abonado: {fmt(bd.pagadoParcial!)}
             </div>
             <div className="text-xs text-red-600 font-medium">
-              Pendiente: ${pago.amount.toLocaleString('es-MX')}
+              Pendiente: {fmt(pago.amount)}
             </div>
           </div>
         )}
         {!isParcial && hasExtras && bd && (
           <div className="mt-1 space-y-0.5">
             <div className="text-xs text-gray-400">
-              Mensualidad: ${bd.base.toLocaleString('es-MX')}
+              Mensualidad: {fmt(bd.base)}
             </div>
             {bd.cargoExtra > 0 && (
               <div className="text-xs text-purple-600 font-medium">
-                + Cargos extra: ${bd.cargoExtra.toLocaleString('es-MX')}
+                + Cargos extra: {fmt(bd.cargoExtra)}
               </div>
             )}
             {bd.recargo > 0 && (
               <div className="text-xs text-red-500 font-medium">
-                + Recargo por mora: ${bd.recargo.toLocaleString('es-MX')}
+                + Recargo por mora: {fmt(bd.recargo)}
+              </div>
+            )}
+            {(bd.servicios ?? 0) > 0 && (
+              <div className="text-xs text-teal-700 font-medium">
+                + Servicios / extra: {fmt(bd.servicios ?? 0)}
               </div>
             )}
           </div>
@@ -255,7 +288,7 @@ function PaymentCard({
   const config = statusConfig[pago.status];
   const Icon = config.icon;
   const bd = pago.breakdown;
-  const hasExtras = bd && (bd.cargoExtra > 0 || bd.recargo > 0);
+  const hasExtras = bd && (bd.cargoExtra > 0 || bd.recargo > 0 || (bd.servicios ?? 0) > 0);
   const isParcial = bd && (bd.pagadoParcial ?? 0) > 0;
 
   return (
@@ -289,30 +322,35 @@ function PaymentCard({
 
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Monto</p>
-        <p className="text-lg font-bold text-gray-900 mt-1">${pago.amount.toLocaleString('es-MX')}</p>
+        <p className="text-lg font-bold text-gray-900 mt-1">{fmt(pago.amount)}</p>
         {isParcial && bd && (
           <div className="mt-2 space-y-0.5">
             <div className="text-xs text-amber-600 font-medium">
-              Abonado: ${bd.pagadoParcial!.toLocaleString('es-MX')}
+              Abonado: {fmt(bd.pagadoParcial!)}
             </div>
             <div className="text-xs text-red-600 font-medium">
-              Pendiente: ${pago.amount.toLocaleString('es-MX')}
+              Pendiente: {fmt(pago.amount)}
             </div>
           </div>
         )}
         {!isParcial && hasExtras && bd && (
           <div className="mt-2 space-y-0.5">
             <div className="text-xs text-gray-400">
-              Mensualidad: ${bd.base.toLocaleString('es-MX')}
+              Mensualidad: {fmt(bd.base)}
             </div>
             {bd.cargoExtra > 0 && (
               <div className="text-xs text-purple-600 font-medium">
-                + Cargos extra: ${bd.cargoExtra.toLocaleString('es-MX')}
+                + Cargos extra: {fmt(bd.cargoExtra)}
               </div>
             )}
             {bd.recargo > 0 && (
               <div className="text-xs text-red-500 font-medium">
-                + Recargo por mora: ${bd.recargo.toLocaleString('es-MX')}
+                + Recargo por mora: {fmt(bd.recargo)}
+              </div>
+            )}
+            {(bd.servicios ?? 0) > 0 && (
+              <div className="text-xs text-teal-700 font-medium">
+                + Servicios / extra: {fmt(bd.servicios ?? 0)}
               </div>
             )}
           </div>
@@ -343,15 +381,55 @@ function LoteSection({
   lote,
   onPagar,
   payingId,
+  clienteNombre,
 }: {
   lote: LoteSummary;
   onPagar: (pago: Payment) => void;
   payingId: string | null;
+  clienteNombre: string;
 }) {
   const [pendingPage, setPendingPage] = useState(1);
   const [completedPage, setCompletedPage] = useState(1);
   const pendingSlice = lote.pendingPayments.slice((pendingPage - 1) * PAGE_SIZE, pendingPage * PAGE_SIZE);
   const completedSlice = lote.completedPayments.slice((completedPage - 1) * PAGE_SIZE, completedPage * PAGE_SIZE);
+
+  // What's due now gets the main button: overdue, about to be due, and the next
+  // one. Later installments can still be paid early, with a quieter button.
+  const nextPendingId = lote.pendingPayments[0]?.id;
+  const isDueNow = (pago: Payment) =>
+    pago.status === 'atrasado' || pago.status === 'por_vencer' || pago.id === nextPendingId;
+
+  const payButton = (pago: Payment, fullWidth: boolean) => {
+    const busy = payingId === pago.id;
+    const base = `${fullWidth ? 'w-full py-2.5' : 'py-2'} px-4 rounded-lg transition-colors text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed`;
+    return isDueNow(pago) ? (
+      <button onClick={() => onPagar(pago)} disabled={busy} className={`${base} bg-teal-700 text-white hover:bg-teal-800`}>
+        {busy ? 'Generando...' : 'Pagar ahora'}
+      </button>
+    ) : (
+      <button onClick={() => onPagar(pago)} disabled={busy} className={`${base} border border-teal-700 text-teal-700 hover:bg-teal-50`}>
+        {busy ? 'Generando...' : 'Adelantar pago'}
+      </button>
+    );
+  };
+
+  const receiptButton = (pago: Payment) => (
+    <button
+      onClick={() => {
+        const opened = openComprobante({
+          pago,
+          clienteNombre,
+          lotKey: lote.lotKey,
+          developmentName: lote.developmentName,
+        });
+        if (!opened) alert('No se pudo abrir el comprobante. Permite las ventanas emergentes para continuar.');
+      }}
+      className="inline-flex items-center gap-1.5 text-teal-700 hover:text-teal-800 text-sm font-medium"
+    >
+      <FileText className="w-4 h-4" />
+      Comprobante
+    </button>
+  );
 
   return (
     <div className="mb-10">
@@ -399,15 +477,7 @@ function LoteSection({
                   <PaymentRow
                     key={pago.id}
                     pago={pago}
-                    action={
-                      <button
-                        onClick={() => onPagar(pago)}
-                        disabled={payingId === pago.id}
-                        className="bg-teal-700 text-white px-4 py-2 rounded-lg hover:bg-teal-800 transition-colors text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {payingId === pago.id ? 'Generando...' : 'Pagar ahora'}
-                      </button>
-                    }
+                    action={payButton(pago, false)}
                   />
                 ))}
               </tbody>
@@ -419,15 +489,7 @@ function LoteSection({
                 key={pago.id}
                 pago={pago}
                 dateLabel="Fecha límite"
-                action={
-                  <button
-                    onClick={() => onPagar(pago)}
-                    disabled={payingId === pago.id}
-                    className="w-full bg-teal-700 text-white px-4 py-2.5 rounded-lg hover:bg-teal-800 transition-colors text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {payingId === pago.id ? 'Generando...' : 'Pagar ahora'}
-                  </button>
-                }
+                action={payButton(pago, true)}
               />
             ))}
           </div>
@@ -451,12 +513,7 @@ function LoteSection({
                   <PaymentRow
                     key={pago.id}
                     pago={pago}
-                    action={
-                      <span className="flex items-center gap-1.5 text-gray-400 text-xs">
-                        <FileText className="w-3.5 h-3.5" />
-                        Recibo enviado por email
-                      </span>
-                    }
+                    action={receiptButton(pago)}
                   />
                 ))}
               </tbody>
@@ -468,12 +525,7 @@ function LoteSection({
                 key={pago.id}
                 pago={pago}
                 dateLabel="Fecha de pago"
-                action={
-                  <span className="flex items-center gap-1.5 text-gray-400 text-xs">
-                    <FileText className="w-3.5 h-3.5" />
-                    Recibo enviado por email
-                  </span>
-                }
+                action={receiptButton(pago)}
               />
             ))}
           </div>
@@ -485,7 +537,7 @@ function LoteSection({
 }
 
 export function MisPagos() {
-  const { paymentSummary: summary, paymentsLoading: isLoading, refreshPayments, lots } = useData();
+  const { paymentSummary: summary, paymentsLoading: isLoading, refreshPayments, refreshLots, lots } = useData();
   const [payingId, setPayingId] = useState<string | null>(null);
   const [payingInitialVentaId, setPayingInitialVentaId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
@@ -501,6 +553,7 @@ export function MisPagos() {
         try {
           const result = await verifyPayment(corridaId, sessionId);
           if (result.ok) {
+            sessionStorage.removeItem(`quentli_session_${corridaId}`);
             refreshPayments();
             refreshTimeouts.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
           }
@@ -511,9 +564,81 @@ export function MisPagos() {
     );
   };
 
+  // Paying in the Quentli tab usually takes longer than the first checks above,
+  // so every return to this tab checks again each payment the client opened
+  // here. Quentli's webhook normally records it first; this covers a missed one.
+  const verifyingOpenPayments = useRef(false);
+  const verifyOpenPayments = async () => {
+    // focus and visibilitychange fire together when the client comes back.
+    if (verifyingOpenPayments.current) return;
+    verifyingOpenPayments.current = true;
+    const keys = Object.keys(sessionStorage);
+    const pending = keys
+      .filter((key) => key.startsWith('quentli_session_'))
+      .map((key) => ({ key, corridaId: key.slice('quentli_session_'.length), sessionId: sessionStorage.getItem(key) ?? '' }))
+      .filter(({ sessionId }) => sessionId);
+    const pendingInitial = keys
+      .map((key) => {
+        const match = key.match(/^(apartado|enganche)_session_(\d+)$/);
+        return match ? { key, flow: match[1] as InitialPaymentFlow, ventaid: match[2] } : null;
+      })
+      .filter((item): item is { key: string; flow: InitialPaymentFlow; ventaid: string } => item !== null);
+
+    let initialRecorded = false;
+    await Promise.all([
+      ...pending.map(async ({ key, corridaId, sessionId }) => {
+        try {
+          const result = await verifyPayment(corridaId, sessionId);
+          if (result.ok) sessionStorage.removeItem(key);
+        } catch {
+          // Keep it for the next return to the tab.
+        }
+      }),
+      ...pendingInitial.map(async ({ key, flow, ventaid }) => {
+        try {
+          const result = await verifyInitialPayment(ventaid, flow);
+          if (result.ok) {
+            sessionStorage.removeItem(key);
+            initialRecorded = true;
+          }
+        } catch {
+          // Keep it for the next return to the tab.
+        }
+      }),
+    ]).finally(() => {
+      verifyingOpenPayments.current = false;
+    });
+    // A paid reservation or down payment changes the lot's stage, not just its payments.
+    if (initialRecorded) refreshLots();
+  };
+
+  const scheduleInitialPaymentCheck = (ventaid: string, flow: InitialPaymentFlow) => {
+    refreshTimeouts.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    refreshTimeouts.current = [5000, 15000, 30000, 60000].map((delay) =>
+      window.setTimeout(async () => {
+        try {
+          const result = await verifyInitialPayment(ventaid, flow);
+          if (result.ok) {
+            sessionStorage.removeItem(`${flow}_session_${ventaid}`);
+            refreshTimeouts.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+            refreshLots();
+            refreshPayments();
+          }
+        } catch {
+          // The next check or the return to this tab tries again.
+        }
+      }, delay)
+    );
+  };
+
+  // The listeners below are added once; the ref always points at this render's version.
+  const verifyOpenPaymentsRef = useRef(verifyOpenPayments);
+  verifyOpenPaymentsRef.current = verifyOpenPayments;
+
   useEffect(() => {
     const refreshWhenReturning = () => {
-      if (document.visibilityState === 'visible') refreshPayments();
+      if (document.visibilityState !== 'visible') return;
+      verifyOpenPaymentsRef.current().finally(() => refreshPayments());
     };
 
     window.addEventListener('focus', refreshWhenReturning);
@@ -530,8 +655,8 @@ export function MisPagos() {
     const corridaId = searchParams.get('corridafinancieraid');
     if (!corridaId) return;
 
-    const sessionId = sessionStorage.getItem(`quentli_session_${corridaId}`) ?? '';
-    sessionStorage.removeItem(`quentli_session_${corridaId}`);
+    const sessionKey = `quentli_session_${corridaId}`;
+    const sessionId = sessionStorage.getItem(sessionKey) ?? '';
 
     // Limpiar URL sin recargar
     navigate('/mis-pagos', { replace: true });
@@ -542,6 +667,8 @@ export function MisPagos() {
     verifyPayment(corridaId, sessionId)
       .then((result) => {
         if (result.ok) {
+          // Forget it only once recorded; otherwise returning to the tab retries.
+          sessionStorage.removeItem(sessionKey);
           setVerifyState('success');
           refreshPayments();
         } else {
@@ -597,7 +724,7 @@ export function MisPagos() {
         }
       }
       paymentWindow.location.href = url;
-      schedulePaymentRefresh();
+      scheduleInitialPaymentCheck(lote.ventaid, isEnganche ? 'enganche' : 'apartado');
     } catch (err: any) {
       paymentWindow.close();
       alert(`Error al generar link de pago: ${err.message}`);
@@ -679,7 +806,7 @@ export function MisPagos() {
                   <p className="text-xs text-gray-500">{lote.developmentName}</p>
                 </div>
                 <div className="text-sm font-semibold text-gray-900">
-                  {lote.nextPayment ? `$${lote.nextPayment.amount.toLocaleString('es-MX')}` : 'Monto pendiente'}
+                  {lote.nextPayment ? fmt(lote.nextPayment.amount) : 'Monto pendiente'}
                 </div>
                 <button
                   onClick={() => handlePagarInicial(lote)}
@@ -715,7 +842,7 @@ export function MisPagos() {
                   </p>
                 </div>
                 <span className="text-base font-bold text-gray-900">
-                  {next ? `$${next.amount.toLocaleString('es-MX')}` : '—'}
+                  {next ? fmt(next.amount) : '—'}
                 </span>
               </div>
             ))}
@@ -730,6 +857,23 @@ export function MisPagos() {
           color="teal"
         />
       </div>
+
+      {lotes.length === 0 && pagosInicialesPendientes.length === 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center mb-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Aún no vemos pagos ligados a tu cuenta</h3>
+          <p className="text-sm text-gray-600 mb-5">
+            Si ya compraste con nosotros, escríbenos y ligamos tu cuenta para que veas tu calendario de pagos.
+          </p>
+          <a
+            href={whatsappHref('Hola, ya soy cliente y quiero ligar mi cuenta del portal.')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 text-sm font-medium"
+          >
+            Escribir por WhatsApp
+          </a>
+        </div>
+      )}
 
       {/* Pestañas por lote */}
       <div className="border-b border-gray-200 mb-6 overflow-x-auto">
@@ -758,6 +902,7 @@ export function MisPagos() {
           lote={loteActivo}
           onPagar={handlePagar}
           payingId={payingId}
+          clienteNombre={formatPersonName(summary.clienteNombre)}
         />
       )}
     </div>

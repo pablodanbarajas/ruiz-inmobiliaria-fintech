@@ -106,7 +106,8 @@ export const supabaseLotsService: ILotsService = {
       developmentId: String(row.development_id),
       key: row.lot_key,
       developmentName: row.development_name,
-      location: 'Ubicación pendiente',
+      // No development has a location recorded yet; the card hides an empty one.
+      location: '',
       surface: row.superficie ? `${row.superficie} m²` : 'N/D',
       price: toNumber(row.preciolote, 0),
       imageUrl: DEVELOPMENT_IMAGES[row.development_id] ?? '',

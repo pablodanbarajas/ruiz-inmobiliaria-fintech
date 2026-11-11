@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, Calendar, CheckCircle, CheckCircle2, AlertCircle } from 'lucide-react';
+import { MapPin, Calendar, CheckCircle, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useSearchParams, useNavigate } from 'react-router';
 import type { ClientLot, LotStatus } from '../../types/lot.types';
 import { LotCard } from '../../components/lotes/LotCard';
 import { SummaryCard } from '../../components/shared/SummaryCard';
 import { supabase } from '../../services/supabase/client';
+import { whatsappHref } from '../../config/contacto';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -20,7 +21,7 @@ function parseDate(str: string): Date {
 export function MisLotes() {
   const { lots, lotsLoading: isLoading, refreshLots } = useData();
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('todos');
-  const [verifyState, setVerifyState] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
+  const [verifyState, setVerifyState] = useState<'idle' | 'verifying' | 'success' | 'pending' | 'error'>('idle');
   const [verifyFlow, setVerifyFlow] = useState<VerifyFlow>(null);
   const autoVerifiedRef = useRef<Set<string>>(new Set());
   const [searchParams] = useSearchParams();
@@ -54,6 +55,9 @@ export function MisLotes() {
           if (data.ok) {
             setVerifyState('success');
             refreshLots();
+          } else if (data.sessionStatus) {
+            // Quentli hasn't finished the payment yet: not an error.
+            setVerifyState('pending');
           } else {
             setVerifyState('error');
           }
@@ -90,6 +94,9 @@ export function MisLotes() {
           if (data.ok) {
             setVerifyState('success');
             refreshLots();
+          } else if (data.sessionStatus) {
+            // Quentli hasn't finished the payment yet: not an error.
+            setVerifyState('pending');
           } else {
             setVerifyState('error');
           }
@@ -232,6 +239,15 @@ export function MisLotes() {
           }
         </div>
       )}
+      {verifyState === 'pending' && (
+        <div className="mb-4 flex items-center gap-3 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm">
+          <Clock className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          {verifyFlow === 'apartado'
+            ? 'Aún no vemos tu pago de apartado. Si ya pagaste, en unos minutos se actualizará solo.'
+            : 'Aún no vemos tu pago de enganche. Si ya pagaste, en unos minutos se actualizará solo.'
+          }
+        </div>
+      )}
       {verifyState === 'error' && (
         <div className="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
           <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
@@ -302,6 +318,25 @@ export function MisLotes() {
       <div className="space-y-3">
         {filteredLots.length > 0 ? (
           filteredLots.map((lote) => <LotCard key={lote.id} lote={lote} />)
+        ) : lots.length === 0 ? (
+          // No purchases linked to this account at all, not just an empty filter.
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 md:p-12 text-center">
+            <MapPin className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              Aún no vemos lotes ligados a tu cuenta
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Si ya compraste con nosotros, escríbenos y ligamos tu cuenta para que veas tus lotes y pagos.
+            </p>
+            <a
+              href={whatsappHref('Hola, ya soy cliente y quiero ligar mi cuenta del portal.')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 text-sm font-medium"
+            >
+              Escribir por WhatsApp
+            </a>
+          </div>
         ) : (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 md:p-12 text-center">
             <MapPin className="w-16 h-16 text-gray-300 mx-auto mb-4" />
