@@ -13,6 +13,36 @@ function calcularRecargo(fechaVencimiento: string, diasTolerancia: number = 0): 
   return semanas * 150; // $150 inmediato al 1er día, +$150 cada 7 días adicionales
 }
 
+function getPagoAplicado(pago: {
+  montopagado?: number | null;
+  servicios_extra?: number | null;
+  saldo_favor_aplicado?: number | null;
+  estatus?: string | null;
+}): number {
+  if (pago.estatus === 'C') return 0;
+
+  const recibido = Math.max(
+    0,
+    Number(pago.montopagado ?? 0)
+  );
+
+  const saldoHistorico = Math.max(
+    0,
+    -Number(pago.servicios_extra ?? 0)
+  );
+
+  const saldoNuevo = Math.max(
+    0,
+    Number(pago.saldo_favor_aplicado ?? 0)
+  );
+
+  const total = recibido + saldoHistorico + saldoNuevo;
+
+  return Math.round(
+    (total + Number.EPSILON) * 100
+  ) / 100;
+}
+
 export const supabasePaymentsService: IPaymentsService = {
   async getClientPayments(clientId: string): Promise<PaymentSummary> {
     // 1. Obtener todas las ventas del cliente (activas)
@@ -42,7 +72,7 @@ export const supabasePaymentsService: IPaymentsService = {
     const corridaIds = corridas.map((c) => c.corridafinancieraid);
     const { data: pagosData, error: pagosError } = await supabase
       .from('pagos')
-      .select('pagoid, corridafinancieraid, montopagado, servicios_extra, estatus, fechapago, recargo')
+      .select('pagoid, corridafinancieraid, montopagado, servicios_extra, saldo_favor_aplicado, estatus, fechapago, recargo')
       .in('corridafinancieraid', corridaIds)
       .neq('estatus', 'C');
 
@@ -91,7 +121,7 @@ export const supabasePaymentsService: IPaymentsService = {
       const ventaCorridaIds = new Set(ventaCorridas.map((c) => c.corridafinancieraid));
       const ventaPagos = pagos.filter((p) => ventaCorridaIds.has(p.corridafinancieraid));
       const totalPagado = ventaPagos.reduce(
-        (sum, p) => sum + ((p.montopagado || 0) + (p.servicios_extra || 0)),
+        (sum, p) => sum + getPagoAplicado(p),
         0
       );
 
@@ -102,7 +132,7 @@ export const supabasePaymentsService: IPaymentsService = {
       const pagosPorCorrida = new Map<number, { total: number; lastDate: string | null; maxRecargo: number }>();
       for (const p of ventaPagos) {
         const cur = pagosPorCorrida.get(p.corridafinancieraid) ?? { total: 0, lastDate: null, maxRecargo: 0 };
-        cur.total += (p.montopagado || 0) + (p.servicios_extra || 0);
+        cur.total += getPagoAplicado(p);
         if (p.fechapago && (!cur.lastDate || p.fechapago > cur.lastDate)) cur.lastDate = p.fechapago;
         cur.maxRecargo = Math.max(cur.maxRecargo, p.recargo ?? 0);
         pagosPorCorrida.set(p.corridafinancieraid, cur);

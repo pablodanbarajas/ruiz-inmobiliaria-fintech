@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
+import { getPagoAplicado } from '@/utils/pagos'
 import type { Pago, CorridaFinanciera, Cliente, Lote, CargoExtra, CuentaBancaria } from '@/types/database'
 import {
   formatDate,
@@ -102,12 +103,6 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
   const autoFilledMonto = useRef(false)
 
   const needsVentaPicker = !isEditMode && !initialCorridaId
-
-  const getPagoAplicado = (p: Pago): number => {
-    const monto = p.montopagado || 0
-    const extra = p.servicios_extra || 0
-    return monto + extra
-  }
 
   // ── Total cargos extra aplicables a la corrida seleccionada ───
   const totalCargosExtraCorrida = useMemo(() => {
@@ -485,8 +480,26 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
     const newErrors: Record<string, string> = {}
     if (!corridaId) newErrors.corridafinancieraid = 'Selecciona una corrida financiera'
     if (!fechapago) newErrors.fechapago = 'La fecha es requerida'
-    const monto = parseFloat(montopagado)
-    if (!montopagado || isNaN(monto) || monto <= 0) newErrors.montopagado = 'Ingresa un monto válido mayor a 0'
+    const monto = Number(montopagado)
+    const saldoAplicado = Number(saldoFavorAplicado)
+
+    if (
+      !Number.isFinite(monto) ||
+      monto < 0 ||
+      (monto === 0 && saldoAplicado <= 0)
+    ) {
+      newErrors.montopagado =
+        'Ingresa un monto mayor a cero o aplica saldo a favor.'
+    }
+
+    if (
+      !Number.isFinite(saldoAplicado) ||
+      saldoAplicado < 0
+    ) {
+      newErrors.saldo_favor_aplicado =
+        'El saldo a favor aplicado no es válido.'
+    }
+
     const extra = parseFloat(serviciosExtra)
     if (serviciosExtra && isNaN(extra)) newErrors.servicios_extra = 'Servicios/Extra debe ser un número válido'
     if (!isNaN(extra) && extra < 0 && Math.abs(extra) > saldoFavorDisponible) {
@@ -502,68 +515,67 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
   }
 
   // ── Submit ─────────────────────────────────────────────────────
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
 
-  if (!validate()) return
+    if (!validate()) return
 
-  await onSubmit({
-    corridafinancieraid: corridaId,
-    fechapago,
-    montopagado: parseFloat(montopagado),
-    servicios_extra: parseFloat(serviciosExtra) || 0,
-    saldo_favor_aplicado: saldoFavorAplicado,
-    formapago,
-    cuenta_bancaria_id: cuentaBancariaId
-      ? Number(cuentaBancariaId)
-      : null,
-    estatus,
-    referencia: referencia.trim() || null,
-    comentario: comentario.trim() || null,
-    recargo,
-    cobrador: cobrador.trim() || currentUserName || null,
-  })
-}
-  
-const handleAplicarSaldoFavor = () => {
-  if (!selectedCorrida || saldoFavorDisponible <= 0) return
-
-  const totalObjetivo = Math.max(
-    0,
-    Number(selectedCorrida.mensualidad || 0) +
-      totalCargosExtraCorrida +
-      recargo -
-      Number(selectedCorrida.totalPagado || 0)
-  )
-
-  const montoActual = Number(montopagado) || 0
-
-  const aplicado = Math.round(
-    Math.min(
-      saldoFavorDisponible,
-      autoFilledMonto.current
-        ? totalObjetivo
-        : Math.max(0, totalObjetivo - montoActual)
-    ) * 100
-  ) / 100
-
-  setSaldoFavorAplicado(aplicado)
-  setServiciosExtra('0')
-
-  // Si el monto fue autocompletado, descontar el crédito.
-  // Si el usuario escribió un monto, conservarlo.
-  if (autoFilledMonto.current) {
-    setMontopagado(
-      Math.max(0, totalObjetivo - aplicado).toFixed(2)
-    )
+    await onSubmit({
+      corridafinancieraid: corridaId,
+      fechapago,
+      montopagado: parseFloat(montopagado),
+      servicios_extra: parseFloat(serviciosExtra) || 0,
+      saldo_favor_aplicado: saldoFavorAplicado,
+      formapago,
+      cuenta_bancaria_id: cuentaBancariaId
+        ? Number(cuentaBancariaId)
+        : null,
+      estatus,
+      referencia: referencia.trim() || null,
+      comentario: comentario.trim() || null,
+      recargo,
+      cobrador: cobrador.trim() || currentUserName || null,
+    })
   }
+  const handleAplicarSaldoFavor = () => {
+    if (!selectedCorrida || saldoFavorDisponible <= 0) return
 
-  autoFilledMonto.current = false
-  setErrors(prev => ({
-    ...prev,
-    servicios_extra: ''
-  }))
-}
+    const totalObjetivo = Math.max(
+      0,
+      Number(selectedCorrida.mensualidad || 0) +
+        totalCargosExtraCorrida +
+        recargo -
+        Number(selectedCorrida.totalPagado || 0)
+    )
+
+    const montoActual = Number(montopagado) || 0
+
+    const aplicado = Math.round(
+      Math.min(
+        saldoFavorDisponible,
+        autoFilledMonto.current
+          ? totalObjetivo
+          : Math.max(0, totalObjetivo - montoActual)
+      ) * 100
+    ) / 100
+
+    setSaldoFavorAplicado(aplicado)
+    setServiciosExtra('0')
+
+    // Si el monto fue autocompletado, descontar el crédito.
+    // Si el usuario escribió un monto, conservarlo.
+    if (autoFilledMonto.current) {
+      setMontopagado(
+        Math.max(0, totalObjetivo - aplicado).toFixed(2)
+      )
+    }
+
+    autoFilledMonto.current = false
+    setErrors(prev => ({
+      ...prev,
+      servicios_extra: ''
+    }))
+  }
 
   return (
     <form onSubmit={handleSubmit} className="admin-form space-y-6">
@@ -786,7 +798,7 @@ const handleAplicarSaldoFavor = () => {
             </label>
             <Input
               type="number"
-              min="0.01"
+              min="0"
               step="0.01"
               value={montopagado}
               onChange={(e) => {

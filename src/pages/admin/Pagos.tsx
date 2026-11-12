@@ -967,8 +967,42 @@ export const Pagos = () => {
                   },
                   {
                     key: 'montopagado',
-                    label: 'Monto',
-                    render: (row: PagoWithDetails) => formatCurrency(row.montopagado),
+                    label: 'Total cubierto',
+                    render: (row: PagoWithDetails) => {
+                      const recibido = Number(row.montopagado ?? 0)
+                      const extra = Number(row.servicios_extra ?? 0)
+                      const saldoAplicado =
+                        Math.max(0, -extra) +
+                        Math.max(0, Number((row as any).saldo_favor_aplicado ?? 0))
+
+                      const abonoGenerado = Math.max(0, extra)
+                      const totalCubierto = getPagoAplicado(row)
+                      const totalRecibido = recibido + abonoGenerado
+
+                      return (
+                        <div className="flex flex-col gap-1">
+                          <span className="font-bold text-gray-900">
+                            {formatCurrency(totalCubierto)}
+                          </span>
+
+                          <span className="text-xs text-gray-500">
+                            Recibido: {formatCurrency(totalRecibido)}
+                          </span>
+
+                          {saldoAplicado > 0 && (
+                            <span className="text-xs text-blue-600">
+                              Saldo aplicado: {formatCurrency(saldoAplicado)}
+                            </span>
+                          )}
+
+                          {abonoGenerado > 0 && (
+                            <span className="text-xs text-green-700">
+                              Abono a saldo a favor: {formatCurrency(abonoGenerado)}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    },
                   },
                   {
                     key: 'estatus',

@@ -42,31 +42,40 @@ export const getSaldoFavorAplicado = (
 }
 
 /**
- * Calcula el importe reconocido para cubrir una deuda.
+ * Calcula el importe aplicado a una obligación.
  *
- * IMPORTANTE:
- * Por ahora supone que los abonos positivos de
- * servicios_extra ya están incluidos en montopagado.
- * Esta regla debe verificarse con datos históricos.
+ * Incluye:
+ * - Dinero destinado a cubrir la obligación.
+ * - Saldo a favor utilizado en registros históricos.
+ * - Saldo a favor utilizado mediante el campo nuevo.
+ *
+ * No incluye abonos positivos destinados a generar
+ * saldo a favor para pagos futuros.
  */
-
 export const getPagoAplicado = (
   pago: PagoFinanciero
 ): number => {
   if (pago.estatus === 'C') return 0
 
-  const recibido = Number(pago.montopagado ?? 0)
-  const extra = Number(pago.servicios_extra ?? 0)
-  const saldoAplicado = Number(pago.saldo_favor_aplicado ?? 0)
+  const recibido = Math.max(
+    0,
+    Number(pago.montopagado ?? 0)
+  )
+
+  const saldoHistorico = Math.max(
+    0,
+    -Number(pago.servicios_extra ?? 0)
+  )
+
+  const saldoNuevo = Math.max(
+    0,
+    Number(pago.saldo_favor_aplicado ?? 0)
+  )
 
   return redondear(
-    Math.max(0, recibido) +
-    Math.max(0, extra) +
-    Math.max(0, -extra) +
-    Math.max(0, saldoAplicado)
+    recibido + saldoHistorico + saldoNuevo
   )
 }
-
 /**
  * Calcula cuánto falta por liquidar.
  */

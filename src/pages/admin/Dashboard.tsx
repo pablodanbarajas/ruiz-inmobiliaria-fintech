@@ -9,6 +9,7 @@ import { getCached, setCached, invalidateCache, onFocusRefetch } from '@/lib/que
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { formatCurrency, formatDate, getVentaStatusLabel, getVentaStatusColor, calcularRecargo } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { getPagoAplicado } from '@/utils/pagos'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, ROLE_LABELS, type AdminPanelRole } from '@/config/roles'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -341,7 +342,7 @@ export const Dashboard = () => {
 
         let corridasQuery = supabase
           .from('corridafinanciera')
-          .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(estatus, clienteid, dias_tolerancia, cliente:cliente(nombre), lote:lote(manzana, nolote, desarrolloid)), pagos:pagos(pagoid, montopagado, servicios_extra, estatus, recargo)')
+          .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(estatus, clienteid, dias_tolerancia, cliente:cliente(nombre), lote:lote(manzana, nolote, desarrolloid)), pagos:pagos(pagoid, montopagado, servicios_extra, saldo_favor_aplicado, estatus, recargo)')
           .lt('fecha', today)
 
         if (demoVentaIds) corridasQuery = corridasQuery.in('ventaid', demoVentaIds)
@@ -390,8 +391,10 @@ export const Dashboard = () => {
 
           const venta = Array.isArray(c.venta) ? c.venta[0] : c.venta
           const pagosCorrida = ((c.pagos || []) as any[]).filter((p) => p.estatus !== 'C')
-          const pagado = pagosCorrida.reduce((sum, p) => sum + (p.montopagado || 0) + Math.max(0, p.servicios_extra || 0), 0)
-
+          const pagado = pagosCorrida.reduce(
+            (sum, p) => sum + getPagoAplicado(p),
+            0
+          )
           const diasTolVenta = venta?.dias_tolerancia ?? 0
           const maxStoredRecargo = pagosCorrida.reduce((max, p) => Math.max(max, Number(p.recargo ?? 0)), 0)
           const recargoReq = pagosCorrida.length > 0

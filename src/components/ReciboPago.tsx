@@ -50,14 +50,27 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
     Math.max(0, Number(data.saldo_favor_aplicado ?? 0)) +
     Math.max(0, -Number(data.servicios_extra ?? 0))
 
-  // Mantener el cálculo anterior para servicios positivos
-  // y sumar el crédito utilizado sin duplicar recargos
-  const totalPagado =
-    Number(data.montopagado ?? 0) +
-    Math.max(0, Number(data.servicios_extra ?? 0)) +
+  // Dinero nuevo recibido en esta operación
+  const dineroRecibido =
+    Math.max(0, Number(data.montopagado ?? 0)) +
+    Math.max(0, Number(data.servicios_extra ?? 0))
+
+  // Importe aplicado a las obligaciones del cliente
+  const totalCubierto =
+    Math.max(0, Number(data.montopagado ?? 0)) +
     saldoFavorAplicado
 
+  // Parte del pago destinada a mensualidad, sin recargos
+  const mensualidadCubierta = Math.max(
+    0,
+    totalCubierto - Number(data.recargo ?? 0)
+  )
 
+  // Abono adicional que genera saldo a favor
+  const abonoGenerado = Math.max(
+    0,
+    Number(data.servicios_extra ?? 0)
+  )
   const handlePrint = () => {
     const printContent = printRef.current?.innerHTML
     if (!printContent) return
@@ -436,32 +449,74 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
         </div>
 
         {/* Desglose de montos */}
-        <div style={{ background: '#f9f5ee', border: '1px solid #ddd', borderRadius: 6, padding: '10px 14px', marginBottom: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{
+          background: '#f9f5ee',
+          border: '1px solid #ddd',
+          borderRadius: 6,
+          padding: '10px 14px',
+          marginBottom: 10
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: 16
+          }}>
             <div>
               <div style={{ fontSize: 12, color: '#666' }}>
-                Mensualidad: <strong>{formatCurrency((data.montopagado ?? 0) - (data.recargo || 0))}</strong>
+                Mensualidad cubierta:{' '}
+                <strong>{formatCurrency(mensualidadCubierta)}</strong>
               </div>
-              {data.servicios_extra != null && data.servicios_extra > 0 && (
-                <div style={{ fontSize: 12, color: '#5b21b6', marginTop: 2 }}>
-                  + Servicios/Extra: <strong>{formatCurrency(data.servicios_extra)}</strong>
+
+              {Number(data.recargo ?? 0) > 0 && (
+                <div style={{ fontSize: 12, color: '#c05000', marginTop: 3 }}>
+                  + Recargo por atraso:{' '}
+                  <strong>{formatCurrency(data.recargo ?? 0)}</strong>
                 </div>
               )}
-              {saldoFavorAplicado > 0 && (
-                <div style={{ fontSize: 12, color: '#16a34a', marginTop: 2 }}>
-                  + Saldo a favor aplicado:{' '}
-                  <strong>{formatCurrency(saldoFavorAplicado)}</strong>
+
+              <div style={{
+                borderTop: '1px solid #ddd',
+                marginTop: 8,
+                paddingTop: 8,
+                fontSize: 12
+              }}>
+                <div>
+                  Pago recibido:{' '}
+                  <strong>{formatCurrency(dineroRecibido)}</strong>
                 </div>
-              )}
-              {data.recargo != null && data.recargo > 0 && (
-                <div style={{ fontSize: 12, color: '#c05000', marginTop: 2 }}>
-                  + Recargo por atraso: <strong>{formatCurrency(data.recargo)}</strong>
-                </div>
-              )}
+
+                {saldoFavorAplicado > 0 && (
+                  <div style={{ color: '#16a34a', marginTop: 3 }}>
+                    Saldo a favor aplicado:{' '}
+                    <strong>{formatCurrency(saldoFavorAplicado)}</strong>
+                  </div>
+                )}
+
+                {abonoGenerado > 0 && (
+                  <div style={{ color: '#5b21b6', marginTop: 3 }}>
+                    Abono a servicios/saldo a favor:{' '}
+                    <strong>{formatCurrency(abonoGenerado)}</strong>
+                  </div>
+                )}
+              </div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase' }}>Total Pagado</div>
-              <div style={{ fontSize: 26, fontWeight: 'bold', color: '#2d7a2d' }}>{formatCurrency(totalPagado)}</div>
+
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div style={{
+                fontSize: 11,
+                color: '#888',
+                textTransform: 'uppercase'
+              }}>
+                Total cubierto
+              </div>
+              <div style={{
+                fontSize: 26,
+                fontWeight: 'bold',
+                color: '#2d7a2d'
+              }}>
+                {formatCurrency(totalCubierto)}
+              </div>
             </div>
           </div>
         </div>
