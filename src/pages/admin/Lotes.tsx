@@ -69,6 +69,8 @@ export const Lotes = () => {
   }, [filters, prevFilters])
 
   useEffect(() => {
+    let ignore = false
+
     const fetchLotes = async () => {
       const ck = `lotes:${JSON.stringify(filters)}:${currentPage}`
       const cached = getCached<{ items: any[]; total: number }>(ck)
@@ -77,9 +79,7 @@ export const Lotes = () => {
         setLoading(true)
         let query = supabase
           .from('lote')
-          .select('*, desarrollo:desarrollo(*)') 
-          .order('manzana', { ascending: true })
-          .order('nolote', { ascending: true })
+          .select('*, desarrollo:desarrollo(*)', { count: 'exact' })
 
         if (DEMO_DESARROLLOIDS.length > 0) {
           if (filters.desarrolloId && DEMO_DESARROLLOIDS.includes(Number(filters.desarrolloId))) {
@@ -94,38 +94,42 @@ export const Lotes = () => {
           query = query.eq('estatus', filters.status)
         }
 
-        const { data, error } = await query
+        // A lot without a price counts as 0, so it can only match a maximum.
+        const minPrice = parseFloat(filters.minPrice)
+        const maxPrice = parseFloat(filters.maxPrice)
+        if (minPrice > 0) {
+          query = query.gte('preciolote', minPrice)
+        }
+        if (maxPrice >= 0) {
+          query = query.or(`preciolote.lte.${maxPrice},preciolote.is.null`)
+        }
 
+        // Filtered and paged on the server: the API returns at most 1000 rows per request.
+        // loteid keeps pages stable for lots without manzana or nolote.
+        const startIndex = (currentPage - 1) * itemsPerPage
+        const { data, error, count } = await query
+          .order('manzana', { ascending: true })
+          .order('nolote', { ascending: true })
+          .order('loteid', { ascending: true })
+          .range(startIndex, startIndex + itemsPerPage - 1)
+
+        if (ignore) return
         if (error) throw error
 
-        let filteredData = (data || []) as any[]
-        if (filters.minPrice) {
-          filteredData = filteredData.filter(
-            (l) => (l.preciolote || 0) >= parseFloat(filters.minPrice)
-          )
-        }
-        if (filters.maxPrice) {
-          filteredData = filteredData.filter(
-            (l) => (l.preciolote || 0) <= parseFloat(filters.maxPrice)
-          )
-        }
-
-        setTotalItems(filteredData.length)
-
-        // Apply pagination
-        const startIndex = (currentPage - 1) * itemsPerPage
-        const endIndex = startIndex + itemsPerPage
-        const paginatedData = filteredData.slice(startIndex, endIndex)
-        setCached(ck, { items: paginatedData, total: filteredData.length })
+        const paginatedData = (data || []) as any[]
+        const total = count ?? 0
+        setTotalItems(total)
+        setCached(ck, { items: paginatedData, total })
         setLotes(paginatedData)
       } catch (error) {
         console.error('Error fetching lotes:', error)
       } finally {
-        setLoading(false)
+        if (!ignore) setLoading(false)
       }
     }
 
     fetchLotes()
+    return () => { ignore = true }
   }, [filters, currentPage, reloadKey])
 
   const handleCreateLote = async (formData: any) => {

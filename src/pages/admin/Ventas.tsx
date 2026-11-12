@@ -94,61 +94,57 @@ export const Ventas = () => {
   }, [filters, prevFilters])
 
   useEffect(() => {
+    let ignore = false
+
     const fetchVentas = async () => {
       const cacheKey = `ventas:${JSON.stringify(filters)}:${currentPage}`
       const cached = getCached<{ items: VentaWithDetails[]; total: number }>(cacheKey)
       if (cached) { setVentas(cached.items); setTotalItems(cached.total); setLoading(false); return }
       try {
         setLoading(true)
+        const desarrolloIds = DEMO_DESARROLLOIDS.filter(
+          (id) => !filters.desarrolloId || id === Number(filters.desarrolloId)
+        )
+        const startIndex = (currentPage - 1) * itemsPerPage
+
+        // Filtered and paged on the server: the API returns at most 1000 rows per request.
         let query = supabase
           .from('venta')
-          .select('*, cliente:cliente(*), lote:lote(*, desarrollo:desarrollo(*))')
-          .order('fecha', { ascending: false })
+          .select('*, cliente:cliente(*), lote:lote!inner(*, desarrollo:desarrollo(*))', { count: 'exact' })
+          .in('lote.desarrolloid', desarrolloIds)
 
         if (filters.clienteId) {
           query = query.eq('clienteid', filters.clienteId)
         }
-
-        const { data, error } = await query
-
-        if (error) throw error
-
-        let filteredData = (data || []) as VentaWithDetails[]
-
-        if (DEMO_DESARROLLOIDS.length > 0) {
-          filteredData = filteredData.filter(
-            (v) => DEMO_DESARROLLOIDS.includes(v.lote?.desarrolloid as number)
-          )
-        }
-
-        if (filters.desarrolloId) {
-          const desarrolloId = Number(filters.desarrolloId)
-          filteredData = filteredData.filter(
-            (venta) => venta.lote?.desarrolloid === desarrolloId
-          )
-        }
-
         if (filters.fechaDesde) {
-          filteredData = filteredData.filter((v) => v.fecha && v.fecha >= filters.fechaDesde)
+          query = query.gte('fecha', filters.fechaDesde)
         }
         if (filters.fechaHasta) {
-          filteredData = filteredData.filter((v) => v.fecha && v.fecha <= filters.fechaHasta)
+          query = query.lte('fecha', `${filters.fechaHasta}T23:59:59.999`)
         }
 
-        setTotalItems(filteredData.length)
-        const startIndex = (currentPage - 1) * itemsPerPage
-        const endIndex = startIndex + itemsPerPage
-        const page = filteredData.slice(startIndex, endIndex)
-        setCached(cacheKey, { items: page, total: filteredData.length })
+        const { data, error, count } = await query
+          .order('fecha', { ascending: false })
+          .order('ventaid', { ascending: false })
+          .range(startIndex, startIndex + itemsPerPage - 1)
+
+        if (ignore) return
+        if (error) throw error
+
+        const page = (data || []) as VentaWithDetails[]
+        const total = count ?? 0
+        setTotalItems(total)
+        setCached(cacheKey, { items: page, total })
         setVentas(page)
       } catch (error) {
         console.error('Error fetching ventas:', error)
       } finally {
-        setLoading(false)
+        if (!ignore) setLoading(false)
       }
     }
 
     fetchVentas()
+    return () => { ignore = true }
   }, [filters, currentPage])
 
   // ── Business logic helpers ────────────────────────────────────────────────

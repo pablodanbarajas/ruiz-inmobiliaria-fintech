@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getCached, setCached, invalidateCache, onFocusRefetch } from '@/lib/queryCache'
+import { fetchAllByKey } from '@/lib/fetchAllByKey'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { DataTable } from '@/components/DataTable'
 import { Input } from '@/components/ui/Input'
@@ -134,6 +135,7 @@ export const Pagos = () => {
   const [allPagos, setAllPagos] = useState<PagoWithDetails[]>([])
   const [pendientes, setPendientes] = useState<PendingRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   const [filters, setFilters] = usePersistedFilters('pagosFilters', {
     clienteId: '',
@@ -213,82 +215,50 @@ export const Pagos = () => {
     }
     try {
       setLoading(true)
+      setLoadError(false)
 
       const todayStr = new Date().toISOString().split('T')[0]
 
-      // Pre-fetch ventaIds for DEMO developments — query lote and venta directly
-      // (avoids relying on nested joins that can be blocked by RLS)
-      let demoVentaIds: number[] | null = null
-      if (DEMO_DESARROLLOIDS.length > 0) {
-        const { data: lotesData } = await supabase
-          .from('lote')
-          .select('loteid')
-          .in('desarrolloid', DEMO_DESARROLLOIDS)
-
-        const loteIds = (lotesData || []).map((l: any) => l.loteid as number)
-
-        if (loteIds.length > 0) {
-          const { data: ventasData } = await supabase
-            .from('venta')
-            .select('ventaid')
-            .eq('estatus', 'A')
-            .in('loteid', loteIds)
-            .limit(5000)
-          demoVentaIds = (ventasData || []).map((v: any) => v.ventaid as number)
-        } else {
-          demoVentaIds = []
-        }
-      }
-      let corridasQuery = supabase
-        .from('corridafinanciera')
-        .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, dias_tolerancia, cliente:cliente(clienteid, nombre), lote:lote(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre))), pagos:pagos(pagoid, montopagado, servicios_extra, saldo_favor_aplicado, estatus, recargo)')
-        .lt('fecha', todayStr)
-
-      if (demoVentaIds !== null) {
-        corridasQuery = demoVentaIds.length > 0
-          ? corridasQuery.in('ventaid', demoVentaIds)
-          : corridasQuery.eq('ventaid', -1) // no results if no matching ventas
-      }
-
-      const [pagosRes, desarrollosRes] = await Promise.all([
-        supabase
-          .from('pagos')
-          .select('pagoid, fechapago, montopagado, servicios_extra, saldo_favor_aplicado, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera(corridafinancieraid, nopago, mensualidad, saldo, fecha, venta:venta(ventaid, clienteid, preciolote, plazo, cliente:cliente(clienteid, nombre, email, telefonocelular), lote:lote(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
-          .order('fechapago', { ascending: false })
-          .limit(10000),
+      // The API returns at most 1000 rows per request, so payments and overdue
+      // installments are filtered on the server and loaded in pages by id.
+      // (Fetching lot and sale ids first capped both lists at 1000.)
+      const [pagosData, desarrollosRes, corridasData] = await Promise.all([
+        fetchAllByKey<PagoWithDetails>(
+          (afterKey, pageSize) =>
+            supabase
+              .from('pagos')
+              .select('pagoid, fechapago, montopagado, servicios_extra, saldo_favor_aplicado, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera!inner(corridafinancieraid, nopago, mensualidad, saldo, fecha, venta:venta!inner(ventaid, clienteid, preciolote, plazo, cliente:cliente(clienteid, nombre, email, telefonocelular), lote:lote!inner(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
+              .in('corridafinanciera.venta.lote.desarrolloid', DEMO_DESARROLLOIDS)
+              .gt('pagoid', afterKey)
+              .order('pagoid', { ascending: true })
+              .limit(pageSize),
+          (pago) => pago.pagoid,
+        ),
         supabase
           .from('desarrollo')
           .select('desarrolloid, nombre')
           .in('desarrolloid', DEMO_DESARROLLOIDS.length > 0 ? DEMO_DESARROLLOIDS : [-1])
           .order('nombre', { ascending: true }),
+        fetchAllByKey<any>(
+          (afterKey, pageSize) =>
+            supabase
+              .from('corridafinanciera')
+              .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(ventaid, estatus, dias_tolerancia, cliente:cliente(clienteid, nombre), lote:lote!inner(loteid, desarrolloid, desarrollo:desarrollo(desarrolloid, nombre))), pagos:pagos(pagoid, montopagado, servicios_extra, saldo_favor_aplicado, estatus, recargo)')
+              .lt('fecha', todayStr)
+              .eq('venta.estatus', 'A')
+              .in('venta.lote.desarrolloid', DEMO_DESARROLLOIDS)
+              .gt('corridafinancieraid', afterKey)
+              .order('corridafinancieraid', { ascending: true })
+              .limit(pageSize),
+          (corrida) => corrida.corridafinancieraid,
+        ),
       ])
 
-      if (pagosRes.error) throw pagosRes.error
       if (desarrollosRes.error) throw desarrollosRes.error
 
-      // Paginate corridafinanciera: a single .limit(5000) can silently truncate
-      // before reaching some ventas when a demo development has many sales/installments
-      const seenCorridaIds = new Set<number>()
-      const corridasData: any[] = []
-      const PAGE_SIZE = 1000
-      let from = 0
-      while (true) {
-        const { data, error } = await corridasQuery
-          .order('ventaid', { ascending: true })
-          .order('corridafinancieraid', { ascending: true })
-          .range(from, from + PAGE_SIZE - 1)
-        if (error) throw error
-        if (!data || data.length === 0) break
-        for (const row of data) {
-          if (seenCorridaIds.has((row as any).corridafinancieraid)) continue
-          seenCorridaIds.add((row as any).corridafinancieraid)
-          corridasData.push(row)
-        }
-        if (data.length < PAGE_SIZE) break
-        from += PAGE_SIZE
-      }
-
-      const pagosRows = ((pagosRes.data || []) as unknown) as PagoWithDetails[]
+      const pagosRows = pagosData.sort((a, b) =>
+        (b.fechapago || '').localeCompare(a.fechapago || '') || b.pagoid - a.pagoid
+      )
       setAllPagos(pagosRows)
       setDesarrollos((desarrollosRes.data || []) as Desarrollo[])
 
@@ -344,6 +314,7 @@ export const Pagos = () => {
       setCached('pagos:all', { pagos: pagosRows, pendientes: pendingRows, desarrollos: desarrollosRes.data as Desarrollo[] })
     } catch (error) {
       console.error('Error fetching pagos:', error)
+      setLoadError(true)
       setAllPagos([])
       setPendientes([])
     } finally {
@@ -423,13 +394,15 @@ export const Pagos = () => {
   // totalCobrado = dinero recibido en caja (mensualidad + abonos a saldo a favor)
   // totalAplicado = lo aplicado a mensualidades (dinero recibido + saldo a favor usado)
   // Diferencia = abonos a saldo a favor − saldo a favor usado
-  const totalCobrado = filteredPagos.reduce(
+  // Canceled payments stay listed but never count toward money totals.
+  const pagosVigentes = useMemo(() => filteredPagos.filter((p) => p.estatus !== 'C'), [filteredPagos])
+  const totalCobrado = pagosVigentes.reduce(
     (sum, p) => sum + Math.max(0, Number(p.montopagado || 0)) + getAbonoSaldoFavor(p),
     0
   )
-  const totalAplicado = filteredPagos.reduce((sum, p) => sum + getPagoAplicado(p), 0)
-  const totalRecargos = filteredPagos.reduce((sum, p) => sum + Number(p.recargo || 0), 0)
-  const totalAbonosSaldoFavor = filteredPagos.reduce((sum, p) => sum + getAbonoSaldoFavor(p), 0)
+  const totalAplicado = pagosVigentes.reduce((sum, p) => sum + getPagoAplicado(p), 0)
+  const totalRecargos = pagosVigentes.reduce((sum, p) => sum + Number(p.recargo || 0), 0)
+  const totalAbonosSaldoFavor = pagosVigentes.reduce((sum, p) => sum + getAbonoSaldoFavor(p), 0)
 
   // Paginated data for current page
   const filteredPagosForPagination = pagos
@@ -473,7 +446,7 @@ export const Pagos = () => {
   const cortePorCobrador = useMemo<CorteCobradorRow[]>(() => {
     const map = new Map<string, CorteCobradorRow>()
 
-    for (const pago of filteredPagos) {
+    for (const pago of pagosVigentes) {
       const key = (pago.cobrador || 'Sin cobrador').trim() || 'Sin cobrador'
       const current = map.get(key)
       const monto = Number(pago.montopagado || 0)
@@ -494,12 +467,12 @@ export const Pagos = () => {
     }
 
     return Array.from(map.values()).sort((a, b) => b.aplicado - a.aplicado)
-  }, [filteredPagos])
+  }, [pagosVigentes])
 
   const conciliacionDiaria = useMemo<ConciliacionDiariaRow[]>(() => {
     const map = new Map<string, ConciliacionDiariaRow>()
 
-    for (const pago of filteredPagos) {
+    for (const pago of pagosVigentes) {
       const fecha = pago.fechapago || 'Sin fecha'
       const current = map.get(fecha)
       const monto = Number(pago.montopagado || 0)
@@ -526,7 +499,7 @@ export const Pagos = () => {
       if (b.fecha === 'Sin fecha') return -1
       return a.fecha < b.fecha ? 1 : -1
     })
-  }, [filteredPagos])
+  }, [pagosVigentes])
 
   const corteCtaBancaria = useMemo<CorteCtaBancariaRow[]>(() => {
     const map = new Map<string, CorteCtaBancariaRow>()
@@ -721,6 +694,12 @@ export const Pagos = () => {
               )}
             </div>
           </div>
+
+          {loadError && (
+            <div role="alert" className="mb-6 rounded-[16px] border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              No se pudieron cargar los pagos, así que los totales no son válidos. Usa Recargar para intentarlo de nuevo.
+            </div>
+          )}
 
           {/* KPIs Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
