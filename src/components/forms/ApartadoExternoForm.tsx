@@ -52,7 +52,10 @@ export const ApartadoExternoForm = ({
 
   // ── Apartado fields ───────────────────────────────────────
   const [lotes, setLotes] = useState<LoteWithDesarrollo[]>([])
+  const [desarrolloId, setDesarrolloId] = useState('')
+  const [manzanaSeleccionada, setManzanaSeleccionada] = useState('')
   const [loteid, setLoteid] = useState('')
+  const [metodoBusqueda, setMetodoBusqueda] = useState<'listas' | 'texto'>('listas')
   const [fecha, setFecha] = useState(today)
   const [comentarios, setComentarios] = useState('')
 
@@ -104,10 +107,39 @@ export const ApartadoExternoForm = ({
     load()
   }, [])
 
+  // ── Selección por listas: desarrollo → manzana → lote ─────
+  const desarrollosDisponibles = Array.from(
+    new Map(
+      lotes
+        .filter((l) => l.desarrolloid != null)
+        .map((l) => [
+          String(l.desarrolloid),
+          { id: String(l.desarrolloid), nombre: l.desarrollo?.nombre || `Desarrollo ${l.desarrolloid}` },
+        ])
+    ).values()
+  ).sort((a, b) => a.nombre.localeCompare(b.nombre))
+
+  const manzanasDisponibles = Array.from(
+    new Set(
+      lotes
+        .filter((l) => String(l.desarrolloid) === desarrolloId)
+        .map((l) => String(l.manzana ?? ''))
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
+
+  // Already sorted by development, manzana and lot when loaded.
+  const lotesDisponibles = lotes.filter(
+    (l) => String(l.desarrolloid) === desarrolloId && String(l.manzana ?? '') === manzanaSeleccionada
+  )
+
+  // ── Búsqueda escribiendo ──────────────────────────────────
+  // Keep "Mza": sellers type "hacienda mza 5", and the search pairs a label with the number after it.
   const loteOptions: ComboOption[] = lotes.map((l) => ({
-    value: l.loteid.toString(),
+    value: String(l.loteid),
     label: `${l.desarrollo?.nombre ?? '?'} · Mza ${l.manzana} Lote ${l.nolote}`,
     sublabel: [
+      l.clavelote ? `Clave ${l.clavelote}` : '',
       l.superficie ? `${l.superficie} m²` : '',
       l.preciolote ? formatCurrency(l.preciolote) : '',
     ]
@@ -341,19 +373,149 @@ export const ApartadoExternoForm = ({
 
       <div className="bg-gray-50 rounded-lg p-4 space-y-4">
         <p className={sectionClass}>Selección de lote</p>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Lote disponible *
-          </label>
-          <SearchCombobox
-            options={loteOptions}
-            value={loteid}
-            onChange={setLoteid}
-            placeholder="Buscar por desarrollo, manzana, lote…"
-            error={errors.loteid}
-          />
+
+        <div className="flex gap-2 border-b border-gray-200 pb-3">
+          <button
+            type="button"
+            onClick={() => {
+              setMetodoBusqueda('listas')
+              setLoteid('')
+              setErrors((prev) => ({ ...prev, loteid: '' }))
+            }}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+              metodoBusqueda === 'listas'
+                ? 'bg-[#16a34a] border-[#16a34a] text-black'
+                : 'bg-white border-gray-300 text-gray-600'
+            }`}
+          >
+            Seleccionar por listas
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setMetodoBusqueda('texto')
+              setDesarrolloId('')
+              setManzanaSeleccionada('')
+              setLoteid('')
+              setErrors((prev) => ({ ...prev, loteid: '' }))
+            }}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+              metodoBusqueda === 'texto'
+                ? 'bg-[#16a34a] border-[#16a34a] text-black'
+                : 'bg-white border-gray-300 text-gray-600'
+            }`}
+          >
+            Buscar escribiendo
+          </button>
         </div>
-      </div>
+
+        {metodoBusqueda === 'listas' ? (
+          <div className="space-y-4">
+            {/* Desarrollo */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                1. Desarrollo *
+              </label>
+              <select
+                value={desarrolloId}
+                onChange={(e) => {
+                  setDesarrolloId(e.target.value)
+                  setManzanaSeleccionada('')
+                  setLoteid('')
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+              >
+                <option value="">Seleccione un desarrollo</option>
+                {desarrollosDisponibles.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Manzana */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                2. Manzana *
+              </label>
+              <select
+                value={manzanaSeleccionada}
+                disabled={!desarrolloId}
+                onChange={(e) => {
+                  setManzanaSeleccionada(e.target.value)
+                  setLoteid('')
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white disabled:bg-gray-100"
+              >
+                <option value="">Seleccione una manzana</option>
+                {manzanasDisponibles.map((m) => (
+                  <option key={m} value={m}>
+                    Manzana {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Lote */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                3. Lote disponible *
+              </label>
+              <select
+                value={loteid}
+                disabled={!manzanaSeleccionada}
+                onChange={(e) => {
+                  setLoteid(e.target.value)
+                  setErrors((prev) => ({ ...prev, loteid: '' }))
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white disabled:bg-gray-100"
+              >
+                <option value="">Seleccione un lote</option>
+                {lotesDisponibles.map((l) => (
+                  <option key={l.loteid} value={String(l.loteid)}>
+                    {[
+                      `Lote ${l.nolote}`,
+                      l.clavelote,
+                      l.superficie ? `${l.superficie} m²` : null,
+                      l.preciolote ? formatCurrency(l.preciolote) : null,
+                    ].filter(Boolean).join(' · ')}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Buscar lote disponible *
+            </label>
+
+            <SearchCombobox
+              options={loteOptions}
+              value={loteid}
+              onChange={(value) => {
+                setLoteid(value)
+                setErrors((prev) => ({ ...prev, loteid: '' }))
+              }}
+              placeholder="Ej. hacienda mza 5 lote 17, o la clave del lote"
+              error={errors.loteid}
+            />
+
+            <p className="text-xs text-gray-500">
+              Puedes localizar inmuebles sin seleccionar primero una manzana.
+            </p>
+          </div>
+        )}
+
+        {errors.loteid && metodoBusqueda === 'listas' && (
+          <p className="text-red-500 text-xs mt-1">
+            {errors.loteid}
+          </p>
+        )}
+
+        </div>
 
       <div className="bg-gray-50 rounded-lg p-4 space-y-4">
         <p className={sectionClass}>Datos del apartado</p>

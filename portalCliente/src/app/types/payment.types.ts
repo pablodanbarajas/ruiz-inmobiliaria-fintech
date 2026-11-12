@@ -26,8 +26,10 @@ export interface Payment {
     base: number;       // mensualidad base
     cargoExtra: number; // suma de cargos extra activos
     recargo: number;    // recargo por mora
-    /** Paid toward services ("Servicios/Extra"), beyond the installment. Never a surcharge. */
-    servicios?: number;
+    /** Abono a saldo a favor left with the payment, for later use. Never a surcharge. */
+    abonoSaldoFavor?: number;
+    /** Paid beyond what the installment required. */
+    pagoAdicional?: number;
     /** Monto ya abonado si el pago fue parcial (corrida aún pendiente) */
     pagadoParcial?: number;
   };

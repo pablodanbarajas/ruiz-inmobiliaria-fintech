@@ -1,11 +1,13 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Printer, X } from 'lucide-react'
 import { formatDate, formatCurrency, getPagoFormaLabel } from '@/utils/helpers'
+import { getAbonoSaldoFavor, getPagoAplicado, getSaldoFavorAplicado, fetchSaldoFavorDisponible } from '@/utils/pagos'
 
 export interface ReciboPagoData {
   pagoid: number
   montopagado: number | null
   servicios_extra?: number | null
+  saldo_favor_aplicado?: number | null
   recargo?: number | null
   fechapago: string | null
   formapago: number | null
@@ -39,15 +41,49 @@ interface ReciboPagoProps {
   onClose: () => void
 }
 
+/** One line of the breakdown: concept on the left, amount on the right. */
+const LineaDesglose = ({ concepto, monto, color = '#333', negativo = false }: {
+  concepto: string
+  monto: number
+  color?: string
+  negativo?: boolean
+}) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 13, color, marginTop: 4 }}>
+    <span>{concepto}</span>
+    <strong>{negativo ? '−' : ''}{formatCurrency(monto)}</strong>
+  </div>
+)
+
 export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
   const printRef = useRef<HTMLDivElement>(null)
+  // Saldo a favor the client had left right after this payment.
+  const [saldoFavorRestante, setSaldoFavorRestante] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!isOpen || !data.ventaid) {
+      setSaldoFavorRestante(null)
+      return
+    }
+    let cancelado = false
+    fetchSaldoFavorDisponible(data.ventaid, { hastaPagoId: data.pagoid })
+      .then((saldo) => { if (!cancelado) setSaldoFavorRestante(saldo) })
+      .catch(() => { if (!cancelado) setSaldoFavorRestante(null) })
+    return () => { cancelado = true }
+  }, [isOpen, data.ventaid, data.pagoid])
 
   if (!isOpen) return null
 
-  // recargo ya viene incluido en montopagado — no sumar dos veces
-  const totalPagado =
-    (data.montopagado ?? 0) +
-    (data.servicios_extra || 0)
+  // The receipt leads with what the client handed over, then breaks it down:
+  // mensualidad + recargo + abono a saldo a favor − pagado con saldo a favor = total recibido.
+  const saldoUsado = getSaldoFavorAplicado(data)
+  const abono = getAbonoSaldoFavor(data)
+  const recargo = Math.max(0, Number(data.recargo ?? 0))
+  const totalRecibido = Math.max(0, Number(data.montopagado ?? 0)) + abono
+  // montopagado already includes the recargo.
+  const mensualidadCubierta = Math.max(0, getPagoAplicado(data) - recargo)
+  const conceptoMensualidad = data.nopago != null && data.nopago > 0
+    ? `Mensualidad ${data.nopago}${data.totalPagos ? ` de ${data.totalPagos}` : ''}`
+    : data.nopago === 0 ? 'Enganche' : 'Mensualidad'
 
   const handlePrint = () => {
     const printContent = printRef.current?.innerHTML
@@ -426,34 +462,31 @@ export const ReciboPago = ({ data, isOpen, onClose }: ReciboPagoProps) => {
           )}
         </div>
 
-        {/* Desglose de montos */}
+        {/* Total recibido y desglose */}
         <div style={{ background: '#f9f5ee', border: '1px solid #ddd', borderRadius: 6, padding: '10px 14px', marginBottom: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ fontSize: 12, color: '#666' }}>
-                Mensualidad: <strong>{formatCurrency((data.montopagado ?? 0) - (data.recargo || 0))}</strong>
-              </div>
-              {data.servicios_extra != null && data.servicios_extra > 0 && (
-                <div style={{ fontSize: 12, color: '#5b21b6', marginTop: 2 }}>
-                  + Servicios/Extra: <strong>{formatCurrency(data.servicios_extra)}</strong>
-                </div>
-              )}
-              {data.servicios_extra != null && data.servicios_extra < 0 && (
-                <div style={{ fontSize: 12, color: '#5b21b6', marginTop: 2 }}>
-                  – Saldo a favor aplicado: <strong>{formatCurrency(Math.abs(data.servicios_extra))}</strong>
-                </div>
-              )}
-              {data.recargo != null && data.recargo > 0 && (
-                <div style={{ fontSize: 12, color: '#c05000', marginTop: 2 }}>
-                  + Recargo por atraso: <strong>{formatCurrency(data.recargo)}</strong>
-                </div>
-              )}
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase' }}>Total Pagado</div>
-              <div style={{ fontSize: 26, fontWeight: 'bold', color: '#2d7a2d' }}>{formatCurrency(totalPagado)}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16 }}>
+            <div style={{ fontSize: 12, color: '#666', textTransform: 'uppercase', fontWeight: 600 }}>Total recibido</div>
+            <div style={{ fontSize: 26, fontWeight: 'bold', color: '#2d7a2d' }}>{formatCurrency(totalRecibido)}</div>
+          </div>
+
+          <div style={{ borderTop: '1px solid #ddd', marginTop: 8, paddingTop: 6 }}>
+            <div style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Desglose</div>
+            <LineaDesglose concepto={conceptoMensualidad} monto={mensualidadCubierta} />
+            {recargo > 0 && <LineaDesglose concepto="Recargo por atraso" monto={recargo} color="#c05000" />}
+            {abono > 0 && <LineaDesglose concepto="Abono a saldo a favor" monto={abono} color="#5b21b6" />}
+            {saldoUsado > 0 && (
+              <LineaDesglose concepto="Pagado con saldo a favor" monto={saldoUsado} color="#1d4ed8" negativo />
+            )}
+            <div style={{ borderTop: '1px solid #ddd', marginTop: 6, paddingTop: 4 }}>
+              <LineaDesglose concepto="Total recibido" monto={totalRecibido} />
             </div>
           </div>
+
+          {saldoFavorRestante != null && (saldoFavorRestante > 0 || abono > 0 || saldoUsado > 0) && (
+            <div style={{ marginTop: 8, fontSize: 12, color: '#5b21b6' }}>
+              Saldo a favor disponible después de este pago: <strong>{formatCurrency(saldoFavorRestante)}</strong>
+            </div>
+          )}
         </div>
 
         {/* Saldo pendiente */}

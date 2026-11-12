@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/Modal'
 import { VentaForm } from '@/components/forms/VentaForm'
 import type { VentaFormData } from '@/components/forms/VentaForm'
 import { PagoForm } from '@/components/forms/PagoForm'
+import { getPagoAplicado, validarSaldoFavorDisponible } from '@/utils/pagos'
 import type { PagoFormData } from '@/components/forms/PagoForm'
 import { ConvenioForm } from '@/components/forms/ConvenioForm'
 import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
@@ -39,12 +40,6 @@ interface VentaWithDetails extends Venta {
 
 interface CorridaWithPagos extends CorridaFinanciera {
   pagos?: Pago[]
-}
-
-const getPagoAplicado = (pago: Pago) => {
-  const monto = pago.montopagado || 0
-  const extra = pago.servicios_extra || 0
-  return monto + extra
 }
 
 export const VentaDetail = () => {
@@ -621,11 +616,16 @@ export const VentaDetail = () => {
   const handleCreatePagoFromCorrida = async (data: PagoFormData) => {
     try {
       setIsSubmittingPago(true)
+
+      // Checked again here: the balance may have changed since the form loaded it.
+      await validarSaldoFavorDisponible(data.corridafinancieraid, Number(data.saldo_favor_aplicado ?? 0))
+
       const payload = {
         corridafinancieraid: data.corridafinancieraid,
         fechapago: data.fechapago,
         montopagado: data.montopagado,
         servicios_extra: data.servicios_extra,
+        saldo_favor_aplicado: data.saldo_favor_aplicado,
         formapago: data.formapago,
         cuenta_bancaria_id: data.cuenta_bancaria_id,
         estatus: data.estatus,
@@ -637,10 +637,14 @@ export const VentaDetail = () => {
 
       let insertResult = await supabase.from('pagos').insert(payload)
 
-      if (insertResult.error && /servicios_extra|cuenta_bancaria_id/i.test(insertResult.error.message || '')) {
+      if (
+        insertResult.error &&
+        data.saldo_favor_aplicado === 0 &&
+        /servicios_extra|cuenta_bancaria_id/i.test(insertResult.error.message || '')
+      ) {
         const fallbackComentario = [
           data.comentario,
-          data.servicios_extra > 0 ? `[Servicios/Extra: ${data.servicios_extra}]` : null,
+          data.servicios_extra > 0 ? `[Abono a saldo a favor: ${data.servicios_extra}]` : null,
           data.formapago === 2 && data.cuenta_bancaria_id ? `[Cuenta bancaria ID: ${data.cuenta_bancaria_id}]` : null,
         ].filter(Boolean).join(' | ')
 

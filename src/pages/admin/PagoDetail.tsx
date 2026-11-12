@@ -10,6 +10,7 @@ import { ChevronLeft, Edit2, XCircle, AlertTriangle, Printer } from 'lucide-reac
 import { ReciboPago } from '@/components/ReciboPago'
 import type { Pago, CorridaFinanciera, Venta, Cliente, Lote, CuentaBancaria } from '@/types/database'
 import { formatDate, formatCurrency, getPagoStatusLabel, getPagoStatusColor, getPagoFormaLabel } from '@/utils/helpers'
+import { getAbonoSaldoFavor, getSaldoFavorAplicado } from '@/utils/pagos'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
 import { DetailSkeleton } from '@/components/ui/Skeleton'
@@ -127,7 +128,7 @@ export const PagoDetail = () => {
       if (updateResult.error && /servicios_extra|cuenta_bancaria_id/i.test(updateResult.error.message || '')) {
         const fallbackComentario = [
           data.comentario,
-          data.servicios_extra > 0 ? `[Servicios/Extra: ${data.servicios_extra}]` : null,
+          data.servicios_extra > 0 ? `[Abono a saldo a favor: ${data.servicios_extra}]` : null,
           data.formapago === 2 && data.cuenta_bancaria_id ? `[Cuenta bancaria ID: ${data.cuenta_bancaria_id}]` : null,
         ].filter(Boolean).join(' | ')
 
@@ -250,11 +251,11 @@ export const PagoDetail = () => {
                   (incluye {formatCurrency(pago.recargo)} de recargo por atraso)
                 </p>
               )}
-              {pago.servicios_extra != null && pago.servicios_extra > 0 && (
-                <p className="text-sm text-indigo-600 mt-1">+ {formatCurrency(pago.servicios_extra)} servicios/extra</p>
+              {getAbonoSaldoFavor(pago) > 0 && (
+                <p className="text-sm text-indigo-600 mt-1">+ {formatCurrency(getAbonoSaldoFavor(pago))} abono a saldo a favor</p>
               )}
-              {pago.servicios_extra != null && pago.servicios_extra < 0 && (
-                <p className="text-sm text-indigo-600 mt-1">- {formatCurrency(Math.abs(pago.servicios_extra))} aplicado de saldo a favor</p>
+              {getSaldoFavorAplicado(pago) > 0 && (
+                <p className="text-sm text-indigo-600 mt-1">+ {formatCurrency(getSaldoFavorAplicado(pago))} pagado con saldo a favor</p>
               )}
             </div>
             <div>
@@ -460,6 +461,7 @@ export const PagoDetail = () => {
           pagoid: pago.pagoid,
           montopagado: pago.montopagado,
           servicios_extra: pago.servicios_extra,
+          saldo_favor_aplicado: pago.saldo_favor_aplicado ?? 0,
           recargo: pago.recargo,
           fechapago: pago.fechapago,
           formapago: pago.formapago,
