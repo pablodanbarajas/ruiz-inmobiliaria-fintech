@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { invalidateCache } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
@@ -54,7 +54,6 @@ interface CorridaWithPagos extends CorridaFinanciera {
 export const VentaDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const location = useLocation()
   const { role } = useAuth()
   const today = new Date().toISOString().split('T')[0]
   const [venta, setVenta] = useState<VentaWithDetails | null>(null)
@@ -851,18 +850,7 @@ export const VentaDetail = () => {
   return (
     <AdminLayout>
       <div className="w-full">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              const from = (location.state as any)?.from
-              navigate(from || '/admin/ventas')
-            }}
-            className="inline-flex items-center gap-2"
-          >
-            <ChevronLeft size={20} />
-            Volver
-          </Button>
+        <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
 
           {/* Action buttons (only when active) */}
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">

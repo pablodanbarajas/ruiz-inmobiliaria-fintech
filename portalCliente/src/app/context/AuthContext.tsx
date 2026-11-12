@@ -4,6 +4,7 @@ import {
   useState,
   useCallback,
   useEffect,
+  useRef,
   type ReactNode
 } from 'react';
 import type { AuthSession, LoginCredentials, RegisterCredentials } from '../types/auth.types';
@@ -94,6 +95,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   });
   const [isLoading, setIsLoading] = useState(true);
 
+  // Supabase auth user already reflected in `session` (see the listener below).
+  const currentUserId = useRef<string | null>(null);
+
   useEffect(() => {
     let isMounted = true;
     let timeoutId: NodeJS.Timeout;
@@ -101,6 +105,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Inicializar sesión
     supabase.auth.getSession().then(async ({ data }) => {
       if (!isMounted) return;
+      currentUserId.current = data.session?.user?.id ?? null;
       const baseSession = mapSupabaseSession(data.session);
       const enriched = await enrichWithClientData(baseSession);
       if (!isMounted) return;
@@ -110,7 +115,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Listener de cambios de sesión (con delay para evitar race conditions)
     const { data: subscription } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        // Supabase re-announces the same sign-in when the tab regains focus and
+        // when it refreshes the token. Rebuilding the session then re-rendered
+        // the whole portal for nothing, so only a real change goes through.
+        if (
+          (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') &&
+          session?.user?.id && session.user.id === currentUserId.current
+        ) {
+          return;
+        }
+
+        currentUserId.current = session?.user?.id ?? null;
+
         // Cancelar timeout anterior si existe
         if (timeoutId) clearTimeout(timeoutId);
         

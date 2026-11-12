@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { ConvenioForm } from '@/components/forms/ConvenioForm'
 import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
-import { ChevronLeft, Edit2, AlertTriangle } from 'lucide-react'
+import { Edit2, AlertTriangle } from 'lucide-react'
 import type { Convenio, Venta, Cliente, Lote } from '@/types/database'
 import { formatDate, formatCurrency, getConvenioStatusLabel, getConvenioStatusColor } from '@/utils/helpers'
 import { syncExpiredConvenios } from '@/services/convenios'
@@ -19,7 +19,6 @@ interface ConvenioWithDetails extends Convenio {
 export const ConvenioDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const location = useLocation()
   const [convenio, setConvenio] = useState<ConvenioWithDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -125,18 +124,7 @@ export const ConvenioDetail = () => {
     <AdminLayout>
       <div className="w-full">
         {/* Header */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              const from = (location.state as any)?.from
-              navigate(from || '/admin/convenios')
-            }}
-            className="inline-flex items-center gap-2"
-          >
-            <ChevronLeft size={20} />
-            Volver
-          </Button>
+        <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
           <div className="flex items-center gap-3">
             {convenio.estatus === 'V' && (
               <Button

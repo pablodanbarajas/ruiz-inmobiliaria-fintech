@@ -113,6 +113,14 @@ const downloadCsv = (filename: string, csvContent: string) => {
   URL.revokeObjectURL(url)
 }
 
+type OrdenPagos = 'registro' | 'fecha_desc' | 'fecha_asc' | 'monto_desc'
+const ORDENES_PAGOS: { value: OrdenPagos; label: string }[] = [
+  { value: 'registro', label: 'Registrados recientemente' },
+  { value: 'fecha_desc', label: 'Fecha de pago (más reciente)' },
+  { value: 'fecha_asc', label: 'Fecha de pago (más antigua)' },
+  { value: 'monto_desc', label: 'Monto (mayor a menor)' },
+]
+
 const pickFirst = <T,>(value: T | T[] | null | undefined): T | undefined => {
   if (!value) return undefined
   return Array.isArray(value) ? value[0] : value
@@ -144,6 +152,9 @@ export const Pagos = () => {
     fechaHasta: '',
     formaPago: '',
     cobrador: '',
+    // Default: what was captured last comes first. Ordering by payment date put
+    // payments dated in the future (typos, year 5025) at the top.
+    orden: 'registro' as OrdenPagos,
   })
 
   const [currentPage, setCurrentPage] = useState(1)
@@ -336,6 +347,14 @@ export const Pagos = () => {
   }, [filters, prevFilters])
 
   const filteredPagos = useMemo(() => {
+    const orden: OrdenPagos = ORDENES_PAGOS.some((o) => o.value === filters.orden) ? filters.orden : 'registro'
+    const porFecha = (a: PagoWithDetails, b: PagoWithDetails) => (a.fechapago || '').localeCompare(b.fechapago || '')
+    const comparar: Record<OrdenPagos, (a: PagoWithDetails, b: PagoWithDetails) => number> = {
+      registro: (a, b) => b.pagoid - a.pagoid,
+      fecha_desc: (a, b) => -porFecha(a, b) || b.pagoid - a.pagoid,
+      fecha_asc: (a, b) => porFecha(a, b) || a.pagoid - b.pagoid,
+      monto_desc: (a, b) => Number(b.montopagado || 0) - Number(a.montopagado || 0) || b.pagoid - a.pagoid,
+    }
     return allPagos.filter((pago) => {
       const { cliente, lote, desarrollo } = getPagoContext(pago)
       const desarrolloid = (desarrollo?.desarrolloid ?? lote?.desarrolloid ?? null) as number | null
@@ -348,7 +367,7 @@ export const Pagos = () => {
       if (filters.formaPago && String(pago.formapago || '') !== filters.formaPago) return false
       if (filters.cobrador && !(pago.cobrador || '').toLowerCase().includes(filters.cobrador.toLowerCase())) return false
       return true
-    })
+    }).sort(comparar[orden])
   }, [allPagos, filters])
 
   const filteredPendientes = useMemo(() => {
@@ -774,7 +793,7 @@ export const Pagos = () => {
           {/* FILTERS - Show only in Pagos tab */}
           {activeTab === 'pagos' && (
             <div className="bg-white rounded-[20px] border border-[#e0e5e7] p-6 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-black mb-1">Cliente</label>
                   <SearchCombobox
@@ -834,6 +853,19 @@ export const Pagos = () => {
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setFilters({ ...filters, cobrador: e.target.value })}
                     placeholder="Nombre cobrador"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">Ordenar por</label>
+                  <select
+                    value={filters.orden || 'registro'}
+                    onChange={(e) => setFilters({ ...filters, orden: e.target.value as OrdenPagos })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#16a34a]"
+                  >
+                    {ORDENES_PAGOS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { PagoForm } from '@/components/forms/PagoForm'
 import type { PagoFormData } from '@/components/forms/PagoForm'
-import { ChevronLeft, Edit2, XCircle, AlertTriangle, Printer } from 'lucide-react'
+import { Edit2, XCircle, AlertTriangle, Printer } from 'lucide-react'
 import { ReciboPago } from '@/components/ReciboPago'
 import type { Pago, CorridaFinanciera, Venta, Cliente, Lote, CuentaBancaria } from '@/types/database'
 import { formatDate, formatCurrency, getPagoStatusLabel, getPagoStatusColor, getPagoFormaLabel } from '@/utils/helpers'
@@ -27,7 +27,6 @@ interface PagoWithDetails extends Pago {
 export const PagoDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const location = useLocation()
   const { role } = useAuth()
   const [pago, setPago] = useState<PagoWithDetails | null>(null)
   const [loading, setLoading] = useState(true)
@@ -188,18 +187,7 @@ export const PagoDetail = () => {
     <>
     <AdminLayout>
       <div className="w-full">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              const from = (location.state as any)?.from
-              navigate(from || '/admin/pagos')
-            }}
-            className="inline-flex items-center gap-2"
-          >
-            <ChevronLeft size={20} />
-            Volver
-          </Button>
+        <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
 
           {/* Action buttons */}
           <div className="flex items-center gap-3">
