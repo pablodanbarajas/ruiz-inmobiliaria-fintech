@@ -35,7 +35,8 @@ export function openComprobante({ pago, clienteNombre, lotKey, developmentName }
     bd ? ['Mensualidad / concepto', bd.base] : null,
     bd && bd.cargoExtra > 0 ? ['Cargos extra', bd.cargoExtra] : null,
     bd && bd.recargo > 0 ? ['Recargo por mora', bd.recargo] : null,
-    bd && (bd.servicios ?? 0) > 0 ? ['Servicios / extra', bd.servicios ?? 0] : null,
+    bd && (bd.pagoAdicional ?? 0) > 0 ? ['Pago adicional', bd.pagoAdicional ?? 0] : null,
+    bd && (bd.abonoSaldoFavor ?? 0) > 0 ? ['Abono a saldo a favor', bd.abonoSaldoFavor ?? 0] : null,
   ].filter((row): row is [string, number] => row !== null);
 
   const pagos = (pago.pagos ?? []).map((registro) =>

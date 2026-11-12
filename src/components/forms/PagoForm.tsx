@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
-import { getPagoAplicado } from '@/utils/pagos'
+import { getPagoAplicado, getSaldoFavorAplicado, fetchSaldoFavorDisponible } from '@/utils/pagos'
 import type { Pago, CorridaFinanciera, Cliente, Lote, CargoExtra, CuentaBancaria } from '@/types/database'
 import {
   formatDate,
@@ -369,44 +369,12 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
     }
 
     const loadSaldoFavor = async () => {
-      const { data: corridasVenta } = await supabase
-        .from('corridafinanciera')
-        .select('corridafinancieraid')
-        .eq('ventaid', ventaid)
-
-      const corridaIds = (corridasVenta || []).map((c: any) => c.corridafinancieraid)
-      if (corridaIds.length === 0) {
-        setSaldoFavorDisponible(0)
-        return
-      }
-
-      const { data: pagosVenta, error } = await supabase
-        .from('pagos')
-        .select('servicios_extra, saldo_favor_aplicado')
-        .in('corridafinancieraid', corridaIds)
-        .neq('estatus', 'C')
-
-      if (error) {
+      try {
+        setSaldoFavorDisponible(await fetchSaldoFavorDisponible(ventaid))
+      } catch (error) {
         console.error('Error al consultar saldo a favor:', error)
         setSaldoFavorDisponible(0)
-        return
-      } 
-      
-      const acumulado = (pagosVenta || []).reduce<number>(
-        (total, p) => {
-          const extra = Number(p.servicios_extra ?? 0)
-          const saldoAplicado = Number(p.saldo_favor_aplicado ?? 0)
-
-          // Abonos históricos menos saldo a favor utilizado
-          return total + extra - saldoAplicado
-        },
-        0
-      )
-
-      setSaldoFavorDisponible(
-        Math.max(0, Math.round(acumulado * 100) / 100)
-      )
-
+      }
     }
 
     loadSaldoFavor()
@@ -481,29 +449,27 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
     if (!corridaId) newErrors.corridafinancieraid = 'Selecciona una corrida financiera'
     if (!fechapago) newErrors.fechapago = 'La fecha es requerida'
     const monto = Number(montopagado)
-    const saldoAplicado = Number(saldoFavorAplicado)
+    // When editing, the credit already used by this payment is kept as is (the edit doesn't change it).
+    const saldoAplicado = isEditMode && pago
+      ? getSaldoFavorAplicado(pago)
+      : Number(saldoFavorAplicado)
 
-    if (
-      !Number.isFinite(monto) ||
-      monto < 0 ||
-      (monto === 0 && saldoAplicado <= 0)
-    ) {
-      newErrors.montopagado =
-        'Ingresa un monto mayor a cero o aplica saldo a favor.'
+    if (!Number.isFinite(monto) || monto < 0 || (monto === 0 && saldoAplicado <= 0)) {
+      newErrors.montopagado = 'Ingresa un monto mayor a cero o aplica saldo a favor.'
     }
 
-    if (
-      !Number.isFinite(saldoAplicado) ||
-      saldoAplicado < 0
-    ) {
-      newErrors.saldo_favor_aplicado =
-        'El saldo a favor aplicado no es válido.'
+    if (!Number.isFinite(saldoAplicado) || saldoAplicado < 0) {
+      newErrors.saldo_favor_aplicado = 'El saldo a favor aplicado no es válido.'
+    } else if (!isEditMode && Math.round(saldoAplicado * 100) > Math.round(saldoFavorDisponible * 100)) {
+      newErrors.saldo_favor_aplicado = `No puedes aplicar más de ${formatCurrency(saldoFavorDisponible)} de saldo a favor.`
     }
 
     const extra = parseFloat(serviciosExtra)
-    if (serviciosExtra && isNaN(extra)) newErrors.servicios_extra = 'Servicios/Extra debe ser un número válido'
-    if (!isNaN(extra) && extra < 0 && Math.abs(extra) > saldoFavorDisponible) {
-      newErrors.servicios_extra = `No puedes aplicar más de ${formatCurrency(saldoFavorDisponible)} de saldo a favor.`
+    if (serviciosExtra && isNaN(extra)) {
+      newErrors.servicios_extra = 'El abono a saldo a favor debe ser un número válido.'
+    } else if (extra < 0 && !(isEditMode && extra === Number(pago?.servicios_extra ?? 0))) {
+      // Old records stored used credit as a negative extra; new ones use "Aplicar saldo a favor".
+      newErrors.servicios_extra = 'El abono no puede ser negativo. Para usar saldo, presiona "Aplicar saldo a favor".'
     }
     if (!formapago) newErrors.formapago = 'Selecciona la forma de pago'
     if (formapago === 2 && cuentasDisponibles.length > 0 && !cuentaBancariaId) {
@@ -560,21 +526,23 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
     ) / 100
 
     setSaldoFavorAplicado(aplicado)
-    setServiciosExtra('0')
 
     // Si el monto fue autocompletado, descontar el crédito.
     // Si el usuario escribió un monto, conservarlo.
     if (autoFilledMonto.current) {
-      setMontopagado(
-        Math.max(0, totalObjetivo - aplicado).toFixed(2)
-      )
+      setMontopagado(Math.max(0, totalObjetivo - aplicado).toFixed(2))
     }
 
     autoFilledMonto.current = false
-    setErrors(prev => ({
-      ...prev,
-      servicios_extra: ''
-    }))
+    setErrors((prev) => ({ ...prev, saldo_favor_aplicado: '', montopagado: '' }))
+  }
+
+  /** Undo "Aplicar saldo a favor": the credit goes back to the cash amount. */
+  const handleQuitarSaldoFavor = () => {
+    const monto = Number(montopagado) || 0
+    setMontopagado((monto + saldoFavorAplicado).toFixed(2))
+    setSaldoFavorAplicado(0)
+    autoFilledMonto.current = true
   }
 
   return (
@@ -802,9 +770,9 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
               step="0.01"
               value={montopagado}
               onChange={(e) => {
-                autoFilledMonto.current = false;
-                setMontopagado(e.target.value);
-                setSaldoFavorAplicado(0);
+                // The applied credit stays; "Quitar saldo a favor" removes it.
+                autoFilledMonto.current = false
+                setMontopagado(e.target.value)
               }}
               placeholder="0.00"
               className={errors.montopagado ? 'border-red-500' : ''}
@@ -858,12 +826,12 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
             />
           </div>
 
-          {/* Servicios / Extra */}
+          {/* Abono a saldo a favor: money the client leaves ahead (e.g. for future cargos extra) */}
           <div>
-            <label className="block text-sm font-medium text-black mb-1">Servicios / Extra</label>
+            <label className="block text-sm font-medium text-black mb-1">Abono a saldo a favor</label>
             <Input
               type="number"
-              min={saldoFavorDisponible > 0 ? `${-saldoFavorDisponible}` : undefined}
+              min={isEditMode && Number(pago?.servicios_extra ?? 0) < 0 ? undefined : '0'}
               step="0.01"
               value={serviciosExtra}
               onChange={(e) => setServiciosExtra(e.target.value)}
@@ -874,42 +842,40 @@ export const PagoForm = ({ initialCorridaId, pago, diasTolerancia = 0, cargosExt
               <p className="text-xs text-red-500 mt-1">{errors.servicios_extra}</p>
             ) : (
               <p className="text-xs text-gray-500 mt-1">
-                Usa positivo para acumular saldo a favor y negativo para aplicarlo.
-                {saldoFavorDisponible > 0 ? ` Disponible: ${formatCurrency(saldoFavorDisponible)}.` : ''}
+                Dinero adicional que el cliente deja para usar después en servicios, mensualidades o recargos.
               </p>
-            )}
-            {saldoFavorDisponible > 0 && !isEditMode && (
-              <div className="mt-2">
-                <Button type="button" variant="outline" size="sm" onClick={handleAplicarSaldoFavor}>
-                  Aplicar saldo a favor
-                </Button>
-              </div>
             )}
           </div>
 
-          {/* Saldo a favor aplicado */}
-          {!isEditMode && (
-            <div>
-              <label className="block text-sm font-medium text-black mb-1">
-                Saldo a favor aplicado
-              </label>
-
-              <Input
-                type="number"
-                value={saldoFavorAplicado.toFixed(2)}
-                readOnly
-                className="bg-gray-50"
-              />
-
+          {/* Pagado con saldo a favor */}
+          {!isEditMode && (saldoFavorDisponible > 0 || saldoFavorAplicado > 0) && (
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium text-black">Pagado con saldo a favor</span>
+                <span className="text-sm font-semibold text-gray-900">{formatCurrency(saldoFavorAplicado)}</span>
+              </div>
               <p className="text-xs text-gray-500 mt-1">
-                Disponible: {formatCurrency(saldoFavorDisponible)}
+                Saldo a favor disponible: {formatCurrency(saldoFavorDisponible)}
               </p>
-
-              <p className="text-sm font-medium text-green-700 mt-1">
-                Total cubierto: {formatCurrency(
-                  (Number(montopagado) || 0) + saldoFavorAplicado
+              {errors.saldo_favor_aplicado && (
+                <p className="text-xs text-red-500 mt-1">{errors.saldo_favor_aplicado}</p>
+              )}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {saldoFavorAplicado > 0 ? (
+                  <Button type="button" variant="outline" size="sm" onClick={handleQuitarSaldoFavor}>
+                    Quitar saldo a favor
+                  </Button>
+                ) : (
+                  <Button type="button" variant="outline" size="sm" onClick={handleAplicarSaldoFavor} disabled={!selectedCorrida}>
+                    Aplicar saldo a favor
+                  </Button>
                 )}
-              </p>
+              </div>
+              {saldoFavorAplicado > 0 && (
+                <p className="text-sm font-medium text-green-700 mt-2">
+                  Total cubierto: {formatCurrency((Number(montopagado) || 0) + saldoFavorAplicado)}
+                </p>
+              )}
             </div>
           )}
 

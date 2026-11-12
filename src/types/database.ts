@@ -132,6 +132,8 @@ export type Pago = {
   fechapago: string | null
   montopagado: number | null
   servicios_extra: number | null
+  /** Saldo a favor used to cover this payment; separate from the money received (montopagado). */
+  saldo_favor_aplicado?: number | null
   formapago: number | null
   cuenta_bancaria_id: number | null
   estatus: string | null

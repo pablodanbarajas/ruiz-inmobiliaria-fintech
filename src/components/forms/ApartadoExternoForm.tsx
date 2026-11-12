@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/Input'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import type { Lote, Desarrollo } from '@/types/database'
+import { formatCurrency } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
 import { fetchAllByKey } from '@/lib/fetchAllByKey'
 
@@ -106,55 +107,44 @@ export const ApartadoExternoForm = ({
     load()
   }, [])
 
+  // ── Selección por listas: desarrollo → manzana → lote ─────
+  const desarrollosDisponibles = Array.from(
+    new Map(
+      lotes
+        .filter((l) => l.desarrolloid != null)
+        .map((l) => [
+          String(l.desarrolloid),
+          { id: String(l.desarrolloid), nombre: l.desarrollo?.nombre || `Desarrollo ${l.desarrolloid}` },
+        ])
+    ).values()
+  ).sort((a, b) => a.nombre.localeCompare(b.nombre))
 
-const desarrollosDisponibles = Array.from(
-  new Map(
-    lotes
-      .filter((l) => l.desarrolloid != null)
-      .map((l) => [
-        String(l.desarrolloid),
-        {
-          id: String(l.desarrolloid),
-          nombre: l.desarrollo?.nombre || `Desarrollo ${l.desarrolloid}`,
-        },
-      ])
-  ).values()
-).sort((a, b) => a.nombre.localeCompare(b.nombre))
-
-const manzanasDisponibles = Array.from(
-  new Set(
-    lotes
-      .filter((l) => String(l.desarrolloid) === desarrolloId)
-      .map((l) => String(l.manzana ?? ''))
-      .filter(Boolean)
-  )
-).sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
-
-const lotesDisponibles = lotes
-  .filter(
-    (l) =>
-      String(l.desarrolloid) === desarrolloId &&
-      String(l.manzana ?? '') === manzanaSeleccionada
-  )
-  .sort((a, b) =>
-    String(a.nolote ?? '').localeCompare(
-      String(b.nolote ?? ''),
-      'es',
-      { numeric: true }
+  const manzanasDisponibles = Array.from(
+    new Set(
+      lotes
+        .filter((l) => String(l.desarrolloid) === desarrolloId)
+        .map((l) => String(l.manzana ?? ''))
+        .filter(Boolean)
     )
+  ).sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
+
+  // Already sorted by development, manzana and lot when loaded.
+  const lotesDisponibles = lotes.filter(
+    (l) => String(l.desarrolloid) === desarrolloId && String(l.manzana ?? '') === manzanaSeleccionada
   )
 
+  // ── Búsqueda escribiendo ──────────────────────────────────
+  // Keep "Mza": sellers type "hacienda mza 5", and the search pairs a label with the number after it.
   const loteOptions: ComboOption[] = lotes.map((l) => ({
     value: String(l.loteid),
-    label: [
-      l.desarrollo?.nombre,
-      l.manzana ? `Manzana ${l.manzana}` : null,
-      l.nolote ? `Lote ${l.nolote}` : null,
-      l.clavelote ? `Clave ${l.clavelote}` : null,
-    ].filter(Boolean).join(' · '),
-    sublabel: l.clavelote
-      ? `Clave: ${l.clavelote}`
-      : `Inmueble #${l.loteid}`,
+    label: `${l.desarrollo?.nombre ?? '?'} · Mza ${l.manzana} Lote ${l.nolote}`,
+    sublabel: [
+      l.clavelote ? `Clave ${l.clavelote}` : '',
+      l.superficie ? `${l.superficie} m²` : '',
+      l.preciolote ? formatCurrency(l.preciolote) : '',
+    ]
+      .filter(Boolean)
+      .join(' · '),
   }))
 
   const clienteOptions: ComboOption[] = clientesExistentes.map((c) => ({
@@ -420,7 +410,6 @@ const lotesDisponibles = lotes
           </button>
         </div>
 
-        
         {metodoBusqueda === 'listas' ? (
           <div className="space-y-4">
             {/* Desarrollo */}
@@ -486,8 +475,12 @@ const lotesDisponibles = lotes
                 <option value="">Seleccione un lote</option>
                 {lotesDisponibles.map((l) => (
                   <option key={l.loteid} value={String(l.loteid)}>
-                    Lote {l.nolote}
-                    {l.clavelote ? ` - ${l.clavelote}` : ''}
+                    {[
+                      `Lote ${l.nolote}`,
+                      l.clavelote,
+                      l.superficie ? `${l.superficie} m²` : null,
+                      l.preciolote ? formatCurrency(l.preciolote) : null,
+                    ].filter(Boolean).join(' · ')}
                   </option>
                 ))}
               </select>
@@ -506,7 +499,7 @@ const lotesDisponibles = lotes
                 setLoteid(value)
                 setErrors((prev) => ({ ...prev, loteid: '' }))
               }}
-              placeholder="Escribe el desarrollo, manzana, número o clave..."
+              placeholder="Ej. hacienda mza 5 lote 17, o la clave del lote"
               error={errors.loteid}
             />
 

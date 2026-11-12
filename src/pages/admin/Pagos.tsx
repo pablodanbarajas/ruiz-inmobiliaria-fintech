@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { PagoForm } from '@/components/forms/PagoForm'
 import type { PagoFormData } from '@/components/forms/PagoForm'
-import { getPagoAplicado } from '@/utils/pagos'
+import { getPagoAplicado, getSaldoFavorAplicado, getAbonoSaldoFavor, validarSaldoFavorDisponible } from '@/utils/pagos'
 import { Eye, ChevronLeft, ChevronRight, Plus, Download, RefreshCw, ChevronDown, Receipt, Clock, BarChart3, Users, Calendar, Building2, Printer } from 'lucide-react'
 import { ReciboPago } from '@/components/ReciboPago'
 import type { ReciboPagoData } from '@/components/ReciboPago'
@@ -111,8 +111,6 @@ const downloadCsv = (filename: string, csvContent: string) => {
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
 }
-
-
 
 const pickFirst = <T,>(value: T | T[] | null | undefined): T | undefined => {
   if (!value) return undefined
@@ -422,16 +420,16 @@ export const Pagos = () => {
   const endIndex = startIndex + itemsPerPage
   const pagos = filteredPagos.slice(startIndex, endIndex)
 
-  // totalCobrado = efectivo realmente recibido (mensualidad + servicios extras cobrados en positivo)
-  // totalAplicado = total aplicado a la cuenta del cliente (incluyendo saldos a favor negativos)
-  // Diferencia = saldos a favor aplicados (solo aparece cuando servicios_extra < 0)
-  const totalCobrado = filteredPagos.reduce((sum, p) => {
-    const extra = Number(p.servicios_extra || 0)
-    return sum + Number(p.montopagado || 0) + Math.max(0, extra)
-  }, 0)
+  // totalCobrado = dinero recibido en caja (mensualidad + abonos a saldo a favor)
+  // totalAplicado = lo aplicado a mensualidades (dinero recibido + saldo a favor usado)
+  // Diferencia = abonos a saldo a favor − saldo a favor usado
+  const totalCobrado = filteredPagos.reduce(
+    (sum, p) => sum + Math.max(0, Number(p.montopagado || 0)) + getAbonoSaldoFavor(p),
+    0
+  )
   const totalAplicado = filteredPagos.reduce((sum, p) => sum + getPagoAplicado(p), 0)
   const totalRecargos = filteredPagos.reduce((sum, p) => sum + Number(p.recargo || 0), 0)
-  const totalServicios = filteredPagos.reduce((sum, p) => sum + Math.max(0, Number(p.servicios_extra || 0)), 0)
+  const totalAbonosSaldoFavor = filteredPagos.reduce((sum, p) => sum + getAbonoSaldoFavor(p), 0)
 
   // Paginated data for current page
   const filteredPagosForPagination = pagos
@@ -439,7 +437,7 @@ export const Pagos = () => {
   const exportPagosCsv = () => {
     const fmtDate = (d: string | null | undefined) => d ? d.slice(0, 10).split('-').reverse().join('/') : ''
     const csv = toCsv(
-      ['Pago ID', 'Fecha', 'Cliente', 'Venta ID', 'Desarrollo', 'Metodo', 'Cobrador', 'Monto', 'Recargo', 'Servicios', 'Estado'],
+      ['Pago ID', 'Fecha', 'Cliente', 'Venta ID', 'Desarrollo', 'Metodo', 'Cobrador', 'Monto', 'Recargo', 'Abono a saldo a favor', 'Pagado con saldo a favor', 'Estado'],
       filteredPagos.map((pago) => {
         const { venta, cliente, desarrollo } = getPagoContext(pago)
 
@@ -453,7 +451,8 @@ export const Pagos = () => {
           pago.cobrador || '',
           Number(pago.montopagado || 0),
           Number(pago.recargo || 0),
-          Math.max(0, Number(pago.servicios_extra || 0)),
+          getAbonoSaldoFavor(pago),
+          getSaldoFavorAplicado(pago),
           getPagoStatusLabel(pago.estatus),
         ]
       })
@@ -596,67 +595,9 @@ export const Pagos = () => {
 
     try {
       setIsSubmitting(true)
-      
-      const saldoSolicitado = Number(data.saldo_favor_aplicado ?? 0)
 
-      if (!Number.isFinite(saldoSolicitado) || saldoSolicitado < 0) {
-        throw new Error('El saldo a favor aplicado no es válido.')
-      }
-
-      if (saldoSolicitado > 0) {
-        if (!data.corridafinancieraid) {
-          throw new Error('Selecciona una mensualidad para aplicar saldo a favor.')
-        }
-
-        // Identificar la venta de la mensualidad
-        const { data: corrida, error: corridaError } = await supabase
-          .from('corridafinanciera')
-          .select('ventaid')
-          .eq('corridafinancieraid', data.corridafinancieraid)
-          .single()
-
-        if (corridaError || !corrida) {
-          throw new Error('No se pudo identificar la venta.')
-        }
-
-        // Consultar todas las mensualidades de la venta
-        const { data: corridas, error: corridasError } = await supabase
-          .from('corridafinanciera')
-          .select('corridafinancieraid')
-          .eq('ventaid', corrida.ventaid)
-
-        if (corridasError) throw corridasError
-
-        const ids = (corridas || []).map(c => c.corridafinancieraid)
-
-        if (ids.length === 0) {
-          throw new Error('No se encontraron mensualidades de esta venta.')
-        }
-
-        // Consultar el saldo a favor registrado
-        const { data: pagosVenta, error: pagosError } = await supabase
-          .from('pagos')
-          .select('servicios_extra, saldo_favor_aplicado')
-          .in('corridafinancieraid', ids)
-          .neq('estatus', 'C')
-
-        if (pagosError) throw pagosError
-
-        const disponible = (pagosVenta || []).reduce<number>((total, pago) => {
-          return total
-            + Number(pago.servicios_extra ?? 0)
-            - Number(pago.saldo_favor_aplicado ?? 0)
-        }, 0)
-
-        const saldoDisponible = Math.max(0, Math.round(disponible * 100) / 100)
-
-        if (Math.round(saldoSolicitado * 100) > Math.round(saldoDisponible * 100)) {
-          throw new Error(
-            `Saldo a favor insuficiente. Disponible: $${saldoDisponible.toFixed(2)}`
-          )
-        }
-      }
-
+      // Checked again here: the balance may have changed since the form loaded it.
+      await validarSaldoFavorDisponible(data.corridafinancieraid, Number(data.saldo_favor_aplicado ?? 0))
 
       const payload = {
         corridafinancieraid: data.corridafinancieraid,
@@ -676,15 +617,13 @@ export const Pagos = () => {
       let insertResult = await supabase.from('pagos').insert(payload).select().single()
 
       if (
-            insertResult.error &&
-            data.saldo_favor_aplicado === 0 &&
-            /servicios_extra|cuenta_bancaria_id/i.test(
-              insertResult.error.message || ''
-            )
-          ) {
+        insertResult.error &&
+        data.saldo_favor_aplicado === 0 &&
+        /servicios_extra|cuenta_bancaria_id/i.test(insertResult.error.message || '')
+      ) {
         const fallbackComentario = [
           data.comentario,
-          data.servicios_extra > 0 ? `[Servicios/Extra: ${data.servicios_extra}]` : null,
+          data.servicios_extra > 0 ? `[Abono a saldo a favor: ${data.servicios_extra}]` : null,
           data.formapago === 2 && data.cuenta_bancaria_id ? `[Cuenta bancaria ID: ${data.cuenta_bancaria_id}]` : null,
         ]
           .filter(Boolean)
@@ -788,12 +727,12 @@ export const Pagos = () => {
             <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4">
               <p className="text-sm text-gray-500">Total cobrado</p>
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalCobrado)}</p>
-              <p className="text-xs text-gray-400 mt-1">Suma de montopagado</p>
+              <p className="text-xs text-gray-400 mt-1">Dinero recibido en caja</p>
             </div>
             <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4">
               <p className="text-sm text-gray-500">Total aplicado</p>
               <p className="text-2xl font-bold text-blue-700">{formatCurrency(totalAplicado)}</p>
-              <p className="text-xs text-gray-400 mt-1">Cobrado ± servicios/ajustes</p>
+              <p className="text-xs text-gray-400 mt-1">A mensualidades, con saldo a favor usado</p>
             </div>
             <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4">
               <p className="text-sm text-gray-500">Recargos cobrados</p>
@@ -801,9 +740,9 @@ export const Pagos = () => {
               <p className="text-xs text-gray-400 mt-1">Según pagos registrados</p>
             </div>
             <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4">
-              <p className="text-sm text-gray-500">Servicios cobrados</p>
-              <p className="text-2xl font-bold text-green-700">{formatCurrency(totalServicios)}</p>
-              <p className="text-xs text-gray-400 mt-1">Servicios y cargos extra</p>
+              <p className="text-sm text-gray-500">Abonos a saldo a favor</p>
+              <p className="text-2xl font-bold text-green-700">{formatCurrency(totalAbonosSaldoFavor)}</p>
+              <p className="text-xs text-gray-400 mt-1">Dinero que dejan para después</p>
             </div>
             <button
               className="bg-white rounded-[16px] border border-[#e0e5e7] p-4 text-left hover:bg-[#fffde1] transition-colors"
@@ -813,7 +752,7 @@ export const Pagos = () => {
               <p className={`text-2xl font-bold ${totalCobrado - totalAplicado >= 0 ? 'text-green-700' : 'text-orange-700'}`}>
                 {formatCurrency(totalCobrado - totalAplicado)}
               </p>
-              <p className="text-xs text-gray-400 mt-1">Por servicios/ajustes aplicados</p>
+              <p className="text-xs text-gray-400 mt-1">Abonos − saldo a favor usado</p>
             </button>
           </div>
 
@@ -967,37 +906,29 @@ export const Pagos = () => {
                   },
                   {
                     key: 'montopagado',
-                    label: 'Total cubierto',
+                    label: 'Recibido',
+                    // Same reading as the receipt: what the client handed over, then where it went.
                     render: (row: PagoWithDetails) => {
-                      const recibido = Number(row.montopagado ?? 0)
-                      const extra = Number(row.servicios_extra ?? 0)
-                      const saldoAplicado =
-                        Math.max(0, -extra) +
-                        Math.max(0, Number((row as any).saldo_favor_aplicado ?? 0))
-
-                      const abonoGenerado = Math.max(0, extra)
-                      const totalCubierto = getPagoAplicado(row)
-                      const totalRecibido = recibido + abonoGenerado
+                      const saldoAplicado = getSaldoFavorAplicado(row)
+                      const abono = getAbonoSaldoFavor(row)
+                      const recibido = Math.max(0, Number(row.montopagado ?? 0)) + abono
 
                       return (
-                        <div className="flex flex-col gap-1">
-                          <span className="font-bold text-gray-900">
-                            {formatCurrency(totalCubierto)}
-                          </span>
-
-                          <span className="text-xs text-gray-500">
-                            Recibido: {formatCurrency(totalRecibido)}
-                          </span>
-
-                          {saldoAplicado > 0 && (
-                            <span className="text-xs text-blue-600">
-                              Saldo aplicado: {formatCurrency(saldoAplicado)}
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-bold text-gray-900">{formatCurrency(recibido)}</span>
+                          {(saldoAplicado > 0 || abono > 0) && (
+                            <span className="text-xs text-gray-500">
+                              Mensualidad: {formatCurrency(getPagoAplicado(row))}
                             </span>
                           )}
-
-                          {abonoGenerado > 0 && (
+                          {saldoAplicado > 0 && (
+                            <span className="text-xs text-blue-700">
+                              Pagado con saldo a favor: {formatCurrency(saldoAplicado)}
+                            </span>
+                          )}
+                          {abono > 0 && (
                             <span className="text-xs text-green-700">
-                              Abono a saldo a favor: {formatCurrency(abonoGenerado)}
+                              Abono a saldo a favor: {formatCurrency(abono)}
                             </span>
                           )}
                         </div>
@@ -1037,7 +968,7 @@ export const Pagos = () => {
                                 pagoid: row.pagoid,
                                 montopagado: row.montopagado,
                                 servicios_extra: row.servicios_extra,
-                                saldo_favor_aplicado: (row as any).saldo_favor_aplicado ?? 0,
+                                saldo_favor_aplicado: row.saldo_favor_aplicado ?? 0,
                                 recargo: row.recargo,
                                 fechapago: row.fechapago,
                                 formapago: row.formapago,
@@ -1396,20 +1327,21 @@ export const Pagos = () => {
       >
         <div className="space-y-4">
           <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
-            <p><strong>Total cobrado</strong> = efectivo recibido en caja (<code>montopagado</code> + servicios cobrados en positivo).</p>
-            <p className="mt-1"><strong>Total aplicado</strong> = lo que se aplicó a la cuenta del cliente (<code>montopagado + servicios_extra</code>).</p>
-            <p className="mt-1"><strong>Diferencia</strong> = Cobrado − Aplicado. Solo es negativa cuando hay <strong>saldos a favor</strong> aplicados (servicios_extra negativo) — indica créditos usados sin cobro en efectivo.</p>
+            <p><strong>Total cobrado</strong> = dinero recibido en caja: mensualidad más abonos a saldo a favor.</p>
+            <p className="mt-1"><strong>Total aplicado</strong> = lo que se abonó a mensualidades: dinero recibido más saldo a favor usado.</p>
+            <p className="mt-1"><strong>Diferencia</strong> = Cobrado − Aplicado. Es positiva cuando los clientes dejan abonos para después y negativa cuando usan su <strong>saldo a favor</strong> sin entregar dinero.</p>
           </div>
           {(() => {
-            const conAjuste = filteredPagos.filter(p => p.servicios_extra && p.servicios_extra !== 0)
-            if (conAjuste.length === 0) return <p className="text-gray-400 text-center py-4">No hay ajustes en los pagos del filtro actual.</p>
-            const cargos = conAjuste.filter(p => (p.servicios_extra || 0) > 0)
-            const creditos = conAjuste.filter(p => (p.servicios_extra || 0) < 0)
+            const creditos = filteredPagos.filter((p) => getSaldoFavorAplicado(p) > 0)
+            const cargos = filteredPagos.filter((p) => getAbonoSaldoFavor(p) > 0)
+            if (creditos.length === 0 && cargos.length === 0) {
+              return <p className="text-gray-400 text-center py-4">No hay movimientos de saldo a favor en los pagos del filtro actual.</p>
+            }
             return (
               <div className="space-y-4">
                 {creditos.length > 0 && (
                   <div>
-                    <p className="text-xs font-bold uppercase text-indigo-600 mb-2">Saldo a favor aplicado ({creditos.length})</p>
+                    <p className="text-xs font-bold uppercase text-indigo-600 mb-2">Pagado con saldo a favor ({creditos.length})</p>
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 text-xs text-gray-500">
                         <tr>
@@ -1431,7 +1363,7 @@ export const Pagos = () => {
                               </td>
                               <td className="px-3 py-2">{ctx.cliente?.nombre || '—'}</td>
                               <td className="px-3 py-2">{formatDate(p.fechapago)}</td>
-                              <td className="px-3 py-2 text-right font-semibold text-indigo-600">{formatCurrency(p.servicios_extra)}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-indigo-600">−{formatCurrency(getSaldoFavorAplicado(p))}</td>
                             </tr>
                           )
                         })}
@@ -1441,14 +1373,14 @@ export const Pagos = () => {
                 )}
                 {cargos.length > 0 && (
                   <div>
-                    <p className="text-xs font-bold uppercase text-purple-600 mb-2">Cargos adicionales ({cargos.length})</p>
+                    <p className="text-xs font-bold uppercase text-purple-600 mb-2">Abonos a saldo a favor ({cargos.length})</p>
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 text-xs text-gray-500">
                         <tr>
                           <th className="text-left px-3 py-2">Pago ID</th>
                           <th className="text-left px-3 py-2">Cliente</th>
                           <th className="text-left px-3 py-2">Fecha</th>
-                          <th className="text-right px-3 py-2">Cargo extra</th>
+                          <th className="text-right px-3 py-2">Abono</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -1463,7 +1395,7 @@ export const Pagos = () => {
                               </td>
                               <td className="px-3 py-2">{ctx.cliente?.nombre || '—'}</td>
                               <td className="px-3 py-2">{formatDate(p.fechapago)}</td>
-                              <td className="px-3 py-2 text-right font-semibold text-purple-600">+{formatCurrency(p.servicios_extra)}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-purple-600">+{formatCurrency(getAbonoSaldoFavor(p))}</td>
                             </tr>
                           )
                         })}

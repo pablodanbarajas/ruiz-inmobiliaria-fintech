@@ -33,34 +33,35 @@ function calcularRecargo(fechaVencimiento: string, diasTolerancia: number = 0): 
   return semanas * 150; // $150 inmediato al 1er día, +$150 cada 7 días adicionales
 }
 
-function getPagoAplicado(pago: {
+// Same rules as src/utils/pagos.ts in the admin panel (the portal is a separate build):
+// - montopagado: money received for the installment (includes the surcharge).
+// - positive servicios_extra: abono a saldo a favor, money left for later.
+// - saldo_favor_aplicado (or a negative servicios_extra in old records): saldo a favor used.
+type PagoRow = {
   montopagado?: number | null;
   servicios_extra?: number | null;
   saldo_favor_aplicado?: number | null;
   estatus?: string | null;
-}): number {
+};
+
+const redondear = (valor: number) => Math.round((valor + Number.EPSILON) * 100) / 100;
+
+function getSaldoFavorAplicado(pago: PagoRow): number {
   if (pago.estatus === 'C') return 0;
-
-  const recibido = Math.max(
-    0,
-    Number(pago.montopagado ?? 0)
+  return redondear(
+    Math.max(0, -Number(pago.servicios_extra ?? 0)) + Math.max(0, Number(pago.saldo_favor_aplicado ?? 0))
   );
+}
 
-  const saldoHistorico = Math.max(
-    0,
-    -Number(pago.servicios_extra ?? 0)
-  );
+function getAbonoSaldoFavor(pago: PagoRow): number {
+  if (pago.estatus === 'C') return 0;
+  return redondear(Math.max(0, Number(pago.servicios_extra ?? 0)));
+}
 
-  const saldoNuevo = Math.max(
-    0,
-    Number(pago.saldo_favor_aplicado ?? 0)
-  );
-
-  const total = recibido + saldoHistorico + saldoNuevo;
-
-  return Math.round(
-    (total + Number.EPSILON) * 100
-  ) / 100;
+/** Amount applied to the installment: money received plus saldo a favor used. */
+function getPagoAplicado(pago: PagoRow): number {
+  if (pago.estatus === 'C') return 0;
+  return redondear(Math.max(0, Number(pago.montopagado ?? 0)) + getSaldoFavorAplicado(pago));
 }
 
 export const supabasePaymentsService: IPaymentsService = {
@@ -155,19 +156,27 @@ export const supabasePaymentsService: IPaymentsService = {
       const saldoLote = Math.max(0, (venta.preciolote || 0) - totalPagado);
 
       // Pagos por corrida para saber estado
-      const pagosPorCorrida = new Map<number, { total: number; lastDate: string | null; maxRecargo: number; records: PaymentRecord[] }>();
+      type PagosCorrida = {
+        total: number;       // applied to the installment (money + saldo a favor used)
+        abonos: number;      // abonos a saldo a favor left with these payments
+        lastDate: string | null;
+        maxRecargo: number;
+        records: PaymentRecord[];
+      };
+      const pagosPorCorrida = new Map<number, PagosCorrida>();
       for (const p of ventaPagos) {
         const cur = pagosPorCorrida.get(p.corridafinancieraid) ?? {
           total: 0,
+          abonos: 0,
           lastDate: null,
           maxRecargo: 0,
           records: [],
         };
 
-        // Importe aplicado a la deuda, incluyendo saldo a favor utilizado.
-        const monto = getPagoAplicado(p);
-
-        cur.total += monto;
+        const abono = getAbonoSaldoFavor(p);
+        const saldoUsado = getSaldoFavorAplicado(p);
+        cur.total += getPagoAplicado(p);
+        cur.abonos += abono;
 
         if (p.fechapago && (!cur.lastDate || p.fechapago > cur.lastDate)) {
           cur.lastDate = p.fechapago;
@@ -175,11 +184,15 @@ export const supabasePaymentsService: IPaymentsService = {
 
         cur.maxRecargo = Math.max(cur.maxRecargo, p.recargo ?? 0);
 
-        cur.records.push({
-          fecha: p.fechapago ?? null,
-          monto,
-          formaPago: FORMAS_PAGO[p.formapago] ?? 'Otro',
-        });
+        // The money the client handed over and the saldo a favor used are listed
+        // separately, so a payment covered with saldo doesn't show as cash.
+        const dinero = redondear(Math.max(0, Number(p.montopagado ?? 0)) + abono);
+        if (dinero > 0) {
+          cur.records.push({ fecha: p.fechapago ?? null, monto: dinero, formaPago: FORMAS_PAGO[p.formapago] ?? 'Otro' });
+        }
+        if (saldoUsado > 0) {
+          cur.records.push({ fecha: p.fechapago ?? null, monto: saldoUsado, formaPago: 'Saldo a favor' });
+        }
 
         pagosPorCorrida.set(p.corridafinancieraid, cur);
       }
@@ -227,25 +240,31 @@ export const supabasePaymentsService: IPaymentsService = {
           ? 'Enganche'
           : `Mensualidad ${corrida.nopago} de ${totalMensualidades}`;
 
+        const abonosCorrida = redondear(pagoCorrida?.abonos ?? 0);
+
         const payment: Payment = {
           id: String(corrida.corridafinancieraid),
           date: corrida.fecha,
           reason: `${concepto} · ${lotKey}`,
+          // A paid installment shows everything paid with it, abonos included;
+          // its records split that between money and saldo a favor.
           amount: esPagado
-            ? totalPagadoCorrida
+            ? redondear(totalPagadoCorrida + abonosCorrida)
             : esParcial
               ? pendienteRestante
               : (corrida.mensualidad || 0) + cargoExtraAmount + recargoRequired,
           status: esPagado ? 'pagado' : pendingStatus,
           lotKey,
-          // A paid installment shows the surcharge that was recorded. Anything
-          // paid beyond it went to services; it used to show up as "recargo".
+          // A paid installment shows the surcharge that was recorded.
           breakdown: esPagado
             ? {
                 base: corrida.mensualidad || 0,
                 cargoExtra: cargoExtraAmount,
                 recargo: maxStoredRecargo,
-                servicios: Math.max(0, totalPagadoCorrida - (corrida.mensualidad || 0) - cargoExtraAmount - maxStoredRecargo),
+                abonoSaldoFavor: abonosCorrida,
+                pagoAdicional: redondear(
+                  Math.max(0, totalPagadoCorrida - (corrida.mensualidad || 0) - cargoExtraAmount - maxStoredRecargo)
+                ),
               }
             : {
                 base: corrida.mensualidad || 0,

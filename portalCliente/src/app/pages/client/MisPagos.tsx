@@ -208,7 +208,7 @@ function PaymentRow({
   const config = statusConfig[pago.status];
   const Icon = config.icon;
   const bd = pago.breakdown;
-  const hasExtras = bd && (bd.cargoExtra > 0 || bd.recargo > 0 || (bd.servicios ?? 0) > 0);
+  const hasExtras = bd && (bd.cargoExtra > 0 || bd.recargo > 0 || (bd.abonoSaldoFavor ?? 0) > 0 || (bd.pagoAdicional ?? 0) > 0);
   const isParcial = bd && (bd.pagadoParcial ?? 0) > 0;
 
   return (
@@ -257,9 +257,14 @@ function PaymentRow({
                 + Recargo por mora: {fmt(bd.recargo)}
               </div>
             )}
-            {(bd.servicios ?? 0) > 0 && (
+            {(bd.pagoAdicional ?? 0) > 0 && (
+              <div className="text-xs text-gray-600 font-medium">
+                + Pago adicional: {fmt(bd.pagoAdicional ?? 0)}
+              </div>
+            )}
+            {(bd.abonoSaldoFavor ?? 0) > 0 && (
               <div className="text-xs text-teal-700 font-medium">
-                + Servicios / extra: {fmt(bd.servicios ?? 0)}
+                + Abono a saldo a favor: {fmt(bd.abonoSaldoFavor ?? 0)}
               </div>
             )}
           </div>
@@ -288,7 +293,7 @@ function PaymentCard({
   const config = statusConfig[pago.status];
   const Icon = config.icon;
   const bd = pago.breakdown;
-  const hasExtras = bd && (bd.cargoExtra > 0 || bd.recargo > 0 || (bd.servicios ?? 0) > 0);
+  const hasExtras = bd && (bd.cargoExtra > 0 || bd.recargo > 0 || (bd.abonoSaldoFavor ?? 0) > 0 || (bd.pagoAdicional ?? 0) > 0);
   const isParcial = bd && (bd.pagadoParcial ?? 0) > 0;
 
   return (
@@ -348,9 +353,14 @@ function PaymentCard({
                 + Recargo por mora: {fmt(bd.recargo)}
               </div>
             )}
-            {(bd.servicios ?? 0) > 0 && (
+            {(bd.pagoAdicional ?? 0) > 0 && (
+              <div className="text-xs text-gray-600 font-medium">
+                + Pago adicional: {fmt(bd.pagoAdicional ?? 0)}
+              </div>
+            )}
+            {(bd.abonoSaldoFavor ?? 0) > 0 && (
               <div className="text-xs text-teal-700 font-medium">
-                + Servicios / extra: {fmt(bd.servicios ?? 0)}
+                + Abono a saldo a favor: {fmt(bd.abonoSaldoFavor ?? 0)}
               </div>
             )}
           </div>
