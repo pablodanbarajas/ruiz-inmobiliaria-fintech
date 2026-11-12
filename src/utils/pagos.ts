@@ -9,6 +9,8 @@
  * - servicios_extra negativo: saldo a favor usado en registros anteriores.
  */
 import { supabase } from '@/lib/supabaseClient'
+import type { AdminPanelRole } from '@/config/roles'
+import type { SaldoFavorCierre, SaldoFavorDecision } from '@/types/database'
 
 export interface PagoFinanciero {
   montopagado?: number | null
@@ -113,4 +115,40 @@ export const validarSaldoFavorDisponible = async (
   if (Math.round(solicitado * 100) > Math.round(disponible * 100)) {
     throw new Error(`Saldo a favor insuficiente. Disponible: $${disponible.toFixed(2)}`)
   }
+}
+
+// ── Saldo a favor of a cancelled sale ─────────────────────────────────────
+
+/** Roles that may decide a cancelled sale's saldo a favor (the database checks the same). */
+export const ROLES_DECIDEN_SALDO_FAVOR: readonly AdminPanelRole[] = ['admin', 'finanzas', 'cobranza_caja', 'contratos']
+
+/** The decision recorded for a sale, or null if none. */
+export const fetchSaldoFavorCierre = async (ventaid: number): Promise<SaldoFavorCierre | null> => {
+  const { data, error } = await supabase
+    .from('saldo_favor_cierres')
+    .select('*')
+    .eq('ventaid', ventaid)
+    .maybeSingle()
+  if (error) throw error
+  return (data as SaldoFavorCierre | null) ?? null
+}
+
+/**
+ * Records whether a cancelled sale's saldo a favor is refunded or retained.
+ * The database computes the amount and, for a refund, creates the devolución.
+ * Throws with the database's own message (in Spanish) so the UI can show it.
+ */
+export const cerrarSaldoFavor = async (
+  ventaid: number,
+  decision: SaldoFavorDecision,
+  nota?: string
+): Promise<{ cierreid: number; monto: number; devolucionid: number | null }> => {
+  const { data, error } = await supabase.rpc('cerrar_saldo_favor', {
+    p_ventaid: ventaid,
+    p_decision: decision,
+    p_nota: nota ?? null,
+  })
+  if (error) throw new Error(error.message)
+  const fila = (Array.isArray(data) ? data[0] : data) as { cierreid: number; monto: number; devolucionid: number | null }
+  return { cierreid: Number(fila.cierreid), monto: Number(fila.monto), devolucionid: fila.devolucionid ?? null }
 }
