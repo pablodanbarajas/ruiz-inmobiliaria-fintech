@@ -205,6 +205,21 @@ export type DevolucionParcialidad = {
   created_at: string | null
 }
 
+export type SaldoFavorDecision = 'reembolso' | 'retencion'
+
+/** What was decided about a cancelled sale's saldo a favor (table saldo_favor_cierres). */
+export type SaldoFavorCierre = {
+  cierreid: number
+  ventaid: number
+  monto: number
+  decision: SaldoFavorDecision
+  devolucionid: number | null
+  nota: string | null
+  created_by: string
+  created_by_nombre: string
+  created_at: string
+}
+
 export type Traspaso = {
   traspasoid: number
   ventaid: number
