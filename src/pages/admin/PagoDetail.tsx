@@ -9,7 +9,7 @@ import type { PagoFormData } from '@/components/forms/PagoForm'
 import { Edit2, XCircle, AlertTriangle, Printer } from 'lucide-react'
 import { ReciboPago } from '@/components/ReciboPago'
 import type { Pago, CorridaFinanciera, Venta, Cliente, Lote, CuentaBancaria } from '@/types/database'
-import { formatDate, formatCurrency, getPagoStatusLabel, getPagoStatusColor, getPagoFormaLabel } from '@/utils/helpers'
+import { formatDate, formatDateTime, formatCurrency, getPagoStatusLabel, getPagoStatusColor, getPagoFormaLabel } from '@/utils/helpers'
 import { getAbonoSaldoFavor, getSaldoFavorAplicado } from '@/utils/pagos'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
@@ -249,6 +249,9 @@ export const PagoDetail = () => {
             <div>
               <p className="text-sm text-gray-500">Fecha de Pago</p>
               <p className="text-lg font-semibold text-gray-900">{formatDate(pago.fechapago)}</p>
+              {pago.registrado_en && (
+                <p className="text-xs text-gray-500 mt-1">Registrado en el sistema el {formatDateTime(pago.registrado_en)}</p>
+              )}
             </div>
             <div>
               <p className="text-sm text-gray-500">Forma de Pago</p>

@@ -47,6 +47,12 @@ export const formatDateTime = (isoString: string | null | undefined): string => 
 }
 
 /**
+ * Calendar day (YYYY-MM-DD) of a timestamp in Mexico City, to compare it with date-only fields.
+ */
+export const getDiaMexico = (isoString: string): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date(isoString))
+
+/**
  * Format short date (DD/MM/YYYY)
  */
 export const formatDateShort = (dateString: string | null | undefined): string => {
