@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getSecretKey, getPublishableKey } from '../_shared/keys.ts'
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 const QUENTLI_API = Deno.env.get('QUENTLI_API_URL') ?? 'https://api.demo.quentli.com'
@@ -29,14 +30,14 @@ Deno.serve(async (req: Request) => {
     // Cliente con JWT del usuario → auth.uid() funciona correctamente en la vista
     const userClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      getPublishableKey(),
       { global: { headers: { Authorization: authHeader } } },
     )
 
     // Cliente con service role → para queries que no dependen de auth.uid()
     const serviceClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      getSecretKey(),
     )
 
     // Verificar que el token es válido

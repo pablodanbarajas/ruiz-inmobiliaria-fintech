@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getSecretKey } from '../_shared/keys.ts'
 
 const QUENTLI_API = Deno.env.get('QUENTLI_API_URL') ?? 'https://api.demo.quentli.com'
 
@@ -33,7 +34,7 @@ Deno.serve(async (req: Request) => {
   // secret must never match an empty or missing header.
   const authHeader = req.headers.get('Authorization') ?? ''
   const cronSecret = Deno.env.get('CRON_SECRET') ?? ''
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  const serviceKey = getSecretKey()
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : ''
   const matches = (secret: string) => secret.length >= 32 && timingSafeEqual(token, secret)
   if (!token || !(matches(cronSecret) || matches(serviceKey))) {
