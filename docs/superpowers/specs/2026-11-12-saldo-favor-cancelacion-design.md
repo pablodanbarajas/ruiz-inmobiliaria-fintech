@@ -44,6 +44,7 @@ Un registro por venta cancelada que tenía saldo a favor.
 | `devolucionid` | `integer` NULL | FK a `devoluciones`; obligatorio si es reembolso, nulo si es retención (`CHECK`) |
 | `nota` | `text` NULL | opcional, la escribe quien decide |
 | `created_by` | `uuid` NOT NULL | `auth.uid()` de quien decidió |
+| `created_by_nombre` | `text` NOT NULL | nombre de quien decidió, tomado de su sesión (`user_metadata` nombre y apellido, o su correo); no hay tabla de usuarios con nombres |
 | `created_at` | `timestamptz` NOT NULL | `now()` |
 
 RLS: lectura para el personal interno del panel (los mismos roles que `devoluciones_panel_all`). **Sin políticas de INSERT, UPDATE ni DELETE**: solo se escribe por la función de abajo. Una decisión no se edita ni se borra desde la app; un error se corrige a mano en la base con una nota.
