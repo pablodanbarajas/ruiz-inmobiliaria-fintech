@@ -1,7 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { formatCurrency, formatDate } from '@/utils/helpers'
-import { cerrarSaldoFavor, fetchSaldoFavorCierre, fetchSaldoFavorDisponible } from '@/utils/pagos'
+import {
+  cerrarSaldoFavor,
+  esDecisionYaRegistrada,
+  fetchSaldoFavorCierres,
+  fetchSaldoFavorDisponible,
+  QUIEN_DECIDE_SALDO_FAVOR,
+} from '@/utils/pagos'
 import type { SaldoFavorCierre, SaldoFavorDecision } from '@/types/database'
 
 const OPCIONES: { value: SaldoFavorDecision; label: string; detalle: string }[] = [
@@ -71,9 +77,9 @@ export function SaldoFavorDecisionFields({
 }
 
 /**
- * For a cancelled sale: the decision taken about its saldo a favor, or, when
- * it still has saldo and nothing was decided, a pending notice where staff
- * with permission can decide. Renders nothing when there is no saldo.
+ * For a cancelled sale: the decisions taken about its saldo a favor and, when
+ * it still has undecided saldo, a pending notice where staff with permission
+ * can decide. Renders nothing when there is neither.
  */
 export function SaldoFavorCierrePanel({
   ventaid,
@@ -84,22 +90,30 @@ export function SaldoFavorCierrePanel({
   puedeDecidir: boolean
   onDecidido: () => void
 }) {
-  const [cierre, setCierre] = useState<SaldoFavorCierre | null>(null)
+  const [cierres, setCierres] = useState<SaldoFavorCierre[]>([])
   const [saldo, setSaldo] = useState(0)
   const [cargando, setCargando] = useState(true)
+  const [errorCarga, setErrorCarga] = useState(false)
   const [decision, setDecision] = useState<SaldoFavorDecision | null>(null)
   const [nota, setNota] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Blocks a second click before the disabled button re-renders.
+  const guardandoRef = useRef(false)
 
   const cargar = useCallback(async () => {
     setCargando(true)
+    setErrorCarga(false)
     try {
-      const encontrado = await fetchSaldoFavorCierre(ventaid)
-      setCierre(encontrado)
-      setSaldo(encontrado ? 0 : await fetchSaldoFavorDisponible(ventaid))
+      const [encontrados, pendiente] = await Promise.all([
+        fetchSaldoFavorCierres(ventaid),
+        fetchSaldoFavorDisponible(ventaid),
+      ])
+      setCierres(encontrados)
+      setSaldo(pendiente)
     } catch (err) {
       console.error('Error al cargar el saldo a favor de la venta:', err)
+      setErrorCarga(true)
     } finally {
       setCargando(false)
     }
@@ -108,57 +122,77 @@ export function SaldoFavorCierrePanel({
   useEffect(() => { cargar() }, [cargar])
 
   const guardar = async () => {
-    if (!decision) return
+    if (!decision || guardandoRef.current) return
+    guardandoRef.current = true
     setGuardando(true)
     setError(null)
     try {
       await cerrarSaldoFavor(ventaid, decision, nota)
-      await cargar()
-      onDecidido()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la decisión.')
-    } finally {
-      setGuardando(false)
+      // Someone else (or a second click) already recorded it: just show it.
+      if (!esDecisionYaRegistrada(err)) {
+        setError(err instanceof Error ? err.message : 'No se pudo guardar la decisión.')
+        guardandoRef.current = false
+        setGuardando(false)
+        return
+      }
     }
+    setDecision(null)
+    setNota('')
+    await cargar()
+    onDecidido()
+    guardandoRef.current = false
+    setGuardando(false)
   }
 
   if (cargando) return null
 
-  if (cierre) {
+  if (errorCarga) {
     return (
-      <div className="bg-[#f7f8f8] border border-[#e0e5e7] rounded-[14px] p-4 mb-6 text-sm text-gray-700">
-        {cierre.decision === 'reembolso'
-          ? <>Saldo a favor de <strong>{formatCurrency(cierre.monto)}</strong>: reembolsado (Devolución #{cierre.devolucionid}).</>
-          : <>Saldo a favor de <strong>{formatCurrency(cierre.monto)}</strong>: retenido por {cierre.created_by_nombre} el {formatDate(cierre.created_at)}.</>}
-        {cierre.nota && <p className="mt-1 text-gray-500">Nota: {cierre.nota}</p>}
+      <div className="bg-red-50 border border-red-200 rounded-[14px] p-4 mb-6 text-sm text-red-700 flex flex-wrap items-center justify-between gap-3">
+        <span>No se pudo revisar el saldo a favor de esta venta.</span>
+        <Button variant="outline" size="sm" onClick={cargar}>Reintentar</Button>
       </div>
     )
   }
 
-  if (saldo <= 0) return null
+  if (cierres.length === 0 && saldo <= 0) return null
 
   return (
-    <div className="bg-amber-50 border border-amber-300 rounded-[14px] p-4 mb-6 space-y-3">
-      <p className="font-semibold text-amber-900">Saldo a favor pendiente de decidir: {formatCurrency(saldo)}</p>
-      {puedeDecidir ? (
-        <>
-          <SaldoFavorDecisionFields
-            monto={saldo}
-            decision={decision}
-            nota={nota}
-            onChange={(d, n) => { setDecision(d); setNota(n) }}
-            disabled={guardando}
-          />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex justify-end">
-            <Button onClick={guardar} disabled={!decision || guardando}>
-              {guardando ? 'Guardando…' : 'Guardar decisión'}
-            </Button>
-          </div>
-        </>
-      ) : (
-        <p className="text-sm text-amber-800">La decisión la toma Finanzas, Caja, Contratos o un administrador.</p>
+    <>
+      {cierres.map((cierre) => (
+        <div key={cierre.cierreid} className="bg-[#f7f8f8] border border-[#e0e5e7] rounded-[14px] p-4 mb-6 text-sm text-gray-700">
+          {cierre.decision === 'reembolso'
+            ? <>Saldo a favor de <strong>{formatCurrency(cierre.monto)}</strong>: reembolsado (Devolución #{cierre.devolucionid}).</>
+            : <>Saldo a favor de <strong>{formatCurrency(cierre.monto)}</strong>: retenido por {cierre.created_by_nombre} el {formatDate(cierre.created_at)}.</>}
+          {cierre.nota && <p className="mt-1 text-gray-500">Nota: {cierre.nota}</p>}
+        </div>
+      ))}
+
+      {saldo > 0 && (
+        <div className="bg-amber-50 border border-amber-300 rounded-[14px] p-4 mb-6 space-y-3">
+          <p className="font-semibold text-amber-900">Saldo a favor pendiente de decidir: {formatCurrency(saldo)}</p>
+          {puedeDecidir ? (
+            <>
+              <SaldoFavorDecisionFields
+                monto={saldo}
+                decision={decision}
+                nota={nota}
+                onChange={(d, n) => { setDecision(d); setNota(n) }}
+                disabled={guardando}
+              />
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              <div className="flex justify-end">
+                <Button onClick={guardar} disabled={!decision || guardando}>
+                  {guardando ? 'Guardando…' : 'Guardar decisión'}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-amber-800">La decisión la toma {QUIEN_DECIDE_SALDO_FAVOR}.</p>
+          )}
+        </div>
       )}
-    </div>
+    </>
   )
 }

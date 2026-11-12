@@ -76,7 +76,8 @@ export const fetchSaldoFavorDisponible = async (
     .from('pagos')
     .select('pagoid, servicios_extra, saldo_favor_aplicado, estatus')
     .in('corridafinancieraid', ids)
-    .neq('estatus', 'C')
+    // Payments with no status count, as in saldo_favor_venta (IS DISTINCT FROM 'C').
+    .or('estatus.is.null,estatus.neq.C')
   if (opciones.hastaPagoId != null) query = query.lte('pagoid', opciones.hastaPagoId)
 
   const { data, error } = await query
@@ -87,13 +88,9 @@ export const fetchSaldoFavorDisponible = async (
   // cancelling, same as saldo_favor_venta in the database.
   if (opciones.hastaPagoId != null) return saldo
 
-  const { data: cierre, error: cierreError } = await supabase
-    .from('saldo_favor_cierres')
-    .select('monto')
-    .eq('ventaid', ventaid)
-    .maybeSingle()
-  if (cierreError) throw cierreError
-  return redondear(Math.max(0, saldo - Number(cierre?.monto ?? 0)))
+  const cierres = await fetchSaldoFavorCierres(ventaid)
+  const decidido = cierres.reduce((total, c) => total + Number(c.monto), 0)
+  return redondear(Math.max(0, saldo - decidido))
 }
 
 /** Venta a la que pertenece una mensualidad. */
@@ -134,16 +131,26 @@ export const validarSaldoFavorDisponible = async (
 /** Roles that may decide a cancelled sale's saldo a favor (the database checks the same). */
 export const ROLES_DECIDEN_SALDO_FAVOR: readonly AdminPanelRole[] = ['admin', 'finanzas', 'cobranza_caja', 'contratos']
 
-/** The decision recorded for a sale, or null if none. */
-export const fetchSaldoFavorCierre = async (ventaid: number): Promise<SaldoFavorCierre | null> => {
+/** Who decides, for the UI copy (same roles as above). */
+export const QUIEN_DECIDE_SALDO_FAVOR = 'Administración, Finanzas, Caja o Contratos'
+
+/**
+ * Decisions recorded for a sale, oldest first. Usually one; a sale reactivated
+ * and cancelled again can have another for saldo added afterwards.
+ */
+export const fetchSaldoFavorCierres = async (ventaid: number): Promise<SaldoFavorCierre[]> => {
   const { data, error } = await supabase
     .from('saldo_favor_cierres')
     .select('*')
     .eq('ventaid', ventaid)
-    .maybeSingle()
+    .order('cierreid', { ascending: true })
   if (error) throw error
-  return (data as SaldoFavorCierre | null) ?? null
+  return (data ?? []) as SaldoFavorCierre[]
 }
+
+/** True when the error says the decision was already recorded (e.g. a double submit). */
+export const esDecisionYaRegistrada = (error: unknown): boolean =>
+  error instanceof Error && error.message.startsWith('La venta ya tiene una decisión')
 
 /**
  * Records whether a cancelled sale's saldo a favor is refunded or retained.

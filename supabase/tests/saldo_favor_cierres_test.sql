@@ -26,11 +26,16 @@ BEGIN
 END $$;
 
 CREATE FUNCTION pg_temp.ctx(p_k text) RETURNS integer LANGUAGE sql AS $$ SELECT v::integer FROM ctx WHERE k = p_k $$;
+-- Saldo the chosen sale had before the test's 300 abono (may have cents).
+CREATE FUNCTION pg_temp.esperado(p_extra numeric) RETURNS numeric LANGUAGE sql AS $$
+  SELECT GREATEST(0, round((SELECT v::numeric FROM ctx WHERE k = 'antes') + p_extra, 2))
+$$;
 
 -- ── Setup (postgres) ──────────────────────────────────────────────────────
 DO $$
 DECLARE
-  v_venta integer; v_corrida integer; v_activa integer; v_sin integer; v_antes numeric; v_pago integer;
+  v_venta integer; v_corrida integer; v_activa integer; v_corrida_activa integer;
+  v_sin integer; v_antes numeric; v_pago integer;
 BEGIN
   -- An active sale with at least two installments: gets a 300 abono, then is cancelled.
   SELECT v.ventaid INTO v_venta FROM venta v
@@ -38,9 +43,10 @@ BEGIN
   ORDER BY v.ventaid LIMIT 1;
   SELECT min(corridafinancieraid) INTO v_corrida FROM corridafinanciera WHERE ventaid = v_venta;
 
-  SELECT COALESCE(sum(GREATEST(COALESCE(p.servicios_extra, 0), 0))
-                - sum(GREATEST(-COALESCE(p.servicios_extra, 0), 0))
-                - sum(COALESCE(p.saldo_favor_aplicado, 0)), 0)
+  -- Same formula as saldo_favor_venta, before rounding and flooring.
+  SELECT COALESCE(sum(GREATEST(COALESCE(p.servicios_extra, 0), 0)
+                    - GREATEST(-COALESCE(p.servicios_extra, 0), 0)
+                    - GREATEST(COALESCE(p.saldo_favor_aplicado, 0), 0)), 0)
     INTO v_antes
   FROM pagos p JOIN corridafinanciera c ON c.corridafinancieraid = p.corridafinancieraid
   WHERE c.ventaid = v_venta AND p.estatus IS DISTINCT FROM 'C';
@@ -51,7 +57,11 @@ BEGIN
   UPDATE venta SET estatus = 'C' WHERE ventaid = v_venta;
 
   -- Another active sale stays active.
-  SELECT ventaid INTO v_activa FROM venta WHERE estatus = 'A' AND ventaid <> v_venta ORDER BY ventaid LIMIT 1;
+  SELECT v.ventaid INTO v_activa FROM venta v
+  WHERE v.estatus = 'A' AND v.ventaid <> v_venta
+    AND EXISTS (SELECT 1 FROM corridafinanciera c WHERE c.ventaid = v.ventaid)
+  ORDER BY v.ventaid LIMIT 1;
+  SELECT min(corridafinancieraid) INTO v_corrida_activa FROM corridafinanciera WHERE ventaid = v_activa;
 
   -- A sale with no payments at all (so no saldo), cancelled for the "sin saldo" check.
   SELECT v.ventaid INTO v_sin FROM venta v
@@ -61,12 +71,13 @@ BEGIN
   UPDATE venta SET estatus = 'C' WHERE ventaid = v_sin;
 
   INSERT INTO ctx VALUES ('venta', v_venta), ('corrida', v_corrida), ('activa', v_activa),
-                         ('sin', v_sin), ('pago', v_pago), ('antes', round(v_antes)::integer);
+                         ('corrida_activa', v_corrida_activa), ('sin', v_sin), ('pago', v_pago),
+                         ('antes', v_antes::text);
 END $$;
 
 -- ── saldo_calculado ───────────────────────────────────────────────────────
 INSERT INTO resultados
-SELECT 'saldo_calculado', public.saldo_favor_venta(pg_temp.ctx('venta')) = pg_temp.ctx('antes') + 300,
+SELECT 'saldo_calculado', public.saldo_favor_venta(pg_temp.ctx('venta')) = pg_temp.esperado(300),
        'saldo = ' || public.saldo_favor_venta(pg_temp.ctx('venta'));
 
 -- ── sin_permiso ───────────────────────────────────────────────────────────
@@ -105,7 +116,7 @@ DO $$
 DECLARE r record; v_ok boolean;
 BEGIN
   SELECT * INTO r FROM public.cerrar_saldo_favor(pg_temp.ctx('venta'), 'reembolso', '  prueba  ');
-  SELECT r.monto = pg_temp.ctx('antes') + 300
+  SELECT r.monto = pg_temp.esperado(300)
      AND EXISTS (SELECT 1 FROM devoluciones d WHERE d.devolucionid = r.devolucionid AND d.monto_total = r.monto
                    AND d.motivo = 'Reembolso de saldo a favor' AND d.estatus = 'P' AND d.ventaid = pg_temp.ctx('venta'))
      AND (SELECT count(*) FROM devolucion_parcialidades x WHERE x.devolucionid = r.devolucionid AND x.monto = r.monto) = 1
@@ -119,7 +130,7 @@ EXCEPTION WHEN OTHERS THEN
   INSERT INTO resultados VALUES ('reembolso', false, SQLERRM);
 END $$;
 
--- ── decidir_dos_veces ─────────────────────────────────────────────────────
+-- ── decidir_dos_veces (nothing new to decide) ─────────────────────────────
 DO $$ BEGIN
   PERFORM public.cerrar_saldo_favor(pg_temp.ctx('venta'), 'retencion');
   INSERT INTO resultados VALUES ('decidir_dos_veces', false, 'no falló');
@@ -136,10 +147,28 @@ SELECT 'reactivada_sin_saldo', public.saldo_favor_venta(pg_temp.ctx('venta')) = 
        'saldo = ' || public.saldo_favor_venta(pg_temp.ctx('venta'));
 UPDATE venta SET estatus = 'C' WHERE ventaid = pg_temp.ctx('venta');
 
+-- ── recancelada_saldo_nuevo: saldo added after a decision can be decided ──
+INSERT INTO pagos (corridafinancieraid, fechapago, montopagado, servicios_extra, formapago, estatus, comentario)
+VALUES (pg_temp.ctx('corrida'), now(), 0.01, 100, 1, 'P', 'prueba saldo a favor');
+SELECT pg_temp.como('finanzas');
+DO $$
+DECLARE r record;
+BEGIN
+  SELECT * INTO r FROM public.cerrar_saldo_favor(pg_temp.ctx('venta'), 'retencion');
+  INSERT INTO resultados VALUES ('recancelada_saldo_nuevo', r.monto = 100 AND r.devolucionid IS NULL, 'monto ' || r.monto);
+EXCEPTION WHEN OTHERS THEN
+  INSERT INTO resultados VALUES ('recancelada_saldo_nuevo', false, SQLERRM);
+END $$;
+SELECT set_config('role', 'none', true);
+-- saldo_favor_venta isn't callable by app users, so this check runs as postgres.
+INSERT INTO resultados
+SELECT 'recancelada_sin_pendiente', public.saldo_favor_venta(pg_temp.ctx('venta')) = 0,
+       'saldo = ' || public.saldo_favor_venta(pg_temp.ctx('venta'));
+
 -- ── rls_lectura (a reader role sees it; nobody inserts directly) ──────────
 SELECT pg_temp.como('vendedor');
 INSERT INTO resultados
-SELECT 'rls_lectura', (SELECT count(*) FROM public.saldo_favor_cierres WHERE ventaid = pg_temp.ctx('venta')) = 1, 'lectura';
+SELECT 'rls_lectura', (SELECT count(*) FROM public.saldo_favor_cierres WHERE ventaid = pg_temp.ctx('venta')) = 2, 'lectura';
 DO $$ BEGIN
   INSERT INTO public.saldo_favor_cierres (ventaid, monto, decision, created_by, created_by_nombre)
   VALUES (pg_temp.ctx('activa'), 1, 'retencion', '00000000-0000-4000-8000-0000000000b2', 'x');
@@ -149,7 +178,8 @@ EXCEPTION WHEN OTHERS THEN
 END $$;
 SELECT set_config('role', 'none', true);
 
--- ── retencion (undo the refund as postgres, then retain) ─────────────────
+-- ── retencion (undo the decisions as postgres, then retain) ──────────────
+DELETE FROM pagos WHERE corridafinancieraid = pg_temp.ctx('corrida') AND servicios_extra = 100 AND comentario = 'prueba saldo a favor';
 DELETE FROM devolucion_parcialidades WHERE devolucionid IN (SELECT devolucionid FROM saldo_favor_cierres WHERE ventaid = pg_temp.ctx('venta'));
 CREATE TEMP TABLE borrar ON COMMIT DROP AS SELECT devolucionid FROM saldo_favor_cierres WHERE ventaid = pg_temp.ctx('venta');
 DELETE FROM saldo_favor_cierres WHERE ventaid = pg_temp.ctx('venta');
@@ -183,6 +213,28 @@ DO $$ BEGIN
   INSERT INTO resultados VALUES ('trigger_permite_cancelar_pago', true, 'ok');
 EXCEPTION WHEN OTHERS THEN
   INSERT INTO resultados VALUES ('trigger_permite_cancelar_pago', false, SQLERRM);
+END $$;
+-- A cancelled payment that had used saldo can't be un-cancelled on a cancelled sale.
+DO $$
+DECLARE v_id integer;
+BEGIN
+  INSERT INTO pagos (corridafinancieraid, fechapago, montopagado, saldo_favor_aplicado, formapago, estatus)
+  VALUES (pg_temp.ctx('corrida'), now(), 0, 50, 1, 'C') RETURNING pagoid INTO v_id;
+  UPDATE pagos SET estatus = 'P' WHERE pagoid = v_id;
+  INSERT INTO resultados VALUES ('trigger_bloquea_descancelar', false, 'actualizó');
+EXCEPTION WHEN OTHERS THEN
+  INSERT INTO resultados VALUES ('trigger_bloquea_descancelar', SQLERRM LIKE 'No se puede usar saldo a favor de una venta cancelada%', SQLERRM);
+END $$;
+-- A payment that used saldo can't be moved onto a cancelled sale.
+DO $$
+DECLARE v_id integer;
+BEGIN
+  INSERT INTO pagos (corridafinancieraid, fechapago, montopagado, saldo_favor_aplicado, formapago, estatus)
+  VALUES (pg_temp.ctx('corrida_activa'), now(), 0, 50, 1, 'P') RETURNING pagoid INTO v_id;
+  UPDATE pagos SET corridafinancieraid = pg_temp.ctx('corrida') WHERE pagoid = v_id;
+  INSERT INTO resultados VALUES ('trigger_bloquea_mover_pago', false, 'actualizó');
+EXCEPTION WHEN OTHERS THEN
+  INSERT INTO resultados VALUES ('trigger_bloquea_mover_pago', SQLERRM LIKE 'No se puede usar saldo a favor de una venta cancelada%', SQLERRM);
 END $$;
 
 -- Report by raising: the error carries the results and aborts the transaction,

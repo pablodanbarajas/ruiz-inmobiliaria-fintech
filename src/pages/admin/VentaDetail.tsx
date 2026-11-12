@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { invalidateCache } from '@/lib/queryCache'
@@ -13,7 +13,9 @@ import {
   validarSaldoFavorDisponible,
   fetchSaldoFavorDisponible,
   cerrarSaldoFavor,
+  esDecisionYaRegistrada,
   ROLES_DECIDEN_SALDO_FAVOR,
+  QUIEN_DECIDE_SALDO_FAVOR,
 } from '@/utils/pagos'
 import { SaldoFavorCierrePanel, SaldoFavorDecisionFields } from '@/components/SaldoFavorCierre'
 import type { PagoFormData } from '@/components/forms/PagoForm'
@@ -89,6 +91,9 @@ export const VentaDetail = () => {
   const [saldoCancelacion, setSaldoCancelacion] = useState<number | null>(null)
   const [decisionSaldo, setDecisionSaldo] = useState<SaldoFavorDecision | null>(null)
   const [notaSaldo, setNotaSaldo] = useState('')
+  const [errorSaldoCancelacion, setErrorSaldoCancelacion] = useState(false)
+  // Blocks a second click on "cancelar" before the disabled button re-renders.
+  const cancelandoRef = useRef(false)
   const [cargosExtra, setCargosExtra] = useState<CargoExtra[]>([])
   const [traspasos, setTraspasos] = useState<(Traspaso & { cliente_anterior?: { nombre: string | null }; cliente_nuevo?: { nombre: string | null } })[]>([])
   const [showTraspasoModal, setShowTraspasoModal] = useState(false)
@@ -118,9 +123,13 @@ export const VentaDetail = () => {
     setSaldoCancelacion(null)
     setDecisionSaldo(null)
     setNotaSaldo('')
+    setErrorSaldoCancelacion(false)
     fetchSaldoFavorDisponible(venta.ventaid)
       .then((saldo) => { if (!cancelado) setSaldoCancelacion(saldo) })
-      .catch(() => { if (!cancelado) setSaldoCancelacion(0) })
+      .catch(() => {
+        // Don't block cancelling: the sale's detail shows the pending saldo afterwards.
+        if (!cancelado) { setSaldoCancelacion(0); setErrorSaldoCancelacion(true) }
+      })
     return () => { cancelado = true }
   }, [showCancelModal, venta?.ventaid])
 
@@ -506,7 +515,8 @@ export const VentaDetail = () => {
 
   // ── Cancel handler ───────────────────────────────────────────────
   const handleCancelVenta = async () => {
-    if (!venta) return
+    if (!venta || cancelandoRef.current) return
+    cancelandoRef.current = true
     try {
       setIsSubmitting(true)
 
@@ -569,8 +579,11 @@ export const VentaDetail = () => {
         try {
           await cerrarSaldoFavor(venta.ventaid, decisionSaldo, notaSaldo)
         } catch (saldoErr) {
-          const mensaje = saldoErr instanceof Error ? saldoErr.message : String(saldoErr)
-          alert(`La venta se canceló, pero no se registró la decisión del saldo a favor: ${mensaje}. Puedes decidirla desde el detalle de la venta.`)
+          // Already recorded (e.g. by a second click): nothing to report.
+          if (!esDecisionYaRegistrada(saldoErr)) {
+            const mensaje = saldoErr instanceof Error ? saldoErr.message : String(saldoErr)
+            alert(`La venta se canceló, pero no se registró la decisión del saldo a favor: ${mensaje}. Puedes decidirla desde el detalle de la venta.`)
+          }
         }
       }
 
@@ -644,6 +657,7 @@ export const VentaDetail = () => {
       console.error('Error cancelling venta:', err)
       alert(`Error al cancelar la venta: ${err.message}`)
     } finally {
+      cancelandoRef.current = false
       setIsSubmitting(false)
     }
   }
@@ -1753,6 +1767,11 @@ export const VentaDetail = () => {
           </div>
 
           {/* Saldo a favor: who can decide must decide before cancelling */}
+          {errorSaldoCancelacion && (
+            <p className="text-sm text-amber-800">
+              No se pudo revisar el saldo a favor. Si la venta tiene saldo, se decidirá después desde su detalle.
+            </p>
+          )}
           {saldoCancelacion === null ? (
             <p className="text-sm text-gray-500">Revisando el saldo a favor de la venta…</p>
           ) : saldoCancelacion > 0 && (
@@ -1767,7 +1786,7 @@ export const VentaDetail = () => {
                 />
               ) : (
                 <p className="text-sm text-amber-900">
-                  Esta venta tiene {formatCurrency(saldoCancelacion)} de saldo a favor. La decisión sobre ese saldo la toma Finanzas o Caja después de cancelar.
+                  Esta venta tiene {formatCurrency(saldoCancelacion)} de saldo a favor. La decisión sobre ese saldo la toma {QUIEN_DECIDE_SALDO_FAVOR} después de cancelar.
                 </p>
               )}
             </div>

@@ -11,9 +11,11 @@
 -- app; a mistake is fixed by hand in the database.
 
 -- ── Table ─────────────────────────────────────────────────────────────────
+-- Usually one decision per sale. A sale reactivated and cancelled again can
+-- get another one for saldo added afterwards; decided saldo never comes back.
 CREATE TABLE IF NOT EXISTS public.saldo_favor_cierres (
   cierreid bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  ventaid integer NOT NULL UNIQUE REFERENCES public.venta (ventaid),
+  ventaid integer NOT NULL REFERENCES public.venta (ventaid),
   monto numeric(12,2) NOT NULL CHECK (monto > 0),
   decision text NOT NULL CHECK (decision IN ('reembolso', 'retencion')),
   devolucionid integer REFERENCES public.devoluciones (devolucionid),
@@ -24,6 +26,10 @@ CREATE TABLE IF NOT EXISTS public.saldo_favor_cierres (
   -- A refund always points at its devolución; a retention never does.
   CONSTRAINT saldo_favor_cierres_devolucion_check CHECK ((decision = 'reembolso') = (devolucionid IS NOT NULL))
 );
+
+-- Test had a first version with UNIQUE (ventaid); drop it if present.
+ALTER TABLE public.saldo_favor_cierres DROP CONSTRAINT IF EXISTS saldo_favor_cierres_ventaid_key;
+CREATE INDEX IF NOT EXISTS saldo_favor_cierres_ventaid_idx ON public.saldo_favor_cierres (ventaid);
 
 ALTER TABLE public.saldo_favor_cierres ENABLE ROW LEVEL SECURITY;
 
@@ -57,7 +63,7 @@ AS $$
       WHERE c.ventaid = p_ventaid
         AND p.estatus IS DISTINCT FROM 'C'
     ), 0)
-    - COALESCE((SELECT s.monto FROM public.saldo_favor_cierres s WHERE s.ventaid = p_ventaid), 0),
+    - COALESCE((SELECT sum(s.monto) FROM public.saldo_favor_cierres s WHERE s.ventaid = p_ventaid), 0),
   2))
 $$;
 
@@ -92,12 +98,12 @@ BEGIN
     RAISE EXCEPTION 'La venta no está cancelada';
   END IF;
 
-  IF EXISTS (SELECT 1 FROM public.saldo_favor_cierres s WHERE s.ventaid = p_ventaid) THEN
-    RAISE EXCEPTION 'La venta ya tiene una decisión de saldo a favor';
-  END IF;
-
+  -- Saldo still undecided (decided amounts are already subtracted).
   v_monto := public.saldo_favor_venta(p_ventaid);
   IF v_monto <= 0 THEN
+    IF EXISTS (SELECT 1 FROM public.saldo_favor_cierres s WHERE s.ventaid = p_ventaid) THEN
+      RAISE EXCEPTION 'La venta ya tiene una decisión de saldo a favor';
+    END IF;
     RAISE EXCEPTION 'La venta no tiene saldo a favor';
   END IF;
 
@@ -131,9 +137,12 @@ REVOKE EXECUTE ON FUNCTION public.cerrar_saldo_favor(integer, text, text) FROM P
 GRANT EXECUTE ON FUNCTION public.cerrar_saldo_favor(integer, text, text) TO authenticated;
 
 -- ── No new saldo on a cancelled sale ──────────────────────────────────────
--- Rejects raising saldo_favor_aplicado on a payment of a cancelled sale, so
--- the saldo can't be spent after cancelling or after its decision. Editing
--- or cancelling an old payment of that sale still works.
+-- Rejects a payment of a cancelled sale that would use more saldo than it
+-- already counted, so the saldo can't be spent after cancelling or after its
+-- decision. Editing or cancelling an old payment of that sale still works.
+-- What it counted before is its old saldo only if it was active and on the
+-- same installment: un-cancelling it, or moving it onto a cancelled sale,
+-- spends the saldo again.
 CREATE OR REPLACE FUNCTION public.pagos_no_saldo_en_venta_cancelada()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -142,7 +151,10 @@ AS $$
 BEGIN
   IF NEW.estatus IS DISTINCT FROM 'C'
      AND COALESCE(NEW.saldo_favor_aplicado, 0) >
-         (CASE WHEN TG_OP = 'UPDATE' THEN COALESCE(OLD.saldo_favor_aplicado, 0) ELSE 0 END)
+         (CASE WHEN TG_OP = 'UPDATE'
+                    AND OLD.estatus IS DISTINCT FROM 'C'
+                    AND OLD.corridafinancieraid IS NOT DISTINCT FROM NEW.corridafinancieraid
+               THEN COALESCE(OLD.saldo_favor_aplicado, 0) ELSE 0 END)
      AND EXISTS (
        SELECT 1 FROM public.corridafinanciera c
        JOIN public.venta v ON v.ventaid = c.ventaid
