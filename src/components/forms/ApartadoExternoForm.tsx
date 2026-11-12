@@ -54,6 +54,7 @@ export const ApartadoExternoForm = ({
   const [desarrolloId, setDesarrolloId] = useState('')
   const [manzanaSeleccionada, setManzanaSeleccionada] = useState('')
   const [loteid, setLoteid] = useState('')
+  const [metodoBusqueda, setMetodoBusqueda] = useState<'listas' | 'texto'>('listas')
   const [fecha, setFecha] = useState(today)
   const [comentarios, setComentarios] = useState('')
 
@@ -143,6 +144,18 @@ const lotesDisponibles = lotes
     )
   )
 
+  const loteOptions: ComboOption[] = lotes.map((l) => ({
+    value: String(l.loteid),
+    label: [
+      l.desarrollo?.nombre,
+      l.manzana ? `Manzana ${l.manzana}` : null,
+      l.nolote ? `Lote ${l.nolote}` : null,
+      l.clavelote ? `Clave ${l.clavelote}` : null,
+    ].filter(Boolean).join(' · '),
+    sublabel: l.clavelote
+      ? `Clave: ${l.clavelote}`
+      : `Inmueble #${l.loteid}`,
+  }))
 
   const clienteOptions: ComboOption[] = clientesExistentes.map((c) => ({
     value: c.clienteid.toString(),
@@ -370,81 +383,146 @@ const lotesDisponibles = lotes
 
       <div className="bg-gray-50 rounded-lg p-4 space-y-4">
         <p className={sectionClass}>Selección de lote</p>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              1. Desarrollo *
-            </label>
-            <select
-              value={desarrolloId}
-              onChange={(e) => {
-                setDesarrolloId(e.target.value)
-                setManzanaSeleccionada('')
-                setLoteid('')
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
-            >
-              <option value="">Seleccione un desarrollo</option>
-              {desarrollosDisponibles.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              2. Manzana *
-            </label>
-            <select
-              value={manzanaSeleccionada}
-              disabled={!desarrolloId}
-              onChange={(e) => {
-                setManzanaSeleccionada(e.target.value)
-                setLoteid('')
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white disabled:bg-gray-100"
-            >
-              <option value="">Seleccione una manzana</option>
-              {manzanasDisponibles.map((m) => (
-                <option key={m} value={m}>
-                  Manzana {m}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="flex gap-2 border-b border-gray-200 pb-3">
+          <button
+            type="button"
+            onClick={() => {
+              setMetodoBusqueda('listas')
+              setLoteid('')
+              setErrors((prev) => ({ ...prev, loteid: '' }))
+            }}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+              metodoBusqueda === 'listas'
+                ? 'bg-[#16a34a] border-[#16a34a] text-black'
+                : 'bg-white border-gray-300 text-gray-600'
+            }`}
+          >
+            Seleccionar por listas
+          </button>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              3. Lote disponible *
-            </label>
-            <select
-              value={loteid}
-              disabled={!manzanaSeleccionada}
-              onChange={(e) => {
-                setLoteid(e.target.value)
-                setErrors((prev) => ({ ...prev, loteid: '' }))
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white disabled:bg-gray-100"
-            >
-              <option value="">Seleccione un lote</option>
-              {lotesDisponibles.map((l) => (
-                <option key={l.loteid} value={String(l.loteid)}>
-                  Lote {l.nolote}
-                  {l.clavelote ? ` - ${l.clavelote}` : ''}
-                </option>
-              ))}
-            </select>
-
-            {errors.loteid && (
-              <p className="text-red-500 text-xs mt-1">{errors.loteid}</p>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setMetodoBusqueda('texto')
+              setDesarrolloId('')
+              setManzanaSeleccionada('')
+              setLoteid('')
+              setErrors((prev) => ({ ...prev, loteid: '' }))
+            }}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+              metodoBusqueda === 'texto'
+                ? 'bg-[#16a34a] border-[#16a34a] text-black'
+                : 'bg-white border-gray-300 text-gray-600'
+            }`}
+          >
+            Buscar escribiendo
+          </button>
         </div>
 
-      </div>
+        
+        {metodoBusqueda === 'listas' ? (
+          <div className="space-y-4">
+            {/* Desarrollo */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                1. Desarrollo *
+              </label>
+              <select
+                value={desarrolloId}
+                onChange={(e) => {
+                  setDesarrolloId(e.target.value)
+                  setManzanaSeleccionada('')
+                  setLoteid('')
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
+              >
+                <option value="">Seleccione un desarrollo</option>
+                {desarrollosDisponibles.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Manzana */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                2. Manzana *
+              </label>
+              <select
+                value={manzanaSeleccionada}
+                disabled={!desarrolloId}
+                onChange={(e) => {
+                  setManzanaSeleccionada(e.target.value)
+                  setLoteid('')
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white disabled:bg-gray-100"
+              >
+                <option value="">Seleccione una manzana</option>
+                {manzanasDisponibles.map((m) => (
+                  <option key={m} value={m}>
+                    Manzana {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Lote */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                3. Lote disponible *
+              </label>
+              <select
+                value={loteid}
+                disabled={!manzanaSeleccionada}
+                onChange={(e) => {
+                  setLoteid(e.target.value)
+                  setErrors((prev) => ({ ...prev, loteid: '' }))
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white disabled:bg-gray-100"
+              >
+                <option value="">Seleccione un lote</option>
+                {lotesDisponibles.map((l) => (
+                  <option key={l.loteid} value={String(l.loteid)}>
+                    Lote {l.nolote}
+                    {l.clavelote ? ` - ${l.clavelote}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Buscar lote disponible *
+            </label>
+
+            <SearchCombobox
+              options={loteOptions}
+              value={loteid}
+              onChange={(value) => {
+                setLoteid(value)
+                setErrors((prev) => ({ ...prev, loteid: '' }))
+              }}
+              placeholder="Escribe el desarrollo, manzana, número o clave..."
+              error={errors.loteid}
+            />
+
+            <p className="text-xs text-gray-500">
+              Puedes localizar inmuebles sin seleccionar primero una manzana.
+            </p>
+          </div>
+        )}
+
+        {errors.loteid && metodoBusqueda === 'listas' && (
+          <p className="text-red-500 text-xs mt-1">
+            {errors.loteid}
+          </p>
+        )}
+
+        </div>
 
       <div className="bg-gray-50 rounded-lg p-4 space-y-4">
         <p className={sectionClass}>Datos del apartado</p>
