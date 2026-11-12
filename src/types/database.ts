@@ -134,6 +134,8 @@ export type Pago = {
   servicios_extra: number | null
   /** Saldo a favor used to cover this payment; separate from the money received (montopagado). */
   saldo_favor_aplicado?: number | null
+  /** When the payment was captured, set by the database. Null for payments from before 12 nov 2026. */
+  registrado_en?: string | null
   formapago: number | null
   cuenta_bancaria_id: number | null
   estatus: string | null

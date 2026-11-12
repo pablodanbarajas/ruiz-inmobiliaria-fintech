@@ -26,6 +26,8 @@ import {
   getPagoFormaLabel,
   formatCurrency,
   formatDate,
+  formatDateTime,
+  getDiaMexico,
   FORMAS_PAGO,
   calcularRecargo,
 } from '@/utils/helpers'
@@ -238,7 +240,7 @@ export const Pagos = () => {
           (afterKey, pageSize) =>
             supabase
               .from('pagos')
-              .select('pagoid, fechapago, montopagado, servicios_extra, saldo_favor_aplicado, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera!inner(corridafinancieraid, nopago, mensualidad, saldo, fecha, venta:venta!inner(ventaid, clienteid, preciolote, plazo, cliente:cliente(clienteid, nombre, email, telefonocelular), lote:lote!inner(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
+              .select('pagoid, fechapago, registrado_en, montopagado, servicios_extra, saldo_favor_aplicado, formapago, cobrador, estatus, corridafinancieraid, cuenta_bancaria_id, referencia, comentario, recargo, corridafinanciera:corridafinanciera!inner(corridafinancieraid, nopago, mensualidad, saldo, fecha, venta:venta!inner(ventaid, clienteid, preciolote, plazo, cliente:cliente(clienteid, nombre, email, telefonocelular), lote:lote!inner(loteid, desarrolloid, manzana, nolote, desarrollo:desarrollo(desarrolloid, nombre)))), cuenta_bancaria:cuentas_bancarias(cuenta_bancaria_id, nombre, banco, numero_cuenta, clabe)')
               .in('corridafinanciera.venta.lote.desarrolloid', DEMO_DESARROLLOIDS)
               .gt('pagoid', afterKey)
               .order('pagoid', { ascending: true })
@@ -429,13 +431,14 @@ export const Pagos = () => {
   const exportPagosCsv = () => {
     const fmtDate = (d: string | null | undefined) => d ? d.slice(0, 10).split('-').reverse().join('/') : ''
     const csv = toCsv(
-      ['Pago ID', 'Fecha', 'Cliente', 'Venta ID', 'Desarrollo', 'Metodo', 'Cobrador', 'Monto', 'Recargo', 'Abono a saldo a favor', 'Pagado con saldo a favor', 'Estado'],
+      ['Pago ID', 'Fecha', 'Registrado el', 'Cliente', 'Venta ID', 'Desarrollo', 'Metodo', 'Cobrador', 'Monto', 'Recargo', 'Abono a saldo a favor', 'Pagado con saldo a favor', 'Estado'],
       filteredPagos.map((pago) => {
         const { venta, cliente, desarrollo } = getPagoContext(pago)
 
         return [
           pago.pagoid || '',
           fmtDate(pago.fechapago),
+          pago.registrado_en ? fmtDate(getDiaMexico(pago.registrado_en)) : '',
           cliente?.nombre || '',
           venta?.ventaid || '',
           desarrollo?.nombre || '',
@@ -903,7 +906,17 @@ export const Pagos = () => {
                   {
                     key: 'fechapago',
                     label: 'Fecha de Pago',
-                    render: (row: PagoWithDetails) => formatDate(row.fechapago),
+                    render: (row: PagoWithDetails) => (
+                      <div>
+                        <div>{formatDate(row.fechapago)}</div>
+                        {/* Advance payments are often dated on their due date; show when it was really captured. */}
+                        {row.registrado_en && getDiaMexico(row.registrado_en) !== (row.fechapago || '').slice(0, 10) && (
+                          <div className="text-xs text-gray-400" title={`Registrado el ${formatDateTime(row.registrado_en)}`}>
+                            Registrado {formatDate(getDiaMexico(row.registrado_en))}
+                          </div>
+                        )}
+                      </div>
+                    ),
                   },
                   {
                     key: 'metodo',
