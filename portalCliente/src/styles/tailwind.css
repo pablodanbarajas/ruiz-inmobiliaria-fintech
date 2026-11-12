@@ -1,8 +1,81 @@
 @import "tailwindcss";
 
-/* Prevent iOS Safari auto-zoom on focused inputs */
+/*
+ * Ruiz Inmobiliaria brand. The portal's components use the "teal" scale for
+ * every action, link, tint and focus ring; it's redefined here so the whole
+ * portal follows the brand from one place, as in admin: actions in brand
+ * black, the logo's crown gold for accents (tints, focus rings, hovers).
+ * A dark gold for buttons read as brown on screen, so actions stay black.
+ */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Montserrat", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* 50–500: gold tints and accents (backgrounds, borders, focus rings, link hover) */
+  --color-teal-50: #fdf7ec;
+  --color-teal-100: #faeacb;
+  --color-teal-200: #f3d49a;
+  --color-teal-300: #edbf68;
+  --color-teal-400: #eaae4c;
+  --color-teal-500: #d9962f;
+  /* 600–900: brand black for buttons, links and emphasis; 800 is the lighter hover */
+  --color-teal-600: #1c1c1e;
+  --color-teal-700: #111111;
+  --color-teal-800: #2c2c2f;
+  --color-teal-900: #000000;
+
+  --color-marca-negro: #111111;
+  --color-marca-carbon: #1c1c1e;
+  --color-marca-oro: #eaae4c;
+  --color-marca-crema: #fafaf8;
+}
+
 @layer base {
+  body {
+    background: var(--color-marca-crema);
+    color: #131416;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+
+  /* Prevent iOS Safari auto-zoom on focused inputs */
   input, select, textarea {
     font-size: max(16px, 1em);
+  }
+}
+
+/* Amount slider: gold fill up to the thumb (--pct, set inline), gray after it. */
+@layer components {
+  .rango-monto {
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 9999px;
+    background: linear-gradient(to right, var(--color-marca-oro) var(--pct, 100%), rgb(255 255 255 / 0.2) var(--pct, 100%));
+    cursor: pointer;
+  }
+  .rango-monto::-webkit-slider-thumb {
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 9999px;
+    background: #fff;
+    border: 4px solid var(--color-marca-oro);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+  }
+  .rango-monto::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    background: #fff;
+    border: 4px solid var(--color-marca-oro);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+  }
+  .rango-monto:focus-visible {
+    outline: 2px solid var(--color-marca-oro);
+    outline-offset: 6px;
   }
 }

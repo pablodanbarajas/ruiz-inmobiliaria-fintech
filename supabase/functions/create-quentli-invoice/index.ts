@@ -72,19 +72,36 @@ Deno.serve(async (req: Request) => {
       { global: { headers: { Authorization: authHeader } } },
     )
 
+    // The view only proves the installment belongs to this client. Its
+    // payment_status says "pagado" as soon as any payment exists, even a partial
+    // one, so the amount still owed is worked out below from the payments.
     const { data: row, error: dbError } = await userClient
       .from('vista_pagos_cliente')
       .select('*')
       .eq('corridafinancieraid', Number(corridafinancieraid))
-      .neq('payment_status', 'pagado')
       .single()
 
     if (dbError || !row) {
       return new Response(
-        JSON.stringify({ error: 'Pago no encontrado, sin acceso, o ya fue pagado' }),
+        JSON.stringify({ error: 'Pago no encontrado o sin acceso' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
+
+    // Same rule as the portal's Mis pagos: once something was paid, the
+    // surcharge owed is the largest one recorded on those payments.
+    const { data: pagosCorrida, error: pagosError } = await serviceClient
+      .from('pagos')
+      .select('montopagado, servicios_extra, recargo, estatus')
+      .eq('corridafinancieraid', Number(corridafinancieraid))
+    if (pagosError) throw new Error(`Error al leer pagos: ${pagosError.message}`)
+
+    const pagosVigentes = (pagosCorrida ?? []).filter((pago) => pago.estatus !== 'C')
+    const yaPagado = pagosVigentes.reduce(
+      (total, pago) => total + Number(pago.montopagado ?? 0) + Number(pago.servicios_extra ?? 0),
+      0,
+    )
+    const recargoRegistrado = pagosVigentes.reduce((max, pago) => Math.max(max, Number(pago.recargo ?? 0)), 0)
 
     // ── 2. Obtener datos del cliente y venta (sin RLS) ──
     const { data: venta } = await serviceClient
@@ -112,11 +129,18 @@ Deno.serve(async (req: Request) => {
       'Content-Type': 'application/json',
     }
 
-    // ── 3b. Calcular monto actual (incluye recargo si ya venció) ──
+    // ── 3b. Amount still owed (includes the surcharge if overdue) ──
     const base = Number(row.scheduled_amount ?? 0)
     const extra = Number(row.cargo_extra_amount ?? 0)
-    const recargo = Number(row.recargo_pendiente ?? 0)
-    const totalCentavos = Math.round((base + extra + recargo) * 100)
+    const recargo = yaPagado > 0 ? recargoRegistrado : Number(row.recargo_pendiente ?? 0)
+    const pendiente = Math.round((base + extra + recargo - yaPagado) * 100) / 100
+    if (pendiente <= 0) {
+      return new Response(
+        JSON.stringify({ error: 'Esta mensualidad ya está pagada' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+    const totalCentavos = Math.round(pendiente * 100)
     const itemsPayload = [
       {
         concept: {

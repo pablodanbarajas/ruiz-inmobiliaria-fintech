@@ -6,6 +6,7 @@ import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import type { Lote, Desarrollo } from '@/types/database'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { fetchAllByKey } from '@/lib/fetchAllByKey'
 
 export interface ApartadoExternoFormData {
   // Cliente
@@ -61,18 +62,26 @@ export const ApartadoExternoForm = ({
   // ── Load catalogues ───────────────────────────────────────
   useEffect(() => {
     const load = async () => {
-      // Available lots
-      const { data: lotesData } = await supabase
-        .from('lote')
-        .select('loteid, desarrolloid, manzana, nolote, clavelote, superficie, preciolote, estatus, desarrollo:desarrollo(*)')
-        .eq('estatus', 'D')
-        .order('desarrolloid')
-
-      let filtered = (lotesData || []) as unknown as LoteWithDesarrollo[]
-      if (DEMO_DESARROLLOIDS.length > 0) {
-        filtered = filtered.filter((l) => DEMO_DESARROLLOIDS.includes(l.desarrolloid ?? 0))
-      }
-      setLotes(filtered)
+      // Available lots, filtered on the server and paged: the API returns at
+      // most 1000 rows per request, and Prod is close to 1000 free lots.
+      const lotesData = await fetchAllByKey<LoteWithDesarrollo>(
+        (afterKey, pageSize) => {
+          let query = supabase
+            .from('lote')
+            .select('loteid, desarrolloid, manzana, nolote, clavelote, superficie, preciolote, estatus, desarrollo:desarrollo(*)')
+            .eq('estatus', 'D')
+          if (DEMO_DESARROLLOIDS.length > 0) query = query.in('desarrolloid', DEMO_DESARROLLOIDS)
+          return query
+            .gt('loteid', afterKey)
+            .order('loteid', { ascending: true })
+            .limit(pageSize)
+        },
+        (lote) => lote.loteid,
+      )
+      // Development, then manzana, then lot, comparing numbers as numbers (Mza 2 before Mza 10).
+      const ordenLote = (lote: LoteWithDesarrollo) =>
+        [lote.desarrollo?.nombre ?? '', lote.manzana ?? '', lote.nolote ?? '', lote.clavelote ?? ''].join(' | ')
+      setLotes([...lotesData].sort((a, b) => ordenLote(a).localeCompare(ordenLote(b), 'es', { numeric: true })))
 
       // Existing clients for "usar existente"
       let allClientes: typeof clientesExistentes = []

@@ -59,7 +59,7 @@ function mapProgressStage(portalStatus: string | null): number {
 
 // Mirrors the fallback images used in developments.service.ts
 const DEVELOPMENT_IMAGES: Record<number, string> = {
-  11: '/images/Pueblos-de-la-barranca.jpeg',
+  11: `${import.meta.env.BASE_URL}images/Pueblos-de-la-barranca.jpeg`,
 };
 
 export const supabaseLotsService: ILotsService = {
@@ -106,7 +106,8 @@ export const supabaseLotsService: ILotsService = {
       developmentId: String(row.development_id),
       key: row.lot_key,
       developmentName: row.development_name,
-      location: 'Ubicación pendiente',
+      // No development has a location recorded yet; the card hides an empty one.
+      location: '',
       surface: row.superficie ? `${row.superficie} m²` : 'N/D',
       price: toNumber(row.preciolote, 0),
       imageUrl: DEVELOPMENT_IMAGES[row.development_id] ?? '',

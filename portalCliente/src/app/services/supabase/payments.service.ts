@@ -1,6 +1,26 @@
 import { supabase } from './client';
 import type { IPaymentsService } from '../interfaces';
-import type { Payment, PaymentSummary, PaymentStatus, LoteSummary } from '../../types/payment.types';
+import type { Payment, PaymentSummary, PaymentStatus, LoteSummary, PaymentRecord } from '../../types/payment.types';
+
+// Same labels as the admin panel (FORMAS_PAGO in src/utils/helpers.ts).
+const FORMAS_PAGO: Record<number, string> = {
+  1: 'Efectivo',
+  2: 'Transferencia bancaria',
+  3: 'Cheque',
+  4: 'Tarjeta de débito/crédito',
+  5: 'Depósito bancario',
+  6: 'Ruta de cobranza',
+};
+
+const DAY_MS = 1000 * 60 * 60 * 24;
+
+/** Whole days from today to a date-only value; negative once it has passed. */
+function daysUntil(dateOnly: string): number {
+  const target = new Date(dateOnly + 'T12:00:00');
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / DAY_MS);
+}
 
 // Helper: calcular recargo igual que el admin (calcularRecargo en helpers.ts)
 function calcularRecargo(fechaVencimiento: string, diasTolerancia: number = 0): number {
@@ -72,7 +92,7 @@ export const supabasePaymentsService: IPaymentsService = {
     const corridaIds = corridas.map((c) => c.corridafinancieraid);
     const { data: pagosData, error: pagosError } = await supabase
       .from('pagos')
-      .select('pagoid, corridafinancieraid, montopagado, servicios_extra, saldo_favor_aplicado, estatus, fechapago, recargo')
+      .select('pagoid, corridafinancieraid, montopagado, servicios_extra, saldo_favor_aplicado, estatus, fechapago, recargo, formapago')
       .in('corridafinancieraid', corridaIds)
       .neq('estatus', 'C');
 
@@ -110,6 +130,12 @@ export const supabasePaymentsService: IPaymentsService = {
       ])
     );
 
+    const { data: clienteData } = await supabase
+      .from('cliente')
+      .select('nombre')
+      .eq('clienteid', Number(clientId))
+      .maybeSingle();
+
     // 6. Construir resumen por lote (igual que admin)
     const loteSummaries: LoteSummary[] = ventas.map((venta) => {
       const lote = lotesMap.get(venta.loteid);
@@ -129,14 +155,36 @@ export const supabasePaymentsService: IPaymentsService = {
       const saldoLote = Math.max(0, (venta.preciolote || 0) - totalPagado);
 
       // Pagos por corrida para saber estado
-      const pagosPorCorrida = new Map<number, { total: number; lastDate: string | null; maxRecargo: number }>();
+      const pagosPorCorrida = new Map<number, { total: number; lastDate: string | null; maxRecargo: number; records: PaymentRecord[] }>();
       for (const p of ventaPagos) {
-        const cur = pagosPorCorrida.get(p.corridafinancieraid) ?? { total: 0, lastDate: null, maxRecargo: 0 };
-        cur.total += getPagoAplicado(p);
-        if (p.fechapago && (!cur.lastDate || p.fechapago > cur.lastDate)) cur.lastDate = p.fechapago;
+        const cur = pagosPorCorrida.get(p.corridafinancieraid) ?? {
+          total: 0,
+          lastDate: null,
+          maxRecargo: 0,
+          records: [],
+        };
+
+        // Importe aplicado a la deuda, incluyendo saldo a favor utilizado.
+        const monto = getPagoAplicado(p);
+
+        cur.total += monto;
+
+        if (p.fechapago && (!cur.lastDate || p.fechapago > cur.lastDate)) {
+          cur.lastDate = p.fechapago;
+        }
+
         cur.maxRecargo = Math.max(cur.maxRecargo, p.recargo ?? 0);
+
+        cur.records.push({
+          fecha: p.fechapago ?? null,
+          monto,
+          formaPago: FORMAS_PAGO[p.formapago] ?? 'Otro',
+        });
+
         pagosPorCorrida.set(p.corridafinancieraid, cur);
       }
+      const totalMensualidades = ventaCorridas.filter((c) => c.nopago > 0).length;
+      const toleranciaDias = venta.dias_tolerancia ?? 0;
 
       // Cargos extras por corrida (igual que admin: suma cargos donde cargo.fecha <= corrida.fecha)
       const pendingPayments: Payment[] = [];
@@ -172,27 +220,32 @@ export const supabasePaymentsService: IPaymentsService = {
         const esParcial = totalPagadoCorrida > 0 && !esPagado;
         const pendienteRestante = Math.max(0, totalRequired - totalPagadoCorrida);
 
+        // Past due only once the grace days end, the same rule the surcharge uses.
+        const dias = corrida.fecha ? daysUntil(corrida.fecha) : 0;
+        const pendingStatus: PaymentStatus = dias < -toleranciaDias ? 'atrasado' : dias <= 7 ? 'por_vencer' : 'pendiente';
+        const concepto = corrida.nopago === 0
+          ? 'Enganche'
+          : `Mensualidad ${corrida.nopago} de ${totalMensualidades}`;
+
         const payment: Payment = {
           id: String(corrida.corridafinancieraid),
           date: corrida.fecha,
-          reason: `Mensualidad · ${lotKey}`,
+          reason: `${concepto} · ${lotKey}`,
           amount: esPagado
             ? totalPagadoCorrida
             : esParcial
               ? pendienteRestante
               : (corrida.mensualidad || 0) + cargoExtraAmount + recargoRequired,
-          status: esPagado ? 'pagado' : (
-            new Date(corrida.fecha + 'T12:00:00') < new Date() ? 'atrasado' : (() => {
-              const diff = Math.ceil((new Date(corrida.fecha + 'T12:00:00').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-              return diff <= 7 ? 'por_vencer' : 'pendiente';
-            })()
-          ) as PaymentStatus,
+          status: esPagado ? 'pagado' : pendingStatus,
           lotKey,
+          // A paid installment shows the surcharge that was recorded. Anything
+          // paid beyond it went to services; it used to show up as "recargo".
           breakdown: esPagado
             ? {
                 base: corrida.mensualidad || 0,
                 cargoExtra: cargoExtraAmount,
-                recargo: Math.max(0, totalPagadoCorrida - (corrida.mensualidad || 0) - cargoExtraAmount),
+                recargo: maxStoredRecargo,
+                servicios: Math.max(0, totalPagadoCorrida - (corrida.mensualidad || 0) - cargoExtraAmount - maxStoredRecargo),
               }
             : {
                 base: corrida.mensualidad || 0,
@@ -203,7 +256,12 @@ export const supabasePaymentsService: IPaymentsService = {
         };
 
         if (esPagado) {
-          completedPayments.push({ ...payment, date: pagoCorrida?.lastDate ?? corrida.fecha, dueDate: corrida.fecha });
+          completedPayments.push({
+            ...payment,
+            date: pagoCorrida?.lastDate ?? corrida.fecha,
+            dueDate: corrida.fecha,
+            pagos: pagoCorrida?.records ?? [],
+          });
         } else {
           totalRecargos += recargo;
           pendingPayments.push(payment);
@@ -211,6 +269,8 @@ export const supabasePaymentsService: IPaymentsService = {
       }
 
       const totalAdeudado = saldoLote + totalCargosExtrasCount + totalRecargos;
+      // Most recent payment first.
+      completedPayments.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
 
       return {
         lotId: venta.loteid,
@@ -239,6 +299,7 @@ export const supabasePaymentsService: IPaymentsService = {
     )[0];
 
     return {
+      clienteNombre: clienteData?.nombre ?? undefined,
       pendingPayments: allPending,
       completedPayments: allCompleted,
       pendingBalance,

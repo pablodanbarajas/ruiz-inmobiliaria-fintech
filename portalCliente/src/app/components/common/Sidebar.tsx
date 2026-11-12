@@ -1,14 +1,15 @@
 import { Home, MapPin, CreditCard, MessageCircle } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../../hooks/useAuth';
+import { Marca } from './Marca';
 
 const publicItems = [
-  { label: 'Home', to: '/', icon: Home },
+  { label: 'Inicio', to: '/', icon: Home },
   { label: 'Soporte', to: '/soporte', icon: MessageCircle }
 ];
 
 const privateItems = [
-  { label: 'Hogar', to: '/home', icon: Home },
+  { label: 'Inicio', to: '/home', icon: Home },
   { label: 'Mis lotes', to: '/mis-lotes', icon: MapPin },
   { label: 'Mis pagos', to: '/mis-pagos', icon: CreditCard },
   { label: 'Soporte', to: '/portal-soporte', icon: MessageCircle }
@@ -22,13 +23,14 @@ export function Sidebar() {
 
   return (
     <>
-      <aside className="hidden md:flex md:w-64 bg-white border-r border-gray-200 min-h-screen flex-col">
-        <div className="p-6 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-teal-700">Ruiz Inmobiliaria</h1>
-          <p className="text-sm text-gray-500">Portal web</p>
+      <aside className="hidden md:flex md:w-64 bg-marca-negro min-h-screen flex-col">
+        <div className="px-6 py-6 border-b border-white/10">
+          <Link to={session.isAuthenticated ? '/home' : '/'}>
+            <Marca fondo="oscuro" size="md" subtitulo="Portal de clientes" />
+          </Link>
         </div>
 
-        <nav className="p-4 space-y-2 flex-1">
+        <nav className="p-4 space-y-1.5 flex-1">
           {items.map((item) => {
             const Icon = item.icon;
             const active = location.pathname === item.to;
@@ -37,10 +39,10 @@ export function Sidebar() {
               <Link
                 key={item.to}
                 to={item.to}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
                   active
-                    ? 'bg-teal-700 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
+                    ? 'bg-marca-oro text-marca-negro font-semibold'
+                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 <Icon className="w-5 h-5" />
@@ -63,7 +65,7 @@ export function Sidebar() {
                 to={item.to}
                 className={`flex flex-col items-center justify-center gap-1 rounded-xl px-2 min-h-[52px] text-[11px] font-medium transition-colors ${
                   active
-                    ? 'bg-teal-700 text-white'
+                    ? 'bg-marca-negro text-marca-oro'
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >

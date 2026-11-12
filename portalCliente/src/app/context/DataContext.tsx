@@ -92,6 +92,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** For shared components (the header) that also render outside the client area. */
+export function useOptionalData() {
+  return useContext(DataContext);
+}
+
 export function useData() {
   const ctx = useContext(DataContext);
   if (!ctx) throw new Error('useData must be used within DataProvider');

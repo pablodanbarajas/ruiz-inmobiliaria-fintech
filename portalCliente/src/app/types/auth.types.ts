@@ -30,4 +30,6 @@ export interface RegisterCredentials {
   email: string;
   phone: string;
   password: string;
+  /** The client opposed the privacy notice's secondary purposes (marketing, surveys). */
+  rechazaFinalidadesSecundarias: boolean;
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { Mail, Building2 } from 'lucide-react';
+import { Mail } from 'lucide-react';
+import { Marca } from '../../components/common/Marca';
 import { supabase } from '../../services/supabase/client';
 
 export function ForgotPassword() {
@@ -36,12 +37,12 @@ export function ForgotPassword() {
     <div className="flex items-center justify-center min-h-[calc(100vh-160px)] py-6 px-4">
       <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-gray-200 p-5 sm:p-8">
         <div className="text-center mb-6">
-          <div className="mx-auto h-12 w-12 bg-teal-700 rounded-xl flex items-center justify-center text-white mb-4">
-            <Building2 className="w-8 h-8" />
+          <div className="flex justify-center mb-4">
+            <Marca fondo="claro" size="md" conTexto={false} />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Recuperar contraseña</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Crear o recuperar contraseña</h1>
           <p className="text-sm text-gray-600 mt-2">
-            Te enviaremos un enlace para crear una nueva contraseña.
+            Escribe el correo con el que te invitamos o te registraste. Te enviaremos un enlace para crear tu contraseña.
           </p>
         </div>
 

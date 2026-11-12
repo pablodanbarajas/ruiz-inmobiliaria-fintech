@@ -10,6 +10,7 @@ import type { AuthSession, LoginCredentials, RegisterCredentials } from '../type
 import { authService } from '../services';
 import { supabase } from '../services/supabase/client';
 import { repairClientLink } from '../services/supabase/auth.service';
+import { formatPersonName } from '../utils/text';
 
 interface AuthContextValue {
   session: AuthSession;
@@ -42,7 +43,7 @@ async function enrichWithClientData(session: AuthSession): Promise<AuthSession> 
       .maybeSingle();
     
     if (data) {
-      const firstName = (data as ClientRecord).nombre.trim().split(/\s+/)[0];
+      const firstName = formatPersonName((data as ClientRecord).nombre.trim().split(/\s+/)[0]);
       return {
         ...session,
         user: {
@@ -78,11 +79,9 @@ function mapSupabaseSession(session: any): AuthSession {
         'Cliente',
       email: session.user.email || '',
       phone: session.user.user_metadata?.phone || '',
-      avatarUrl:
-        session.user.user_metadata?.avatar_url ||
-        `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-          session.user.email || 'Cliente'
-        )}`,
+      // No third-party avatar service: it received the client's email. The
+      // header shows the name's initial when there's no photo.
+      avatarUrl: session.user.user_metadata?.avatar_url || null,
       role: 'client'
     }
   };

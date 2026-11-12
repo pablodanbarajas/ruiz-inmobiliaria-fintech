@@ -15,7 +15,8 @@ type SupabaseDevelopmentRow = {
 };
 
 const FALLBACK_DEVELOPMENT_IMAGES: Record<number, string> = {
-  11: '/images/Pueblos-de-la-barranca.jpeg',
+  // Under the portal's base path; a bare "/images/..." only worked in Prod because admin has the same file.
+  11: `${import.meta.env.BASE_URL}images/Pueblos-de-la-barranca.jpeg`,
 };
 
 export const supabaseDevelopmentsService: IDevelopmentsService = {
@@ -43,7 +44,8 @@ export const supabaseDevelopmentsService: IDevelopmentsService = {
       .map((row) => ({
       id: String(row.id),
       name: row.name,
-      location: row.location || 'Ubicación pendiente',
+      // The view fills a missing location with this text; the card hides it.
+      location: row.location && row.location !== 'Ubicación pendiente' ? row.location : '',
       availableLots: row.available_lots ?? 0,
       imageUrl: row.image_url || FALLBACK_DEVELOPMENT_IMAGES[row.id] || '',
       mapsUrl: (row.google_maps_url && row.google_maps_url !== '#') ? row.google_maps_url : '',
