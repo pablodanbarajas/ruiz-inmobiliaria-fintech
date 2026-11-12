@@ -81,7 +81,19 @@ export const fetchSaldoFavorDisponible = async (
 
   const { data, error } = await query
   if (error) throw error
-  return calcularSaldoFavor(data ?? [])
+  const saldo = calcularSaldoFavor(data ?? [])
+  // A receipt shows the saldo as it was after that payment; the current saldo
+  // also leaves out what was already decided (refunded or retained) on
+  // cancelling, same as saldo_favor_venta in the database.
+  if (opciones.hastaPagoId != null) return saldo
+
+  const { data: cierre, error: cierreError } = await supabase
+    .from('saldo_favor_cierres')
+    .select('monto')
+    .eq('ventaid', ventaid)
+    .maybeSingle()
+  if (cierreError) throw cierreError
+  return redondear(Math.max(0, saldo - Number(cierre?.monto ?? 0)))
 }
 
 /** Venta a la que pertenece una mensualidad. */

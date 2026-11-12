@@ -128,6 +128,14 @@ EXCEPTION WHEN OTHERS THEN
 END $$;
 SELECT set_config('role', 'none', true);
 
+-- ── reactivada_sin_saldo: a decided sale reactivated by mistake must not
+-- have its refunded saldo available again (postgres) ──────────────────────
+UPDATE venta SET estatus = 'A' WHERE ventaid = pg_temp.ctx('venta');
+INSERT INTO resultados
+SELECT 'reactivada_sin_saldo', public.saldo_favor_venta(pg_temp.ctx('venta')) = 0,
+       'saldo = ' || public.saldo_favor_venta(pg_temp.ctx('venta'));
+UPDATE venta SET estatus = 'C' WHERE ventaid = pg_temp.ctx('venta');
+
 -- ── rls_lectura (a reader role sees it; nobody inserts directly) ──────────
 SELECT pg_temp.como('vendedor');
 INSERT INTO resultados

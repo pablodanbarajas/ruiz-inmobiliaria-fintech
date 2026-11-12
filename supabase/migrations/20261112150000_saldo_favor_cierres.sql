@@ -44,15 +44,21 @@ CREATE OR REPLACE FUNCTION public.saldo_favor_venta(p_ventaid integer)
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $$
-  SELECT GREATEST(0, round(COALESCE(sum(
-      GREATEST(COALESCE(p.servicios_extra, 0), 0)
-    - GREATEST(-COALESCE(p.servicios_extra, 0), 0)
-    - GREATEST(COALESCE(p.saldo_favor_aplicado, 0), 0)
-  ), 0), 2))
-  FROM public.pagos p
-  JOIN public.corridafinanciera c ON c.corridafinancieraid = p.corridafinancieraid
-  WHERE c.ventaid = p_ventaid
-    AND p.estatus IS DISTINCT FROM 'C'
+  -- Saldo already decided (refunded or retained) is gone, even if the sale is
+  -- later reactivated; otherwise it could be paid out twice.
+  SELECT GREATEST(0, round(
+    COALESCE((
+      SELECT sum(
+          GREATEST(COALESCE(p.servicios_extra, 0), 0)
+        - GREATEST(-COALESCE(p.servicios_extra, 0), 0)
+        - GREATEST(COALESCE(p.saldo_favor_aplicado, 0), 0))
+      FROM public.pagos p
+      JOIN public.corridafinanciera c ON c.corridafinancieraid = p.corridafinancieraid
+      WHERE c.ventaid = p_ventaid
+        AND p.estatus IS DISTINCT FROM 'C'
+    ), 0)
+    - COALESCE((SELECT s.monto FROM public.saldo_favor_cierres s WHERE s.ventaid = p_ventaid), 0),
+  2))
 $$;
 
 -- ── Record the decision ───────────────────────────────────────────────────
