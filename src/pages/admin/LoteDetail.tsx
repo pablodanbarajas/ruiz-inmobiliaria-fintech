@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { invalidateCache } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/Modal'
 import { LoteForm } from '@/components/forms/LoteForm'
 import { VentaForm } from '@/components/forms/VentaForm'
 import type { VentaFormData } from '@/components/forms/VentaForm'
-import { ChevronDown, ChevronLeft, ChevronUp, Plus } from 'lucide-react'
+import { ChevronDown, ChevronUp, Plus } from 'lucide-react'
 import type { Lote, Desarrollo, Venta, Cliente } from '@/types/database'
 import { getLoteStatusLabel, getLoteStatusColor, formatCurrency, formatDate } from '@/utils/helpers'
 import { useAuth } from '@/context/AuthContext'
@@ -23,8 +23,6 @@ export const LoteDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const { role } = useAuth()
-  const location = useLocation()
-  const searchParams = new URLSearchParams(location.search)
   const [lote, setLote] = useState<Lote & { desarrollo?: Desarrollo }  | null>(null)
   const [ventas, setVentas] = useState<VentaWithCliente[]>([])
   const [loading, setLoading] = useState(true)
@@ -301,18 +299,7 @@ export const LoteDetail = () => {
   return (
     <AdminLayout>
       <div className="w-full">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              const from = (location.state as any)?.from || searchParams.get('from')
-              navigate(from || '/admin/lotes')
-            }}
-            className="inline-flex items-center gap-2"
-          >
-            <ChevronLeft size={20} />
-            Volver
-          </Button>
+        <div className="flex flex-wrap items-center justify-end gap-4 mb-6">
           {canEditLotes && (
             <div className="flex gap-4">
               <Button

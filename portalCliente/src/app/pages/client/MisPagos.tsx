@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
-import { Calendar, DollarSign, FileText, Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, Home } from 'lucide-react';
+import { FileText, Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, Home } from 'lucide-react';
 
 const PAGE_SIZE = 5;
 
@@ -61,9 +61,8 @@ function Pagination({
 }
 import { useAuth } from '../../hooks/useAuth';
 import { useData } from '../../context/DataContext';
-import type { Payment, PaymentStatus, PaymentSummary, LoteSummary } from '../../types/payment.types';
+import type { Payment, PaymentStatus, LoteSummary } from '../../types/payment.types';
 import type { ClientLot } from '../../types/lot.types';
-import { SummaryCard } from '../../components/shared/SummaryCard';
 import { supabase } from '../../services/supabase/client';
 import { openComprobante } from '../../utils/comprobante';
 import { whatsappHref } from '../../config/contacto';
@@ -398,10 +397,22 @@ function LoteSection({
   payingId: string | null;
   clienteNombre: string;
 }) {
+  const [vista, setVista] = useState<'proximos' | 'historial'>(
+    lote.pendingPayments.length > 0 ? 'proximos' : 'historial'
+  );
+  const [ordenHistorial, setOrdenHistorial] = useState<'recientes' | 'antiguos'>('recientes');
   const [pendingPage, setPendingPage] = useState(1);
   const [completedPage, setCompletedPage] = useState(1);
+
+  // Paid installments by payment date; installments paid the same day go by period.
+  const historial = [...lote.completedPayments].sort((a, b) => {
+    const porFecha = parseDate(a.date).getTime() - parseDate(b.date).getTime()
+      || parseDate(a.dueDate ?? a.date).getTime() - parseDate(b.dueDate ?? b.date).getTime();
+    return ordenHistorial === 'recientes' ? -porFecha : porFecha;
+  });
   const pendingSlice = lote.pendingPayments.slice((pendingPage - 1) * PAGE_SIZE, pendingPage * PAGE_SIZE);
-  const completedSlice = lote.completedPayments.slice((completedPage - 1) * PAGE_SIZE, completedPage * PAGE_SIZE);
+  const completedSlice = historial.slice((completedPage - 1) * PAGE_SIZE, completedPage * PAGE_SIZE);
+  const proximo = lote.pendingPayments[0];
 
   // What's due now gets the main button: overdue, about to be due, and the next
   // one. Later installments can still be paid early, with a quieter button.
@@ -441,113 +452,149 @@ function LoteSection({
     </button>
   );
 
+  const tabClass = (activa: boolean) =>
+    `px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+      activa ? 'border-teal-700 text-teal-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+    }`;
+
   return (
     <div className="mb-10">
-      {/* Tarjetas resumen del lote (igual que admin) */}
-      <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
-        <div className="bg-white rounded-lg border border-gray-200 p-2 md:p-4">
-          <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1">Precio Total</p>
-          <p className="text-xs md:text-base font-bold text-blue-600 break-all">{fmt(lote.preciolote)}</p>
+      {/* Lo más importante, sin bajar: el próximo pago y cómo va el lote */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+        <div className="lg:col-span-1 rounded-xl bg-marca-negro text-white p-5 flex flex-col justify-between gap-4">
+          {proximo ? (
+            <>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-400">Próximo pago</p>
+                <p className="text-3xl font-bold mt-1">{fmt(proximo.amount)}</p>
+                <p className="text-sm text-gray-300 mt-1">
+                  Vence el {parseDate(proximo.date).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">{proximo.reason.split(' · ')[0]}</p>
+                {proximo.status === 'atrasado' && (
+                  <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-semibold text-red-200">
+                    <AlertCircle className="w-3 h-3" /> Atrasado
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => onPagar(proximo)}
+                disabled={payingId === proximo.id}
+                className="w-full rounded-full bg-marca-oro text-marca-negro font-semibold py-2.5 hover:brightness-105 disabled:opacity-60"
+              >
+                {payingId === proximo.id ? 'Generando...' : 'Pagar ahora'}
+              </button>
+            </>
+          ) : (
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-400">Próximo pago</p>
+              <p className="text-lg font-semibold mt-1">No tienes pagos pendientes</p>
+            </div>
+          )}
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-2 md:p-4">
-          <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1">Total Pagado</p>
-          <p className="text-xs md:text-base font-bold text-green-600 break-all">{fmt(lote.totalPagado)}</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-2 md:p-4">
-          <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1">Deuda del Lote</p>
-          <p className="text-xs md:text-base font-bold text-orange-500 break-all">{fmt(lote.saldoLote)}</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-2 md:p-4">
-          <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1">Cargos Extra</p>
-          <p className="text-xs md:text-base font-bold text-purple-600 break-all">{fmt(lote.totalCargosExtras)}</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-2 md:p-4">
-          <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1">Recargos</p>
-          <p className="text-xs md:text-base font-bold text-orange-600 break-all">{fmt(lote.totalRecargos)}</p>
-        </div>
-        <div className="rounded-lg border border-blue-100 bg-blue-50 p-2 md:p-4">
-          <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1">Total Adeudado</p>
-          <p className="text-xs md:text-base font-bold text-red-600 break-all">{fmt(lote.totalAdeudado)}</p>
+
+        <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-xs text-gray-500">Total pagado</p>
+            <p className="text-lg font-bold text-green-700 mt-1 break-all">{fmt(lote.totalPagado)}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-xs text-gray-500">Deuda del lote</p>
+            <p className="text-lg font-bold text-gray-900 mt-1 break-all">{fmt(lote.saldoLote)}</p>
+            <p className="text-xs text-gray-400 mt-0.5">de {fmt(lote.preciolote)}</p>
+          </div>
+          <div className="col-span-2 sm:col-span-1 rounded-xl border border-teal-200 bg-teal-50 p-4">
+            <p className="text-xs text-gray-600">Total adeudado</p>
+            <p className="text-lg font-bold text-marca-negro mt-1 break-all">{fmt(lote.totalAdeudado)}</p>
+            {(lote.totalCargosExtras > 0 || lote.totalRecargos > 0) && (
+              <p className="text-xs text-gray-500 mt-0.5">
+                {lote.totalCargosExtras > 0 && <>Cargos extra {fmt(lote.totalCargosExtras)}</>}
+                {lote.totalCargosExtras > 0 && lote.totalRecargos > 0 && ' · '}
+                {lote.totalRecargos > 0 && <>Recargos {fmt(lote.totalRecargos)}</>}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Pagos pendientes del lote */}
-      {lote.pendingPayments.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4">
-          <div className="px-4 md:px-6 py-3 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-sm font-semibold text-gray-700">
-              Calendario de pagos — {lote.pendingPayments.length} pendiente{lote.pendingPayments.length !== 1 ? 's' : ''}
-            </h3>
+      {/* Próximos pagos / Historial */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="flex flex-wrap items-end justify-between gap-2 border-b border-gray-200 px-2 md:px-4">
+          <div className="flex overflow-x-auto" role="tablist">
+            <button role="tab" aria-selected={vista === 'proximos'} onClick={() => setVista('proximos')} className={tabClass(vista === 'proximos')}>
+              Próximos pagos ({lote.pendingPayments.length})
+            </button>
+            <button role="tab" aria-selected={vista === 'historial'} onClick={() => setVista('historial')} className={tabClass(vista === 'historial')}>
+              Historial ({lote.completedPayments.length})
+            </button>
           </div>
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full min-w-[700px]">
-              {tableHeaders(['Fecha límite', 'Motivo', 'Monto', 'Estado', 'Acción'])}
-              <tbody className="bg-white divide-y divide-gray-200">
-                {pendingSlice.map((pago) => (
-                  <PaymentRow
-                    key={pago.id}
-                    pago={pago}
-                    action={payButton(pago, false)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="md:hidden p-4 space-y-3">
-            {pendingSlice.map((pago) => (
-              <PaymentCard
-                key={pago.id}
-                pago={pago}
-                dateLabel="Fecha límite"
-                action={payButton(pago, true)}
-              />
-            ))}
-          </div>
-          <Pagination total={lote.pendingPayments.length} page={pendingPage} onPage={setPendingPage} />
+          {vista === 'historial' && lote.completedPayments.length > 1 && (
+            <label className="flex items-center gap-2 py-2 text-xs text-gray-500">
+              Orden
+              <select
+                value={ordenHistorial}
+                onChange={(e) => { setOrdenHistorial(e.target.value as 'recientes' | 'antiguos'); setCompletedPage(1); }}
+                className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700"
+              >
+                <option value="recientes">Más recientes primero</option>
+                <option value="antiguos">Más antiguos primero</option>
+              </select>
+            </label>
+          )}
         </div>
-      )}
 
-      {/* Pagos realizados del lote */}
-      {lote.completedPayments.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-4 md:px-6 py-3 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-sm font-semibold text-gray-700">
-              Pagos realizados — {lote.completedPayments.length} pago{lote.completedPayments.length !== 1 ? 's' : ''}
-            </h3>
-          </div>
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full min-w-[700px]">
-              {tableHeaders(['Fecha de pago', 'Motivo', 'Monto', 'Estado', 'Recibo'])}
-              <tbody className="bg-white divide-y divide-gray-200">
-                {completedSlice.map((pago) => (
-                  <PaymentRow
-                    key={pago.id}
-                    pago={pago}
-                    action={receiptButton(pago)}
-                  />
+        {vista === 'proximos' ? (
+          lote.pendingPayments.length === 0 ? (
+            <p className="px-6 py-10 text-center text-sm text-gray-500">No tienes pagos pendientes en este lote.</p>
+          ) : (
+            <>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full min-w-[700px]">
+                  {tableHeaders(['Fecha límite', 'Motivo', 'Monto', 'Estado', 'Acción'])}
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {pendingSlice.map((pago) => (
+                      <PaymentRow key={pago.id} pago={pago} action={payButton(pago, false)} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="md:hidden p-4 space-y-3">
+                {pendingSlice.map((pago) => (
+                  <PaymentCard key={pago.id} pago={pago} dateLabel="Fecha límite" action={payButton(pago, true)} />
                 ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="md:hidden p-4 space-y-3">
-            {completedSlice.map((pago) => (
-              <PaymentCard
-                key={pago.id}
-                pago={pago}
-                dateLabel="Fecha de pago"
-                action={receiptButton(pago)}
-              />
-            ))}
-          </div>
-          <Pagination total={lote.completedPayments.length} page={completedPage} onPage={setCompletedPage} />
-        </div>
-      )}
+              </div>
+              <Pagination total={lote.pendingPayments.length} page={pendingPage} onPage={setPendingPage} />
+            </>
+          )
+        ) : lote.completedPayments.length === 0 ? (
+          <p className="px-6 py-10 text-center text-sm text-gray-500">Aún no hay pagos registrados en este lote.</p>
+        ) : (
+          <>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full min-w-[700px]">
+                {tableHeaders(['Fecha de pago', 'Motivo', 'Monto', 'Estado', 'Recibo'])}
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {completedSlice.map((pago) => (
+                    <PaymentRow key={pago.id} pago={pago} action={receiptButton(pago)} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="md:hidden p-4 space-y-3">
+              {completedSlice.map((pago) => (
+                <PaymentCard key={pago.id} pago={pago} dateLabel="Fecha de pago" action={receiptButton(pago)} />
+              ))}
+            </div>
+            <Pagination total={lote.completedPayments.length} page={completedPage} onPage={setCompletedPage} />
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
 export function MisPagos() {
-  const { paymentSummary: summary, paymentsLoading: isLoading, refreshPayments, refreshLots, lots } = useData();
+  const { paymentSummary: summary, refreshPayments, refreshLots, lots } = useData();
   const [payingId, setPayingId] = useState<string | null>(null);
   const [payingInitialVentaId, setPayingInitialVentaId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
@@ -645,16 +692,23 @@ export function MisPagos() {
   const verifyOpenPaymentsRef = useRef(verifyOpenPayments);
   verifyOpenPaymentsRef.current = verifyOpenPayments;
 
+  // Refresh when the client comes back to this tab (e.g. from Quentli), not on
+  // every focus or click: at most every 30 s, unless a payment opened here is
+  // still waiting to be confirmed. The refresh runs in the background.
+  const ultimaActualizacion = useRef(Date.now());
   useEffect(() => {
     const refreshWhenReturning = () => {
       if (document.visibilityState !== 'visible') return;
+      const hayPagosAbiertos = Object.keys(sessionStorage).some((key) =>
+        /^(quentli|apartado|enganche)_session_/.test(key)
+      );
+      if (!hayPagosAbiertos && Date.now() - ultimaActualizacion.current < 30_000) return;
+      ultimaActualizacion.current = Date.now();
       verifyOpenPaymentsRef.current().finally(() => refreshPayments());
     };
 
-    window.addEventListener('focus', refreshWhenReturning);
     document.addEventListener('visibilitychange', refreshWhenReturning);
     return () => {
-      window.removeEventListener('focus', refreshWhenReturning);
       document.removeEventListener('visibilitychange', refreshWhenReturning);
       refreshTimeouts.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
     };
@@ -743,7 +797,8 @@ export function MisPagos() {
     }
   };
 
-  if (isLoading || !summary) {
+  // The skeleton only covers the first load; later refreshes keep what's shown.
+  if (!summary) {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8">
         <div className="animate-pulse space-y-4">
@@ -759,18 +814,10 @@ export function MisPagos() {
     );
   }
 
-  const { pendingPayments, lotes, totalAdeudado } = summary;
+  const { lotes } = summary;
   const pagosInicialesPendientes = lots.filter(
     (lote) => lote.status === 'apartado' || lote.status === 'apartado_confirmado'
   );
-
-  // Próximo pago por cada lote
-  const proximosPorLote = lotes.map((lote) => {
-    const next = [...lote.pendingPayments].sort(
-      (a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime()
-    )[0];
-    return { lote, next };
-  });
 
   const loteActivo = lotes[activeTab];
 
@@ -835,39 +882,6 @@ export function MisPagos() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8">
-        {/* Próximos pagos — uno por lote */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Calendar className="w-5 h-5 text-orange-500" />
-            <span className="text-sm font-semibold text-gray-700">Próximos pagos</span>
-          </div>
-          <div className="space-y-3">
-            {proximosPorLote.map(({ lote, next }) => (
-              <div key={lote.ventaid} className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">{lote.lotKey}</p>
-                  <p className="text-xs text-gray-400">
-                    {next ? `Vence el ${parseDate(next.date).toLocaleDateString('es-MX')}` : 'Sin pagos pendientes'}
-                  </p>
-                </div>
-                <span className="text-base font-bold text-gray-900">
-                  {next ? fmt(next.amount) : '—'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <SummaryCard
-          title="Total adeudado"
-          value={fmt(totalAdeudado)}
-          subtitle={`${lotes.length} lote${lotes.length !== 1 ? 's' : ''} · ${pendingPayments.length} pagos pendientes`}
-          icon={DollarSign}
-          color="teal"
-        />
-      </div>
-
       {lotes.length === 0 && pagosInicialesPendientes.length === 0 && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center mb-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Aún no vemos pagos ligados a tu cuenta</h3>
@@ -885,8 +899,9 @@ export function MisPagos() {
         </div>
       )}
 
-      {/* Pestañas por lote */}
-      <div className="border-b border-gray-200 mb-6 overflow-x-auto">
+      {/* Pestañas por lote (solo si tiene más de uno) */}
+      {lotes.length > 1 && (
+      <div className="border-b border-gray-200 mb-5 overflow-x-auto">
         <div className="flex gap-0 min-w-max">
           {lotes.map((lote, idx) => (
             <button
@@ -905,10 +920,12 @@ export function MisPagos() {
           ))}
         </div>
       </div>
+      )}
 
       {/* Contenido del lote activo */}
       {loteActivo && (
         <LoteSection
+          key={loteActivo.ventaid}
           lote={loteActivo}
           onPagar={handlePagar}
           payingId={payingId}

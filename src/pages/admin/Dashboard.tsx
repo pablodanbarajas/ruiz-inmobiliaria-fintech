@@ -771,7 +771,7 @@ export const Dashboard = () => {
                 {pagosRecientes.map((p) => (
                   <li
                     key={p.pagoid}
-                    onClick={() => navigate(canViewVentas ? `/admin/ventas/${p.ventaid}` : `/admin/pagos/${p.pagoid}`)}
+                    onClick={() => navigate(`/admin/pagos/${p.pagoid}`)}
                     className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <div className="min-w-0">
