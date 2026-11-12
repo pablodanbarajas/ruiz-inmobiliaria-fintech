@@ -131,13 +131,28 @@ CREATE POLICY contrato_template_panel_select ON public.contrato_template
 FOR SELECT TO authenticated USING ((SELECT public.has_admin_panel_role('{admin,contratos}'::text[])));
 
 -- Creating a sale removes it again if its schedule fails to save. Contratos and
--- Caja may only delete a sale in that state: no schedule rows yet.
+-- Caja may only delete a sale in that state: no schedule rows yet. The check
+-- runs as the owner: corridafinanciera's policies read venta, so querying it
+-- from a venta policy would be an infinite policy recursion.
+CREATE OR REPLACE FUNCTION public.venta_sin_corrida(p_ventaid INTEGER)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT NOT EXISTS (SELECT 1 FROM public.corridafinanciera c WHERE c.ventaid = p_ventaid)
+$$;
+
+REVOKE ALL ON FUNCTION public.venta_sin_corrida(INTEGER) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.venta_sin_corrida(INTEGER) TO authenticated;
+
 DROP POLICY IF EXISTS venta_panel_delete_sin_corrida ON public.venta;
 CREATE POLICY venta_panel_delete_sin_corrida ON public.venta
 FOR DELETE TO authenticated
 USING (
   (SELECT public.has_admin_panel_role('{contratos,cobranza_caja}'::text[]))
-  AND NOT EXISTS (SELECT 1 FROM public.corridafinanciera c WHERE c.ventaid = venta.ventaid)
+  AND public.venta_sin_corrida(ventaid)
 );
 
 -- ── 4. Lots: only admin and desarrollo_ri change more than the status ───────
