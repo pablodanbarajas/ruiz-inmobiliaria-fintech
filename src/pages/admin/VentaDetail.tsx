@@ -115,6 +115,18 @@ export const VentaDetail = () => {
     setDevoluciones((data || []) as (Devolucion & { parcialidades?: DevolucionParcialidad[] })[])
   }
 
+  // The sale's saldo a favor for the summary card (null while loading, undefined if it failed).
+  // Reloads with the schedule, so a new payment updates it.
+  const [saldoFavorVenta, setSaldoFavorVenta] = useState<number | null | undefined>(null)
+  useEffect(() => {
+    if (!venta?.ventaid) return
+    let cancelado = false
+    fetchSaldoFavorDisponible(venta.ventaid)
+      .then((saldo) => { if (!cancelado) setSaldoFavorVenta(saldo) })
+      .catch(() => { if (!cancelado) setSaldoFavorVenta(undefined) })
+    return () => { cancelado = true }
+  }, [venta?.ventaid, corridas])
+
   // Load the sale's saldo a favor when the cancel dialog opens.
   useEffect(() => {
     if (!showCancelModal || !venta?.ventaid) return
@@ -1168,7 +1180,7 @@ export const VentaDetail = () => {
         )}
 
         {/* Resumen financiero */}
-        <div className="grid grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
           <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Precio Total</p>
             <p className="text-xl md:text-2xl font-bold text-blue-600">{formatCurrency(precioVenta)}</p>
@@ -1196,6 +1208,23 @@ export const VentaDetail = () => {
           <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4 md:p-6">
             <p className="text-sm text-gray-500 mb-2">Total Adeudado</p>
             <p className="text-xl md:text-2xl font-bold text-red-600">{formatCurrency(totalAPagar)}</p>
+          </div>
+          <div className="bg-white rounded-[16px] border border-[#e0e5e7] p-4 md:p-6">
+            <p className="text-sm text-gray-500 mb-2">Saldo a favor</p>
+            {saldoFavorVenta === null ? (
+              <p className="text-xl md:text-2xl font-bold text-gray-300">…</p>
+            ) : saldoFavorVenta === undefined ? (
+              <p className="text-sm text-gray-400">No se pudo consultar</p>
+            ) : (
+              <>
+                <p className={`text-xl md:text-2xl font-bold ${saldoFavorVenta > 0 ? 'text-green-700' : 'text-gray-400'}`}>
+                  {formatCurrency(saldoFavorVenta)}
+                </p>
+                {saldoFavorVenta > 0 && venta.estatus !== 'C' && (
+                  <p className="text-xs text-gray-500 mt-1">Disponible para pagos de esta venta</p>
+                )}
+              </>
+            )}
           </div>
         </div>
 
