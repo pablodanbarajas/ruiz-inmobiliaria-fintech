@@ -151,15 +151,7 @@ export const DesarrolloDetail = () => {
   return (
     <AdminLayout>
       <div className="w-full">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/admin/desarrollos')}
-            className="inline-flex items-center gap-2"
-          >
-            <ChevronLeft size={20} />
-            Volver
-          </Button>
+        <div className="flex flex-wrap items-center justify-end gap-4 mb-6">
           {canEditDesarrollos && (
             <div className="flex gap-2">
               <Button

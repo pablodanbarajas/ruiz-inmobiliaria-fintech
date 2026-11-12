@@ -7,6 +7,57 @@ export interface ComboOption {
   sublabel?: string
 }
 
+/**
+ * Splits text into comparable words: no accents or case ("ruisenor" finds
+ * "RUISEÑOR"), punctuation as a separator, and numbers without leading zeros
+ * ("lote 001" finds "Lote 1").
+ */
+const searchWords = (text: string): string[] =>
+  text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .map((word) => (/^\d+$/.test(word) ? String(Number(word)) : word))
+
+/**
+ * Short numbers must match whole ("5" finds manzana 5, not 15). Longer numbers,
+ * such as part of a phone, and words match anywhere, as the search did before.
+ */
+const matchesWord = (part: string, word: string) =>
+  /^\d{1,2}$/.test(word) ? part === word : part.includes(word)
+
+const isNumber = (word: string) => /^\d+$/.test(word)
+
+/** What follows a label such as "Mza": a number or a short code like "CC". */
+const isLabelValue = (word: string) => isNumber(word) || word.length <= 3
+
+/**
+ * True when every typed word appears in the option. When the option has a
+ * label followed by a value ("Mza 5", "Mza CC", "Lote 17"), a typed "mza 5"
+ * must find that pair, so it doesn't also bring "Lote 5" of other manzanas.
+ * Other words and numbers match on their own ("haci 5 17").
+ */
+const matchesSearch = (option: string[], words: string[]) => {
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i]
+    const next = words[i + 1]
+    if (!isNumber(word) && next !== undefined && isNumber(next)) {
+      const labelsWithNumber = option
+        .map((part, j) => ({ part, following: option[j + 1] }))
+        .filter(({ part, following }) => matchesWord(part, word) && following !== undefined && isLabelValue(following))
+      if (labelsWithNumber.length > 0) {
+        if (!labelsWithNumber.some(({ following }) => matchesWord(following, next))) return false
+        i++
+        continue
+      }
+    }
+    if (!option.some((part) => matchesWord(part, word))) return false
+  }
+  return true
+}
+
 interface SearchComboboxProps {
   options: ComboOption[]
   value: string
@@ -57,19 +108,16 @@ export const SearchCombobox = ({
     return () => document.removeEventListener('mousedown', handler)
   }, [value, options])
 
-  const filtered = options
-    .filter((o) => {
-      if (!inputText) return true
-      const s = inputText.toLowerCase()
-      return o.label.toLowerCase().includes(s) || o.sublabel?.toLowerCase().includes(s)
-    })
-    .slice(0, maxVisible)
-
-  const totalMatches = options.filter((o) => {
-    if (!inputText) return true
-    const s = inputText.toLowerCase()
-    return o.label.toLowerCase().includes(s) || o.sublabel?.toLowerCase().includes(s)
-  }).length
+  // Each typed word must appear somewhere in the option, in any order, so
+  // "hacienda mza 5" finds "HACIENDA RUISEÑOR · Mza 5 Lote 1".
+  const words = searchWords(inputText)
+  const matches = words.length
+    ? options.filter((o) => {
+        return matchesSearch(searchWords(`${o.label} ${o.sublabel ?? ''}`), words)
+      })
+    : options
+  const filtered = matches.slice(0, maxVisible)
+  const totalMatches = matches.length
 
   const selectedLabel = options.find((o) => o.value === value)?.label ?? ''
 

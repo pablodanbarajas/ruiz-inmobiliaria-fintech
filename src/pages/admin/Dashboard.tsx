@@ -11,6 +11,7 @@ import { fetchPanteonesDesarrolloIds } from '@/lib/panteones'
 import { AdminLayout } from '@/components/layout/AdminLayout'
 import { formatCurrency, formatDate, getEspacioLabel, getVentaStatusLabel, getVentaStatusColor, calcularRecargo } from '@/utils/helpers'
 import { DEMO_DESARROLLOIDS } from '@/config/demoMode'
+import { getPagoAplicado } from '@/utils/pagos'
 import { useAuth } from '@/context/AuthContext'
 import { ROLE_CAPABILITIES, ROLE_LABELS, type AdminPanelRole } from '@/config/roles'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -192,6 +193,7 @@ export const Dashboard = () => {
             return v.estatus !== 'C' && isWithinMonth(v.fecha, firstOfMonth, firstOfNextMonth)
           }).length
 
+          // Money received: the installment plus abonos a saldo a favor (same as Tesorería).
           const getMontoCobrado = (p: { montopagado: number | null; servicios_extra: number | null }) =>
             Number(p.montopagado || 0) + Math.max(0, Number(p.servicios_extra || 0))
           const totalPagado = pagosDemo.reduce((sum, p) => sum + getMontoCobrado(p), 0)
@@ -386,59 +388,31 @@ export const Dashboard = () => {
         setLoadingRiesgo(true)
         const today = new Date().toISOString().split('T')[0]
 
-        // Pre-fetch ventaIds for DEMO developments (same fix as Pendientes tab)
-        let demoVentaIds: number[] | null = null
+        // Overdue installments of active Inmobiliaria Ruiz sales, filtered on the server and paged by id.
+        // Cemeteries have their own panel, so their developments are left out here.
+        let desarrolloIds: number[] | null = null
         if (DEMO_DESARROLLOIDS.length > 0) {
           const panteonesIds = await fetchPanteonesDesarrolloIds()
-          const { data: lotesData } = await supabase
-            .from('lote').select('loteid').in('desarrolloid', DEMO_DESARROLLOIDS.filter((id) => !panteonesIds.includes(id)))
-          const loteIds = (lotesData || []).map((l: any) => l.loteid as number)
-          if (loteIds.length > 0) {
-            const { data: ventasData } = await supabase
-              .from('venta').select('ventaid').eq('estatus', 'A').in('loteid', loteIds).limit(5000)
-            demoVentaIds = (ventasData || []).map((v: any) => v.ventaid as number)
-          } else {
-            demoVentaIds = []
-          }
+          desarrolloIds = DEMO_DESARROLLOIDS.filter((desarrolloId) => !panteonesIds.includes(desarrolloId))
+          if (desarrolloIds.length === 0) { setVentasEnRiesgo([]); setTotalCarteraVencida(0); setLoadingRiesgo(false); return }
         }
+        const corridasData = await fetchAllByKey<any>(
+          (afterKey, pageSize) => {
+            let query = supabase
+              .from('corridafinanciera')
+              .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(estatus, clienteid, dias_tolerancia, cliente:cliente(nombre), lote:lote!inner(manzana, nolote, clavelote, desarrolloid)), pagos:pagos(pagoid, montopagado, servicios_extra, saldo_favor_aplicado, estatus, recargo)')
+              .lt('fecha', today)
+              .eq('venta.estatus', 'A')
+            if (desarrolloIds) query = query.in('venta.lote.desarrolloid', desarrolloIds)
+            return query
+              .gt('corridafinancieraid', afterKey)
+              .order('corridafinancieraid', { ascending: true })
+              .limit(pageSize)
+          },
+          (corrida) => corrida.corridafinancieraid,
+        )
 
-        if (demoVentaIds !== null && demoVentaIds.length === 0) {
-          setVentasEnRiesgo([])
-          setLoadingRiesgo(false)
-          return
-        }
-
-        let corridasQuery = supabase
-          .from('corridafinanciera')
-          .select('corridafinancieraid, ventaid, nopago, fecha, mensualidad, venta:venta!inner(estatus, clienteid, dias_tolerancia, cliente:cliente(nombre), lote:lote(manzana, nolote, clavelote, desarrolloid)), pagos:pagos(pagoid, montopagado, servicios_extra, estatus, recargo)')
-          .lt('fecha', today)
-
-        if (demoVentaIds) corridasQuery = corridasQuery.in('ventaid', demoVentaIds)
-
-        // Paginate: a single .limit(5000) can silently truncate before
-        // reaching some ventas when a demo development has many sales/installments
-        const seenCorridaIds = new Set<number>()
-        const corridasData: any[] = []
-        const PAGE_SIZE = 1000
-        let from = 0
-        let pageErr: any = null
-        while (true) {
-          const { data, error } = await corridasQuery
-            .order('ventaid', { ascending: true })
-            .order('corridafinancieraid', { ascending: true })
-            .range(from, from + PAGE_SIZE - 1)
-          if (error) { pageErr = error; break }
-          if (!data || data.length === 0) break
-          for (const row of data) {
-            if (seenCorridaIds.has(row.corridafinancieraid)) continue
-            seenCorridaIds.add(row.corridafinancieraid)
-            corridasData.push(row)
-          }
-          if (data.length < PAGE_SIZE) break
-          from += PAGE_SIZE
-        }
-
-        if (pageErr || !corridasData.length) { setTotalCarteraVencida(0); setLoadingRiesgo(false); return }
+        if (!corridasData.length) { setVentasEnRiesgo([]); setTotalCarteraVencida(0); setLoadingRiesgo(false); return }
 
 
         // Only active ventas
@@ -459,8 +433,10 @@ export const Dashboard = () => {
 
           const venta = Array.isArray(c.venta) ? c.venta[0] : c.venta
           const pagosCorrida = ((c.pagos || []) as any[]).filter((p) => p.estatus !== 'C')
-          const pagado = pagosCorrida.reduce((sum, p) => sum + (p.montopagado || 0) + Math.max(0, p.servicios_extra || 0), 0)
-
+          const pagado = pagosCorrida.reduce(
+            (sum, p) => sum + getPagoAplicado(p),
+            0
+          )
           const diasTolVenta = venta?.dias_tolerancia ?? 0
           const maxStoredRecargo = pagosCorrida.reduce((max, p) => Math.max(max, Number(p.recargo ?? 0)), 0)
           const recargoReq = pagosCorrida.length > 0
@@ -956,7 +932,7 @@ export const Dashboard = () => {
                 {pagosRecientes.map((p) => (
                   <li
                     key={p.pagoid}
-                    onClick={() => navigate(canViewVentas ? `/admin/ventas/${p.ventaid}` : `/admin/pagos/${p.pagoid}`)}
+                    onClick={() => navigate(`/admin/pagos/${p.pagoid}`)}
                     className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <div className="min-w-0">

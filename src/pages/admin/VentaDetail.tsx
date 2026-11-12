@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { invalidateCache } from '@/lib/queryCache'
 import { AdminLayout } from '@/components/layout/AdminLayout'
@@ -8,13 +8,23 @@ import { Modal } from '@/components/ui/Modal'
 import { VentaForm } from '@/components/forms/VentaForm'
 import type { VentaFormData } from '@/components/forms/VentaForm'
 import { PagoForm } from '@/components/forms/PagoForm'
+import {
+  getPagoAplicado,
+  validarSaldoFavorDisponible,
+  fetchSaldoFavorDisponible,
+  cerrarSaldoFavor,
+  esDecisionYaRegistrada,
+  ROLES_DECIDEN_SALDO_FAVOR,
+  QUIEN_DECIDE_SALDO_FAVOR,
+} from '@/utils/pagos'
+import { SaldoFavorCierrePanel, SaldoFavorDecisionFields } from '@/components/SaldoFavorCierre'
 import type { PagoFormData } from '@/components/forms/PagoForm'
 import { ConvenioForm } from '@/components/forms/ConvenioForm'
 import type { ConvenioFormData } from '@/components/forms/ConvenioForm'
 import { ContratoFirmado } from '@/components/ContratoFirmado'
 import { DesignadosContrato } from '@/components/DesignadosContrato'
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Edit2, XCircle, AlertTriangle, Plus, Eye, Clock, ArrowLeftRight } from 'lucide-react'
-import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Convenio, Devolucion, DevolucionParcialidad, CargoExtra, Traspaso } from '@/types/database'
+import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Convenio, Devolucion, DevolucionParcialidad, CargoExtra, Traspaso, SaldoFavorDecision } from '@/types/database'
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import { useAuth } from '@/context/AuthContext'
@@ -43,16 +53,9 @@ interface CorridaWithPagos extends CorridaFinanciera {
   pagos?: Pago[]
 }
 
-const getPagoAplicado = (pago: Pago) => {
-  const monto = pago.montopagado || 0
-  const extra = pago.servicios_extra || 0
-  return monto + extra
-}
-
 export const VentaDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const location = useLocation()
   const { role } = useAuth()
   const today = new Date().toISOString().split('T')[0]
   const [venta, setVenta] = useState<VentaWithDetails | null>(null)
@@ -83,7 +86,15 @@ export const VentaDetail = () => {
   const [initialPaymentComment, setInitialPaymentComment] = useState('')
   const [initialPaymentError, setInitialPaymentError] = useState<string | null>(null)
   const [isSubmittingInitialPayment, setIsSubmittingInitialPayment] = useState(false)
-  const [devolucion, setDevolucion] = useState<(Devolucion & { parcialidades?: DevolucionParcialidad[] }) | null>(null)
+  // A cancelled sale can have the 20% refund and the saldo a favor refund at once.
+  const [devoluciones, setDevoluciones] = useState<(Devolucion & { parcialidades?: DevolucionParcialidad[] })[]>([])
+  // Cancel dialog: the sale's saldo a favor (null while loading) and the decision about it.
+  const [saldoCancelacion, setSaldoCancelacion] = useState<number | null>(null)
+  const [decisionSaldo, setDecisionSaldo] = useState<SaldoFavorDecision | null>(null)
+  const [notaSaldo, setNotaSaldo] = useState('')
+  const [errorSaldoCancelacion, setErrorSaldoCancelacion] = useState(false)
+  // Blocks a second click on "cancelar" before the disabled button re-renders.
+  const cancelandoRef = useRef(false)
   const [cargosExtra, setCargosExtra] = useState<CargoExtra[]>([])
   const [traspasos, setTraspasos] = useState<(Traspaso & { cliente_anterior?: { nombre: string | null }; cliente_nuevo?: { nombre: string | null } })[]>([])
   const [showTraspasoModal, setShowTraspasoModal] = useState(false)
@@ -94,6 +105,34 @@ export const VentaDetail = () => {
   const [traspasoClientes, setTraspasoClientes] = useState<ComboOption[]>([])
   const canManageConvenios = role === 'admin'
   const canManagePayments = role === 'admin' || role === 'finanzas'
+  const puedeDecidirSaldo = !!role && (ROLES_DECIDEN_SALDO_FAVOR as readonly string[]).includes(role)
+
+  const reloadDevoluciones = async () => {
+    if (!id) return
+    const { data } = await supabase
+      .from('devoluciones')
+      .select('*, parcialidades:devolucion_parcialidades(*)')
+      .eq('ventaid', id)
+      .order('devolucionid', { ascending: true })
+    setDevoluciones((data || []) as (Devolucion & { parcialidades?: DevolucionParcialidad[] })[])
+  }
+
+  // Load the sale's saldo a favor when the cancel dialog opens.
+  useEffect(() => {
+    if (!showCancelModal || !venta?.ventaid) return
+    let cancelado = false
+    setSaldoCancelacion(null)
+    setDecisionSaldo(null)
+    setNotaSaldo('')
+    setErrorSaldoCancelacion(false)
+    fetchSaldoFavorDisponible(venta.ventaid)
+      .then((saldo) => { if (!cancelado) setSaldoCancelacion(saldo) })
+      .catch(() => {
+        // Don't block cancelling: the sale's detail shows the pending saldo afterwards.
+        if (!cancelado) { setSaldoCancelacion(0); setErrorSaldoCancelacion(true) }
+      })
+    return () => { cancelado = true }
+  }, [showCancelModal, venta?.ventaid])
 
   const parseCurrencyValue = (value: string | number | null | undefined) => {
     if (value == null || value === '') return 0
@@ -291,13 +330,8 @@ export const VentaDetail = () => {
         const anio = new Date().getFullYear()
         setConveniosEsteAnio(allConvenios.filter((c) => c.fecha?.startsWith(String(anio))).length)
 
-        // Fetch devolucion if venta is cancelled
-        const { data: devData } = await supabase
-          .from('devoluciones')
-          .select('*, parcialidades:devolucion_parcialidades(*)')
-          .eq('ventaid', id)
-          .maybeSingle()
-        if (devData) setDevolucion(devData as Devolucion & { parcialidades?: DevolucionParcialidad[] })
+        // Fetch devoluciones (cancelled sales)
+        await reloadDevoluciones()
 
         // Fetch cargos extra for this lote (persists across ventas)
         const { data: cargosData } = await supabase
@@ -482,7 +516,8 @@ export const VentaDetail = () => {
 
   // ── Cancel handler ───────────────────────────────────────────────
   const handleCancelVenta = async () => {
-    if (!venta) return
+    if (!venta || cancelandoRef.current) return
+    cancelandoRef.current = true
     try {
       setIsSubmitting(true)
 
@@ -536,7 +571,20 @@ export const VentaDetail = () => {
             notas: `Parcialidad ${i + 1} de ${numParcialidades}`,
           }))
           await supabase.from('devolucion_parcialidades').insert(parcialidades)
-          setDevolucion({ ...devData, parcialidades: parcialidades.map((p, i) => ({ ...p, parcialidadid: i, fecha_programada: null, fecha_pagada: null, created_at: null })) })
+        }
+      }
+
+      // 3b. What happens to the saldo a favor. The sale is already cancelled, so a
+      // failure here only leaves the decision pending in the sale's detail.
+      if (decisionSaldo && venta.ventaid) {
+        try {
+          await cerrarSaldoFavor(venta.ventaid, decisionSaldo, notaSaldo)
+        } catch (saldoErr) {
+          // Already recorded (e.g. by a second click): nothing to report.
+          if (!esDecisionYaRegistrada(saldoErr)) {
+            const mensaje = saldoErr instanceof Error ? saldoErr.message : String(saldoErr)
+            alert(`La venta se canceló, pero no se registró la decisión del saldo a favor: ${mensaje}. Puedes decidirla desde el detalle de la venta.`)
+          }
         }
       }
 
@@ -598,23 +646,19 @@ export const VentaDetail = () => {
         .eq('ventaid', id)
         .single()
       setVenta(ventaData as VentaWithDetails)
-      // Refetch devolucion with real IDs
-      const { data: devFinal } = await supabase
-        .from('devoluciones')
-        .select('*, parcialidades:devolucion_parcialidades(*)')
-        .eq('ventaid', id)
-        .maybeSingle()
-      if (devFinal) setDevolucion(devFinal as Devolucion & { parcialidades?: DevolucionParcialidad[] })
-        // Fetch cargos extra for this lote
-        const { data: cargosData } = await supabase
-          .from('cargos_extra')
-          .select('*')
-          .eq('loteid', ventaData.loteid)
-          .order('fecha', { ascending: true })
-        setCargosExtra((cargosData || []) as CargoExtra[])    } catch (err: any) {
+      await reloadDevoluciones()
+      // Fetch cargos extra for this lote
+      const { data: cargosData } = await supabase
+        .from('cargos_extra')
+        .select('*')
+        .eq('loteid', ventaData.loteid)
+        .order('fecha', { ascending: true })
+      setCargosExtra((cargosData || []) as CargoExtra[])
+    } catch (err: any) {
       console.error('Error cancelling venta:', err)
       alert(`Error al cancelar la venta: ${err.message}`)
     } finally {
+      cancelandoRef.current = false
       setIsSubmitting(false)
     }
   }
@@ -623,11 +667,16 @@ export const VentaDetail = () => {
   const handleCreatePagoFromCorrida = async (data: PagoFormData) => {
     try {
       setIsSubmittingPago(true)
+
+      // Checked again here: the balance may have changed since the form loaded it.
+      await validarSaldoFavorDisponible(data.corridafinancieraid, Number(data.saldo_favor_aplicado ?? 0))
+
       const payload = {
         corridafinancieraid: data.corridafinancieraid,
         fechapago: data.fechapago,
         montopagado: data.montopagado,
         servicios_extra: data.servicios_extra,
+        saldo_favor_aplicado: data.saldo_favor_aplicado,
         formapago: data.formapago,
         cuenta_bancaria_id: data.cuenta_bancaria_id,
         estatus: data.estatus,
@@ -639,10 +688,14 @@ export const VentaDetail = () => {
 
       let insertResult = await supabase.from('pagos').insert(payload)
 
-      if (insertResult.error && /servicios_extra|cuenta_bancaria_id/i.test(insertResult.error.message || '')) {
+      if (
+        insertResult.error &&
+        data.saldo_favor_aplicado === 0 &&
+        /servicios_extra|cuenta_bancaria_id/i.test(insertResult.error.message || '')
+      ) {
         const fallbackComentario = [
           data.comentario,
-          data.servicios_extra > 0 ? `[Servicios/Extra: ${data.servicios_extra}]` : null,
+          data.servicios_extra > 0 ? `[Abono a saldo a favor: ${data.servicios_extra}]` : null,
           data.formapago === 2 && data.cuenta_bancaria_id ? `[Cuenta bancaria ID: ${data.cuenta_bancaria_id}]` : null,
         ].filter(Boolean).join(' | ')
 
@@ -799,18 +852,7 @@ export const VentaDetail = () => {
   return (
     <AdminLayout>
       <div className="w-full">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              const from = (location.state as any)?.from
-              navigate(from || '/admin/ventas')
-            }}
-            className="inline-flex items-center gap-2"
-          >
-            <ChevronLeft size={20} />
-            Volver
-          </Button>
+        <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
 
           {/* Action buttons (only when active) */}
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
@@ -1059,12 +1101,17 @@ export const VentaDetail = () => {
         </div>
 
         {/* Alerta de cancelación por atraso */}
-        {/* Panel de devolución (cuando la venta está cancelada) */}
-        {venta.estatus === 'C' && devolucion && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg shadow p-6 mb-6">
+        {/* Saldo a favor de la venta cancelada: decisión tomada o pendiente */}
+        {venta.estatus === 'C' && venta.ventaid && (
+          <SaldoFavorCierrePanel ventaid={venta.ventaid} puedeDecidir={puedeDecidirSaldo} onDecidido={reloadDevoluciones} />
+        )}
+
+        {/* Panel de devoluciones (cuando la venta está cancelada) */}
+        {venta.estatus === 'C' && devoluciones.map((devolucion) => (
+          <div key={devolucion.devolucionid} className="bg-blue-50 border border-blue-200 rounded-lg shadow p-6 mb-6">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-2 h-2 rounded-full bg-blue-500" />
-              <h3 className="text-lg font-semibold text-blue-900">Devolución registrada</h3>
+              <h3 className="text-lg font-semibold text-blue-900">Devolución registrada #{devolucion.devolucionid}</h3>
               <span className={`ml-auto text-xs font-semibold px-2 py-0.5 rounded-full ${
                 devolucion.estatus === 'C' ? 'bg-green-100 text-green-800' :
                 devolucion.estatus === 'E' ? 'bg-amber-100 text-amber-800' :
@@ -1117,10 +1164,10 @@ export const VentaDetail = () => {
               </div>
             )}
           </div>
-        )}
+        ))}
 
-        {/* Sin devolución en venta cancelada */}
-        {venta.estatus === 'C' && !devolucion && (
+        {/* Sin devolución del 20% en venta cancelada (la del saldo a favor es aparte) */}
+        {venta.estatus === 'C' && !devoluciones.some((d) => d.motivo !== 'Reembolso de saldo a favor') && (
           <div className="bg-[#f7f8f8] border border-[#e0e5e7] rounded-[14px] p-4 mb-6 text-sm text-gray-600">
             Esta venta fue cancelada sin devolución (el cliente había pagado menos del 20% del precio total).
           </div>
@@ -1716,6 +1763,32 @@ export const VentaDetail = () => {
             )}
           </div>
 
+          {/* Saldo a favor: who can decide must decide before cancelling */}
+          {errorSaldoCancelacion && (
+            <p className="text-sm text-amber-800">
+              No se pudo revisar el saldo a favor. Si la venta tiene saldo, se decidirá después desde su detalle.
+            </p>
+          )}
+          {saldoCancelacion === null ? (
+            <p className="text-sm text-gray-500">Revisando el saldo a favor de la venta…</p>
+          ) : saldoCancelacion > 0 && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+              {puedeDecidirSaldo ? (
+                <SaldoFavorDecisionFields
+                  monto={saldoCancelacion}
+                  decision={decisionSaldo}
+                  nota={notaSaldo}
+                  onChange={(d, n) => { setDecisionSaldo(d); setNotaSaldo(n) }}
+                  disabled={isSubmitting}
+                />
+              ) : (
+                <p className="text-sm text-amber-900">
+                  Esta venta tiene {formatCurrency(saldoCancelacion)} de saldo a favor. La decisión sobre ese saldo la toma {QUIEN_DECIDE_SALDO_FAVOR} después de cancelar.
+                </p>
+              )}
+            </div>
+          )}
+
           <p className="text-gray-700">
             ¿Estás seguro de que deseas cancelar la{' '}
             <span className="font-semibold">Venta #{venta?.ventaid}</span>?
@@ -1753,7 +1826,11 @@ export const VentaDetail = () => {
             <Button
               variant="destructive"
               onClick={handleCancelVenta}
-              disabled={isSubmitting}
+              disabled={
+                isSubmitting ||
+                saldoCancelacion === null ||
+                (puedeDecidirSaldo && saldoCancelacion > 0 && decisionSaldo === null)
+              }
               className="inline-flex items-center gap-2"
             >
               <XCircle size={16} />

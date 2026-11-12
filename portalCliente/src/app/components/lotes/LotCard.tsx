@@ -170,9 +170,9 @@ export function LotCard({ lote }: LotCardProps) {
       <div className="flex flex-col lg:flex-row">
         <div className="w-full lg:w-48 h-36 md:h-48 lg:h-auto flex-shrink-0">
           {showPlaceholder ? (
-            <div className="w-full h-full bg-gradient-to-br from-teal-50 to-teal-100 flex flex-col items-center justify-center gap-2 text-teal-400">
+            <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center gap-2 text-gray-400">
               <ImageOff className="w-10 h-10" />
-              <span className="text-sm font-medium text-teal-500">Sin imagen disponible</span>
+              <span className="text-sm font-medium text-gray-500">Sin imagen disponible</span>
             </div>
           ) : (
             <img
@@ -198,10 +198,12 @@ export function LotCard({ lote }: LotCardProps) {
             </div>
 
             <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3">
-              <div className="flex items-center gap-1 text-gray-500">
-                <MapPin className="w-3.5 h-3.5" />
-                <span className="text-xs">{lote.location}</span>
-              </div>
+              {lote.location && (
+                <div className="flex items-center gap-1 text-gray-500">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span className="text-xs">{lote.location}</span>
+                </div>
+              )}
               <div className="flex items-center gap-1 text-gray-500">
                 <Ruler className="w-3.5 h-3.5" />
                 <span className="text-xs">{lote.surface}</span>

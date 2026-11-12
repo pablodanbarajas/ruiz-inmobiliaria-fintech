@@ -135,6 +135,8 @@ export type Pago = {
   fechapago: string | null
   montopagado: number | null
   servicios_extra: number | null
+  /** Saldo a favor used to cover this payment; separate from the money received (montopagado). */
+  saldo_favor_aplicado?: number | null
   formapago: number | null
   cuenta_bancaria_id: number | null
   estatus: string | null
@@ -204,6 +206,21 @@ export type DevolucionParcialidad = {
   estatus: string | null  // P: Pendiente | R: Realizada
   notas: string | null
   created_at: string | null
+}
+
+export type SaldoFavorDecision = 'reembolso' | 'retencion'
+
+/** What was decided about a cancelled sale's saldo a favor (table saldo_favor_cierres). */
+export type SaldoFavorCierre = {
+  cierreid: number
+  ventaid: number
+  monto: number
+  decision: SaldoFavorDecision
+  devolucionid: number | null
+  nota: string | null
+  created_by: string
+  created_by_nombre: string
+  created_at: string
 }
 
 export type Traspaso = {

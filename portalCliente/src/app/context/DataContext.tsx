@@ -33,10 +33,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [developmentsLoading, setDevelopmentsLoading] = useState(false);
   const [developmentsLoaded, setDevelopmentsLoaded] = useState(false);
 
+  // "Loading" is only the first load. A refresh runs in the background and
+  // keeps showing the current data; flagging it as loading made every page
+  // flash its skeleton.
   const loadLots = useCallback((force = false) => {
     if (!session.user) return;
     if (lotsLoaded && !force) return;
-    setLotsLoading(true);
+    if (!lotsLoaded) setLotsLoading(true);
     lotsService
       .getClientLots(session.user.id)
       .then((data) => { setLots(data); setLotsLoaded(true); })
@@ -46,7 +49,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const loadPayments = useCallback((force = false) => {
     if (!session.user) return;
     if (paymentsLoaded && !force) return;
-    setPaymentsLoading(true);
+    if (!paymentsLoaded) setPaymentsLoading(true);
     paymentsService
       .getClientPayments(session.user.id)
       .then((data) => { setPaymentSummary(data); setPaymentsLoaded(true); })
@@ -76,12 +79,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [session.user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refreshLots = useCallback(() => {
-    setLotsLoaded(false);
     loadLots(true);
   }, [loadLots]);
 
   const refreshPayments = useCallback(() => {
-    setPaymentsLoaded(false);
     loadPayments(true);
   }, [loadPayments]);
 
@@ -90,6 +91,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       {children}
     </DataContext.Provider>
   );
+}
+
+/** For shared components (the header) that also render outside the client area. */
+export function useOptionalData() {
+  return useContext(DataContext);
 }
 
 export function useData() {
