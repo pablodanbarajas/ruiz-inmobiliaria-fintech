@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getSecretKey, getPublishableKey } from '../_shared/keys.ts'
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 const QUENTLI_API = Deno.env.get('QUENTLI_API_URL') ?? 'https://api.demo.quentli.com'
@@ -30,7 +31,7 @@ Deno.serve(async (req: Request) => {
 
     const serviceClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      getSecretKey(),
     )
 
     // Verificar que el token es válido
@@ -68,7 +69,7 @@ Deno.serve(async (req: Request) => {
     // Usamos el JWT del usuario para que RLS de vista_pagos_cliente aplique
     const userClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      getPublishableKey(),
       { global: { headers: { Authorization: authHeader } } },
     )
     const { data: corridaRow, error: corridaErr } = await userClient
