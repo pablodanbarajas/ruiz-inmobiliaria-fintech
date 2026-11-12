@@ -27,6 +27,7 @@ import type { Venta, Cliente, Lote, CorridaFinanciera, Pago, Desarrollo, Conveni
 import { SearchCombobox } from '@/components/ui/SearchCombobox'
 import type { ComboOption } from '@/components/ui/SearchCombobox'
 import { useAuth } from '@/context/AuthContext'
+import { ROLE_CAPABILITIES, type AdminPanelRole } from '@/config/roles'
 import { syncExpiredConvenios } from '@/services/convenios'
 import { DetailSkeleton } from '@/components/ui/Skeleton'
 import {
@@ -103,6 +104,8 @@ export const VentaDetail = () => {
   const [traspasoClientes, setTraspasoClientes] = useState<ComboOption[]>([])
   const canManageConvenios = role === 'admin'
   const canManagePayments = role === 'admin' || role === 'finanzas'
+  // Same rule as Tesorería; the database refuses payments from other roles.
+  const canRegistrarPagos = !!role && !!ROLE_CAPABILITIES[role as AdminPanelRole]?.registrar_pagos
   const puedeDecidirSaldo = !!role && (ROLES_DECIDEN_SALDO_FAVOR as readonly string[]).includes(role)
 
   const reloadDevoluciones = async () => {
@@ -1511,7 +1514,7 @@ export const VentaDetail = () => {
                             <span className="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
                               Pagado
                             </span>
-                          ) : venta.estatus !== 'C' ? (
+                          ) : venta.estatus !== 'C' && canRegistrarPagos ? (
                             <Button
                               variant="outline"
                               size="sm"
