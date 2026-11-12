@@ -85,24 +85,16 @@ export const ApartadoExternoForm = ({
         [lote.desarrollo?.nombre ?? '', lote.manzana ?? '', lote.nolote ?? '', lote.clavelote ?? ''].join(' | ')
       setLotes([...lotesData].sort((a, b) => ordenLote(a).localeCompare(ordenLote(b), 'es', { numeric: true })))
 
-      // Existing clients for "usar existente"
-      let allClientes: typeof clientesExistentes = []
-      let page = 0
-      const pageSize = 1000
-      let hasMore = true
-      while (hasMore) {
-        const { data } = await supabase
-          .from('cliente')
-          .select('clienteid, nombre, telefonocelular, rfc')
-          .order('nombre')
-          .range(page * pageSize, (page + 1) * pageSize - 1)
-        if (!data || data.length === 0) { hasMore = false } else {
-          allClientes = [...allClientes, ...(data as typeof allClientes)]
-          page++
-          if (data.length < pageSize) hasMore = false
-        }
-      }
-      setClientesExistentes(allClientes)
+      // Existing clients for "usar existente". External sellers see every
+      // client's name but the phone and RFC only of their own clients; the
+      // database function decides (RLS would hide the other clients entirely).
+      const allClientes = await fetchAllByKey<(typeof clientesExistentes)[number]>(
+        (afterKey, pageSize) => supabase.rpc('clientes_para_apartado', { p_after: afterKey, p_limit: pageSize }),
+        (cliente) => cliente.clienteid,
+      )
+      setClientesExistentes(
+        [...allClientes].sort((a, b) => (a.nombre ?? '').localeCompare(b.nombre ?? '', 'es'))
+      )
     }
     load()
   }, [])
